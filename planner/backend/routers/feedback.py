@@ -35,8 +35,10 @@ def _serialize(row: Any) -> FeedbackOut:
         status=row.status,
         developer_reply=row.developer_reply,
         developer_replied_at=(
-            row.developer_replied_at.isoformat() if row.developer_replied_at else None
-        ),
+            row.developer_replied_at.isoformat()
+            if hasattr(row.developer_replied_at, "isoformat")
+            else row.developer_replied_at
+        ) if row.developer_replied_at else None,
         screenshots=row.screenshots,
     )
 

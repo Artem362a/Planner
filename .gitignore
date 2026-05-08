@@ -31,5 +31,8 @@ npm-debug.log*
 *.sw?
 .DS_Store
 
+# User-uploaded files (runtime data, not code)
+planner/backend/uploads/
+
 # OS
 Thumbs.db
