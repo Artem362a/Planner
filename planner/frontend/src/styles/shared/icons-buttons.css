@@ -1,0 +1,110 @@
+/* =========================
+   ICONS
+   ========================= */
+
+.icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.icon-calendar-bars {
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+  border: 3px solid #7b5ecf;
+  position: relative;
+}
+
+.icon-calendar-bars::before,
+.icon-calendar-bars::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  background: #7b5ecf;
+}
+
+.icon-calendar-bars::before {
+  top: 6px;
+}
+
+.icon-calendar-bars::after {
+  bottom: 6px;
+}
+
+.icon-user {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #7b5ecf;
+  position: relative;
+}
+
+.icon-user::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: -8px;
+  height: 8px;
+  border-radius: 14px 14px 0 0;
+  border: 3px solid #7b5ecf;
+  border-bottom: none;
+}
+
+/* =========================
+   BUTTONS
+   ========================= */
+
+.primary-btn,
+.secondary-btn,
+.week-add-btn,
+.modal-cancel-btn {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+}
+
+.primary-btn,
+.week-add-btn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary-btn:hover,
+.week-add-btn:hover {
+  background: #6b4ae0;
+}
+
+.secondary-btn,
+.modal-cancel-btn {
+  background: #eee7ff;
+  color: #3d3564;
+}
+
+.secondary-btn:hover,
+.modal-cancel-btn:hover {
+  background: #ddd0ff;
+}
+
+.icon-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+}
+
+.icon-button--danger {
+  color: #d64545;
+}

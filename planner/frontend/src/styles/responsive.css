@@ -1,0 +1,359 @@
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 1280px) {
+  .app-main {
+    grid-template-columns: 1.8fr 1.4fr;
+    grid-template-areas:
+      "day month"
+      "week week"
+      "targets targets";
+  }
+
+  .day-page-floating-actions {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-wrapper {
+    padding: 12px;
+  }
+
+  .app {
+    min-height: calc(100vh - 24px);
+    border-radius: 20px;
+  }
+
+  .app-main {
+    padding: 18px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "day"
+      "month"
+      "week"
+      "targets";
+    overflow: visible;
+  }
+
+  .card {
+    min-height: auto;
+  }
+
+  .week-mini-scroll {
+    max-height: 340px;
+  }
+
+  .about-hero,
+  .about-story {
+    grid-template-columns: 1fr;
+  }
+
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-wrapper {
+    padding: 0;
+  }
+
+  .app {
+    width: 100%;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  .app-header {
+    min-height: 64px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .app-header-left,
+  .app-header-right {
+    width: 56px;
+  }
+
+  .icon-circle {
+    width: 42px;
+    height: 42px;
+  }
+
+  .icon-calendar-bars {
+    width: 22px;
+    height: 18px;
+  }
+
+  .app-header-center {
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+  }
+
+  .app-main {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .card-header-row {
+    align-items: flex-start;
+  }
+
+  .day-page-main {
+    padding: 12px;
+  }
+
+  .day-big-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .day-page-floating-actions {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    z-index: 90;
+  }
+
+  .fab-button,
+  .fab-add-task,
+  .fab-secondary-task {
+    width: 48px;
+    height: 48px;
+  }
+
+  .week-period-switcher {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .week-period-label {
+    font-size: 0.95rem;
+  }
+
+  .week-grid-header {
+    grid-template-columns: 160px repeat(7, minmax(72px, 1fr));
+    min-width: 700px;
+  }
+
+  .week-grid-row {
+    grid-template-columns: 160px minmax(504px, 1fr);
+    min-width: 700px;
+  }
+
+  .week-grid-cell--corner,
+  .week-grid-cell--day,
+  .week-grid-cell--task-name,
+  .week-grid-days-track,
+  .week-grid-cell--day-box {
+    min-height: 52px;
+  }
+
+  .day-task-item {
+    padding: 10px 10px;
+    gap: 6px;
+  }
+
+  .day-task-title {
+    font-size: 14px;
+  }
+
+  .day-task-meta {
+    gap: 4px 8px;
+  }
+
+  .day-task-meta span {
+    font-size: 11px;
+  }
+
+  .subtasks-inline-block {
+    padding: 8px;
+  }
+
+  .modal,
+  .task-modal {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .template-name-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .week-range-row {
+    align-items: stretch;
+  }
+
+  .week-select {
+    min-width: 0;
+    flex: 1 1 120px;
+  }
+
+  .about-page {
+    padding: 16px;
+  }
+
+  .about-hero-text,
+  .about-hero-art,
+  .about-card,
+  .about-story-left,
+  .about-story-right {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .about-subtitle {
+    font-size: 15px;
+  }
+
+  .about-quote {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header-center {
+    font-size: 0.85rem;
+  }
+
+  .card,
+  .day-big-card {
+    padding: 14px;
+  }
+
+  .side-menu {
+    width: 88vw;
+  }
+
+  .side-menu-user-name {
+    font-size: 16px;
+  }
+
+  .side-menu-user-email {
+    font-size: 12px;
+  }
+
+  .week-mini-task-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .week-mini-task-dates {
+    align-self: flex-start;
+  }
+
+  .auth-card {
+    padding: 20px;
+  }
+}
+@media (max-width: 480px) {
+  .week-grid-header,
+  .week-grid-row {
+    min-width: 690px;
+  }
+
+  .week-grid-header {
+    grid-template-columns: 126px repeat(7, 80px);
+  }
+
+  .week-grid-row {
+    grid-template-columns: 126px calc(80px * 7);
+  }
+
+  .week-grid-days-track {
+    grid-template-columns: repeat(7, 80px);
+    min-width: calc(80px * 7);
+  }
+
+  .week-grid-cell--task-name {
+    font-size: 11px;
+    padding: 8px 6px;
+  }
+
+  .week-grid-cell--corner,
+  .week-grid-cell--day {
+    font-size: 11px;
+  }
+}
+/* --- Плавающая кнопка добавления: справа снизу --- */
+.day-page-layout,
+.day-big-card,
+.day-tasks-page {
+  position: relative;
+}
+
+.day-page-floating-actions,
+.day-floating-actions {
+  position: absolute;
+  right: 24px;
+  left: auto;
+  bottom: 24px;
+  z-index: 80;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* если где-то используется старая универсальная кнопка */
+.fab-button {
+  position: absolute;
+  right: 24px;
+  left: auto;
+  bottom: 24px;
+}
+
+/* сами круглые кнопки */
+.fab-add-task,
+.fab-secondary-task,
+.fab-button {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  /* мягкая нормальная тень без "квадратного" ощущения */
+  box-shadow: 0 8px 18px rgba(93, 84, 132, 0.18);
+}
+
+/* основная кнопка + */
+.fab-add-task,
+.fab-button {
+  background: #8e44ad;
+  color: #ffffff;
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* вторая кнопка, если есть */
+.fab-secondary-task {
+  background: #ffffff;
+  color: #7b5ecf;
+  border: 1px solid #ddd6f8;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* ховер */
+.fab-add-task:hover,
+.fab-secondary-task:hover,
+.fab-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(93, 84, 132, 0.16);
+}

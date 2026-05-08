@@ -1,0 +1,79 @@
+.legal-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #5b557f;
+}
+
+.legal-checkbox input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.legal-checkbox span {
+  display: inline-block;
+}
+
+.legal-checkbox a {
+  color: #6f58e8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.legal-checkbox a:hover {
+  text-decoration: underline;
+}
+
+.feedback-success {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #eef9f0;
+  color: #2f8a4b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.feedback-form label,
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedback-form input,
+.feedback-form select,
+.feedback-form textarea,
+.auth-form input {
+  width: 100%;
+  border: 1px solid #d8cef8;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font: inherit;
+  outline: none;
+  background: #fff;
+  color: #2f2c46;
+}
+
+.feedback-form input:focus,
+.feedback-form select:focus,
+.feedback-form textarea:focus,
+.auth-form input:focus {
+  border-color: #8f73ff;
+  box-shadow: 0 0 0 3px rgba(143, 115, 255, 0.12);
+}
+
+.feedback-textarea {
+  resize: vertical;
+  min-height: 180px;
+}
+
+@media (max-width: 700px) {
+  .legal-checkbox {
+    font-size: 13px;
+  }
+}

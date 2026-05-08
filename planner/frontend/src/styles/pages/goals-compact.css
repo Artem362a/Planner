@@ -1,0 +1,232 @@
+/* Goals compact pass */
+.goals-shell-card {
+  width: min(980px, 100%);
+  padding: 22px 24px;
+  border-radius: 22px;
+}
+
+.goals-page-section {
+  gap: 14px;
+}
+
+.goals-page-head {
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.goals-page-head-left {
+  gap: 5px;
+}
+
+.goals-page-title {
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.goals-page-subtitle {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.goals-list--clean {
+  gap: 12px;
+}
+
+.goal-card--soft {
+  border-radius: 14px;
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+.goal-card-title {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.goal-card-description {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.goal-meta-chip {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.goal-progress-track {
+  height: 8px;
+}
+
+.goal-progress-percent {
+  min-width: 38px;
+  font-size: 13px;
+}
+
+.goal-stages-wrap--soft {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.goal-create-modal--soft {
+  width: min(540px, calc(100vw - 24px));
+  max-width: 540px;
+  border-radius: 20px;
+  padding: 18px;
+  background: #fcfbff;
+  overflow: visible !important;
+  max-height: none !important;
+}
+
+.goal-create-modal-header {
+  margin-bottom: 12px;
+}
+
+.goal-create-modal-header h3 {
+  font-size: 18px;
+}
+
+.goal-create-modal-header p,
+.goal-form-field span {
+  font-size: 12px;
+}
+
+.goal-type-switch {
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.goal-type-chip {
+  padding: 8px 12px;
+  font-size: 12px;
+  box-shadow: none;
+}
+
+.goal-type-chip--active {
+  box-shadow: 0 6px 14px rgba(111, 84, 219, 0.18);
+}
+
+.goal-form-grid,
+.goal-advanced-block {
+  gap: 10px;
+}
+
+.goal-form-field {
+  gap: 6px;
+}
+
+.goal-form-field input,
+.goal-form-field select,
+.goal-form-field textarea {
+  min-height: 36px;
+  border: 1px solid #d8cef8;
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 13px;
+  color: #2f2c46;
+  background: #ffffff;
+}
+
+.goal-advanced-toggle {
+  margin-top: 2px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: #f1ecff;
+}
+
+.goal-checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid #e3dcf5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4c4768;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.goal-checkbox-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  margin: 0;
+  accent-color: #7f5dff;
+}
+
+.subtasks-form-block--soft {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.subtasks-form-block--soft .subtasks-form-title {
+  font-size: 13px;
+}
+
+.subtasks-form-block--soft .subtasks-form-input-row input {
+  min-height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.subtasks-form-block--soft .subtasks-form-input-row button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+}
+
+.goal-auto-plan-note {
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.goal-stage-draft input[type="date"] {
+  width: 132px;
+  min-height: 32px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.goal-create-modal--soft .modal-buttons {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.goal-create-modal--soft .week-add-btn,
+.goal-create-modal--soft .modal-cancel-btn {
+  min-height: 36px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .goals-shell-card {
+    width: calc(100vw - 16px);
+    padding: 16px 12px;
+  }
+
+  .goal-create-modal--soft {
+    width: min(390px, calc(100vw - 24px));
+    max-height: calc(100vh - 28px);
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .goal-type-switch {
+    flex-wrap: wrap;
+  }
+
+  .goal-stage-draft {
+    grid-template-columns: 1fr;
+  }
+
+  .goal-stage-draft input[type="date"] {
+    width: 100%;
+  }
+}

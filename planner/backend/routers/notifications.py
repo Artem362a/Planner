@@ -1,0 +1,239 @@
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta
+from datetime import time as _time
+from typing import Any, List, cast
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from auth import create_access_token, hash_password, verify_password
+from bootstrap import DOCS_DIR, ensure_default_categories_for_user
+from db import (
+    DaySettings,
+    DayTask,
+    DayTemplate,
+    FeedbackMessage,
+    Goal,
+    GoalCheckin,
+    GoalStage,
+    Notification,
+    NotificationRecipient,
+    TaskCategory,
+    User,
+    WeekTask,
+    WeekTemplate,
+)
+from dependencies import get_current_developer, get_current_user, get_db
+from schemas import *
+from serializers import *
+
+router = APIRouter()
+
+@router.get("/notifications/users", response_model=list[UserShortOut])
+def list_users_for_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_developer),
+):
+    rows = (
+        db.query(User)
+        .order_by(User.username.asc(), User.email.asc())
+        .all()
+    )
+
+    result: list[UserShortOut] = []
+
+    for row in rows:
+        user_row = cast(Any, row)
+        result.append(
+            UserShortOut(
+                id=user_row.id,
+                email=user_row.email,
+                username=user_row.username,
+                role=user_row.role,
+            )
+        )
+
+    return result
+
+@router.get("/notifications/unread-count", response_model=NotificationCountOut)
+def get_unread_notifications_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    unread_count = (
+        db.query(NotificationRecipient)
+        .filter(
+            NotificationRecipient.user_id == current_user_row.id,
+            NotificationRecipient.is_read == False,  # noqa: E712
+        )
+        .count()
+    )
+
+    return NotificationCountOut(unread_count=unread_count)
+
+@router.patch("/notifications/{notification_id}/read", response_model=MessageOut)
+def mark_notification_as_read(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    row = (
+        db.query(NotificationRecipient)
+        .filter(
+            NotificationRecipient.notification_id == notification_id,
+            NotificationRecipient.user_id == current_user_row.id,
+        )
+        .first()
+    )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    recipient_row = cast(Any, row)
+    recipient_row.is_read = True
+    recipient_row.read_at = datetime.utcnow()
+
+    db.commit()
+
+    return MessageOut(message="Notification marked as read")
+
+@router.patch("/notifications/read-all", response_model=MessageOut)
+def mark_all_notifications_as_read(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    rows = (
+        db.query(NotificationRecipient)
+        .filter(
+            NotificationRecipient.user_id == current_user_row.id,
+            NotificationRecipient.is_read == False,  # noqa: E712
+        )
+        .all()
+    )
+
+    for row in rows:
+        recipient_row = cast(Any, row)
+        recipient_row.is_read = True
+        recipient_row.read_at = datetime.utcnow()
+
+    db.commit()
+
+    return MessageOut(message="All notifications marked as read")
+
+
+
+@router.post("/notifications/send", response_model=MessageOut)
+def send_notification(
+    body: NotificationCreateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_developer),
+):
+    current_user_row = cast(Any, current_user)
+
+    title = body.title.strip()
+    message = body.message.strip()
+
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    user_ids: list[int] = []
+
+    if body.audience_type == "all":
+        users = db.query(User).all()
+        user_ids = [cast(Any, user).id for user in users]
+
+    elif body.audience_type == "single":
+        if len(body.user_ids) != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Single notification requires exactly one user_id",
+            )
+        user_ids = body.user_ids
+
+    elif body.audience_type == "group":
+        if len(body.user_ids) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Group notification requires at least one user_id",
+            )
+        user_ids = list(set(body.user_ids))
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid audience_type")
+
+    existing_users = (
+        db.query(User)
+        .filter(User.id.in_(user_ids))
+        .all()
+    )
+    existing_user_ids = {cast(Any, user).id for user in existing_users}
+
+    if set(user_ids) != existing_user_ids:
+        raise HTTPException(status_code=400, detail="Some users were not found")
+
+    notification = Notification(
+        title=title,
+        message=message,
+        created_by_user_id=current_user_row.id,
+        audience_type=body.audience_type,
+    )
+    db.add(notification)
+    db.flush()
+
+    for user_id in user_ids:
+        db.add(
+            NotificationRecipient(
+                notification_id=notification.id,
+                user_id=user_id,
+                is_read=False,
+            )
+        )
+
+    db.commit()
+
+    return MessageOut(message="Notification sent")
+
+@router.get("/notifications", response_model=list[NotificationOut])
+def list_my_notifications(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    rows = (
+        db.query(NotificationRecipient)
+        .join(Notification, Notification.id == NotificationRecipient.notification_id)
+        .filter(NotificationRecipient.user_id == current_user_row.id)
+        .order_by(Notification.created_at.desc(), Notification.id.desc())
+        .all()
+    )
+
+    result: list[NotificationOut] = []
+
+    for row in rows:
+        recipient_row = cast(Any, row)
+        notification_row = cast(Any, recipient_row.notification)
+
+        result.append(
+            NotificationOut(
+                id=notification_row.id,
+                title=notification_row.title,
+                message=notification_row.message,
+                created_at=notification_row.created_at.isoformat(),
+                is_read=bool(recipient_row.is_read),
+            )
+        )
+
+    return result

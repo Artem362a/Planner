@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite3
+
+# Environment secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Frontend build
+planner/frontend/dist/
+planner/frontend/dist-ssr/
+planner/frontend/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.idea/
+.vscode/
+*.suo
+*.sw?
+.DS_Store
+
+# OS
+Thumbs.db

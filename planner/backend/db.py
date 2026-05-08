@@ -1,0 +1,280 @@
+import enum
+import os
+from datetime import date, datetime, time
+
+from dotenv import load_dotenv
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    Time,
+    create_engine,
+)
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship, sessionmaker
+from sqlalchemy.sql import func
+
+load_dotenv()
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+engine = create_engine(DATABASE_URL, echo=False)
+
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+Base = declarative_base()
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+    )
+
+    audience_type: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="single",  # single | group | all
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    recipients: Mapped[list["NotificationRecipient"]] = relationship(
+        "NotificationRecipient",
+        back_populates="notification",
+        cascade="all, delete-orphan",
+    )
+
+class NotificationRecipient(Base):
+    __tablename__ = "notification_recipients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    notification_id: Mapped[int] = mapped_column(
+        ForeignKey("notifications.id"),
+        nullable=False,
+        index=True,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    notification: Mapped["Notification"] = relationship(
+        "Notification",
+        back_populates="recipients",
+    )
+
+class Goal(Base):
+    __tablename__ = "goals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    color: Mapped[str] = mapped_column(String, nullable=False, default="#7ECF8A")
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    goal_type: Mapped[str] = mapped_column(String, nullable=False, default="one_time")
+    target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    repeat_unit: Mapped[str | None] = mapped_column(String, nullable=True)
+    has_stages: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    schedule_mode: Mapped[str | None] = mapped_column(String, nullable=True)
+    category_key: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    stages: Mapped[list["GoalStage"]] = relationship(
+        "GoalStage",
+        back_populates="goal",
+        cascade="all, delete-orphan",
+        order_by="GoalStage.order_index",
+    )
+
+class GoalStage(Base):
+    __tablename__ = "goal_stages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    goal_id: Mapped[int] = mapped_column(
+        ForeignKey("goals.id"),
+        nullable=False,
+        index=True,
+    )
+
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    done: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    planned_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    goal: Mapped["Goal"] = relationship("Goal", back_populates="stages")
+
+class GoalCheckin(Base):
+    __tablename__ = "goal_checkins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    check_date = Column(Date, nullable=False, index=True)
+    done = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+
+    email_verified = Column(Boolean, nullable=False, default=False)
+    verification_token = Column(String, unique=True, nullable=True, index=True)
+    role = Column(String, nullable=False, default="user")
+    avatar = Column(Text, nullable=True)
+
+
+class FeedbackMessage(Base):
+    __tablename__ = "feedback_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+
+    category = Column(String, nullable=False)
+    feedback_type = Column(String, nullable=False)
+
+    name = Column(String, nullable=True)
+    contact = Column(String, nullable=True)
+    message = Column(Text, nullable=False)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    status = Column(String, nullable=False, default="new")
+
+    developer_reply = Column(Text, nullable=True)
+    developer_replied_at = Column(DateTime, nullable=True)
+    screenshots = Column(JSON, nullable=True)
+
+
+class TaskCategory(Base):
+    __tablename__ = "task_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    key = Column(String, nullable=False, index=True)
+    title = Column(String, nullable=False)
+    color = Column(String, nullable=False, default="#BBBBBB")
+    icon = Column(String, nullable=False, default="tag")
+
+
+class DayTemplate(Base):
+    __tablename__ = "day_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    name = Column(String, nullable=False)
+    color = Column(String, nullable=False, default="#f0e7ff")
+    tasks_json = Column(JSON, nullable=False)
+
+
+class WeekTemplate(Base):
+    __tablename__ = "week_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    name = Column(String, nullable=False)
+    color = Column(String, nullable=False, default="#f0e7ff")
+    tasks_json = Column(JSON, nullable=False)
+
+
+class TaskPriority(str, enum.Enum):
+    high = "high"
+    medium = "medium"
+
+
+class DayTask(Base):
+    __tablename__ = "day_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    day = Column(Date, index=True)
+
+    title = Column(String, nullable=False)
+    start_time = Column(Time, nullable=True)
+    duration_min = Column(Integer, nullable=True)
+
+    priority = Column(String, default="medium")
+    category = Column(String, nullable=True)
+    status = Column(Integer, default=0)
+
+    subtasks = Column(JSON, nullable=True)
+    order_index = Column(Integer, nullable=False, default=0, index=True)
+    source_week_task_id = Column(Integer, ForeignKey("week_tasks.id"), nullable=True, index=True)
+
+
+class DaySettings(Base):
+    __tablename__ = "day_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    day = Column(Date, index=True)
+    start_time = Column(Time, nullable=False, default=time(6, 0))
+
+
+class WeekTask(Base):
+    __tablename__ = "week_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+
+    name = Column(String, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    category = Column(String, nullable=True)
+    important = Column(Boolean, default=False)
+    status = Column(Integer, default=0)
+    subtasks = Column(JSON, nullable=True)
+    order_index = Column(Integer, default=0, nullable=False)
+
+    task_type = Column(String, default="normal")
+    repeat_days = Column(JSON, nullable=True)
+    volume_value = Column(Integer, nullable=True)

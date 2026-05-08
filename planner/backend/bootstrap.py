@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import Session
+
+from db import TaskCategory, engine
+
+BASE_DIR = Path(__file__).resolve().parent
+DOCS_DIR = BASE_DIR / "docs"
+
+
+def _columns(table_name: str) -> set[str]:
+    return {col["name"] for col in sa_inspect(engine).get_columns(table_name)}
+
+
+def ensure_task_category_icon_column() -> None:
+    if "icon" not in _columns("task_categories"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE task_categories ADD COLUMN icon VARCHAR NOT NULL DEFAULT 'tag'"
+            )
+            conn.commit()
+
+
+def ensure_user_avatar_column() -> None:
+    if "avatar" not in _columns("users"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN avatar TEXT")
+            conn.commit()
+
+
+def ensure_goal_columns() -> None:
+    cols = _columns("goals")
+    with engine.connect() as conn:
+        if "goal_type" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE goals ADD COLUMN goal_type VARCHAR NOT NULL DEFAULT 'one_time'"
+            )
+        if "target_date" not in cols:
+            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN target_date DATE")
+        if "repeat_unit" not in cols:
+            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN repeat_unit VARCHAR")
+        if "has_stages" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE goals ADD COLUMN has_stages BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+        if "schedule_mode" not in cols:
+            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN schedule_mode VARCHAR")
+        if "category_key" not in cols:
+            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN category_key VARCHAR")
+        conn.commit()
+
+
+def ensure_goal_stage_columns() -> None:
+    if "planned_date" not in _columns("goal_stages"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql("ALTER TABLE goal_stages ADD COLUMN planned_date DATE")
+            conn.commit()
+
+
+DEFAULT_CATEGORIES = [
+    {"key": "home", "title": "???????????????? ????????", "color": "#9AC6FF", "icon": "home"},
+    {"key": "university", "title": "??????????????????????", "color": "#E07070", "icon": "book"},
+    {"key": "health", "title": "???????????????? ?? ??????????", "color": "#7ECF8A", "icon": "heart"},
+    {"key": "cleaning", "title": "??????????????", "color": "#F3E3B0", "icon": "sparkle"},
+    {"key": "planning", "title": "????????????????????????", "color": "#B3C0F5", "icon": "calendar"},
+    {"key": "self_dev", "title": "???????????????????????? ?? ????????????????", "color": "#D48ABF", "icon": "code"},
+    {"key": "prep_day", "title": "???????????????????? ???? ??????", "color": "#C0C0C0", "icon": "sun"},
+    {"key": "sleep", "title": "?????? ?? ??????????????????????????", "color": "#A8B6C4", "icon": "moon"},
+    {"key": "break", "title": "??????????????", "color": "#F2D573", "icon": "coffee"},
+    {"key": "career", "title": "??????????????", "color": "#6BAF6B", "icon": "briefcase"},
+    {"key": "other", "title": "????????????", "color": "#BBBBBB", "icon": "tag"},
+]
+
+
+def ensure_feedback_screenshots_column() -> None:
+    if "screenshots" not in _columns("feedback_messages"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql("ALTER TABLE feedback_messages ADD COLUMN screenshots JSON")
+            conn.commit()
+
+
+def ensure_default_categories_for_user(db: Session, user_id: int) -> None:
+    existing = (
+        db.query(TaskCategory)
+        .filter(TaskCategory.user_id == user_id)
+        .count()
+    )
+    if existing > 0:
+        return
+
+    for item in DEFAULT_CATEGORIES:
+        db.add(
+            TaskCategory(
+                user_id=user_id,
+                key=item["key"],
+                title=item["title"],
+                color=item["color"],
+                icon=item["icon"],
+            )
+        )
+
+    db.commit()

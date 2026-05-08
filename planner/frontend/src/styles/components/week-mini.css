@@ -1,0 +1,138 @@
+/* =========================
+   WEEK MINI CARD
+   ========================= */
+
+.week-content {
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.week-mini-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.week-mini-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d315d;
+}
+
+.week-mini-grid-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 8px;
+}
+
+.week-mini-day {
+  text-align: center;
+  font-size: 12px;
+  color: #8e87b3;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.week-mini-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.week-mini-grid-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.week-mini-task-card {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fbf9ff;
+  box-shadow: 0 2px 8px rgba(87, 68, 146, 0.05);
+}
+
+.week-mini-task-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.week-mini-task-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.week-mini-task-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.week-mini-task-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2f3157;
+  line-height: 1.3;
+  min-width: 0;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.week-mini-task-dates {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #8b84ab;
+  background: #f1ebff;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.week-mini-track {
+  position: relative;
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #efe8fb;
+}
+
+.week-mini-separator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(122, 101, 180, 0.12);
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.week-mini-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+.week-empty-text {
+  font-size: 13px;
+  color: #8b86a3;
+  padding: 6px 0;
+}
