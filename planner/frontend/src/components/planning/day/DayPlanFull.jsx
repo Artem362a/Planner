@@ -1209,8 +1209,6 @@ const overdueImportCandidates = useMemo(
                     ),
                   }}
                   data-task-index={index}
-                  draggable
-                  onDragStart={() => onDragStart(index)}
                   onDragOver={(e) => onDragOver(e, index)}
                   onDragEnd={onDragEnd}
                   onMouseMove={(e) => handleTaskMouseMove(e, t.id)}
@@ -1218,6 +1216,8 @@ const overdueImportCandidates = useMemo(
                 >
                   <div
                     className="day-task-drag-handle"
+                    draggable
+                    onDragStart={() => onDragStart(index)}
                     onMouseEnter={hideInsertHover}
                     onTouchStart={(e) => onTouchStart(e, index)}
                     onTouchMove={onTouchMove}
