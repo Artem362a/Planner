@@ -747,15 +747,33 @@ const overdueImportCandidates = useMemo(
     }
   };
 
+  const touchStartPosRef = useRef(null);
+  const touchPendingIndexRef = useRef(null);
+
   const onTouchStart = (e, index) => {
     if (e.touches.length !== 1) return;
-    setDragIndex(index);
+    const touch = e.touches[0];
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+    touchPendingIndexRef.current = index;
   };
 
   const onTouchMove = (e) => {
-    if (dragIndex === null) return;
+    const startPos = touchStartPosRef.current;
+    const pendingIndex = touchPendingIndexRef.current;
+    if (startPos === null || pendingIndex === null) return;
+
     const touch = e.touches[0];
     if (!touch) return;
+
+    let activeIndex = dragIndex;
+
+    if (activeIndex === null) {
+      const dx = touch.clientX - startPos.x;
+      const dy = touch.clientY - startPos.y;
+      if (Math.hypot(dx, dy) < 8) return;
+      setDragIndex(pendingIndex);
+      activeIndex = pendingIndex;
+    }
 
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
     if (!target) return;
@@ -764,11 +782,11 @@ const overdueImportCandidates = useMemo(
     if (!taskEl) return;
 
     const overIndex = Number(taskEl.dataset.taskIndex);
-    if (Number.isNaN(overIndex) || overIndex === dragIndex) return;
+    if (Number.isNaN(overIndex) || overIndex === activeIndex) return;
 
     setTasks((prev) => {
       const copy = [...prev];
-      const [moved] = copy.splice(dragIndex, 1);
+      const [moved] = copy.splice(activeIndex, 1);
       copy.splice(overIndex, 0, moved);
 
       return copy.map((task, idx) => ({
@@ -780,7 +798,12 @@ const overdueImportCandidates = useMemo(
     setDragIndex(overIndex);
   };
 
-  const onTouchEnd = onDragEnd;
+  const onTouchEnd = () => {
+    const wasDragging = dragIndex !== null;
+    touchStartPosRef.current = null;
+    touchPendingIndexRef.current = null;
+    if (wasDragging) onDragEnd();
+  };
 
   const openCreateModal = (beforeTaskId = null) => {
     setHoveredTaskId(null);
