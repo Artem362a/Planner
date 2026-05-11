@@ -18,6 +18,12 @@ async function handleResponse(res, errorText) {
   return await res.json();
 }
 
+function notifyDayTasksChanged(dayString) {
+  window.dispatchEvent(
+    new CustomEvent("day-tasks-changed", { detail: { dayString } })
+  );
+}
+
 export async function fetchDayTasks(dayString) {
   const res = await fetch(`${API_URL}/day/${dayString}`, {
     headers: getAuthHeaders(),
@@ -32,7 +38,9 @@ export async function createDayTask(dayString, task) {
     body: JSON.stringify(task),
   });
 
-  return await handleResponse(res, "Failed to create day task");
+  const data = await handleResponse(res, "Failed to create day task");
+  notifyDayTasksChanged(dayString);
+  return data;
 }
 
 export async function updateDayTask(dayString, taskId, task) {
@@ -42,7 +50,9 @@ export async function updateDayTask(dayString, taskId, task) {
     body: JSON.stringify(task),
   });
 
-  return await handleResponse(res, "Failed to update day task");
+  const data = await handleResponse(res, "Failed to update day task");
+  notifyDayTasksChanged(dayString);
+  return data;
 }
 
 export async function deleteDayTask(dayString, taskId) {
@@ -51,7 +61,9 @@ export async function deleteDayTask(dayString, taskId) {
     headers: getAuthHeaders(),
   });
 
-  return await handleResponse(res, "Failed to delete day task");
+  const data = await handleResponse(res, "Failed to delete day task");
+  notifyDayTasksChanged(dayString);
+  return data;
 }
 
 export async function reorderDayTasks(dayString, orderedIds) {
@@ -61,7 +73,9 @@ export async function reorderDayTasks(dayString, orderedIds) {
     body: JSON.stringify({ ordered_ids: orderedIds }),
   });
 
-  return await handleResponse(res, "Failed to reorder day tasks");
+  const data = await handleResponse(res, "Failed to reorder day tasks");
+  notifyDayTasksChanged(dayString);
+  return data;
 }
 
 export async function fetchDaySettings(dayString) {

@@ -68,7 +68,36 @@ function ImportantToday({ selectedDay }) {
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
-    fetchDayTasks(dayString).then(setTasks).catch(console.error);
+    let cancelled = false;
+
+    const load = () => {
+      fetchDayTasks(dayString)
+        .then((data) => {
+          if (!cancelled) setTasks(data);
+        })
+        .catch(console.error);
+    };
+
+    load();
+
+    const onChange = (event) => {
+      if (!event?.detail?.dayString || event.detail.dayString === dayString) {
+        load();
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+
+    window.addEventListener("day-tasks-changed", onChange);
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("day-tasks-changed", onChange);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [dayString]);
 
   useEffect(() => {
