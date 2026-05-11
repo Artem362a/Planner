@@ -168,8 +168,12 @@ export default function StatisticsPage() {
                                 ? "Выполнено"
                                 : n === "remaining"
                                 ? "Не выполнено"
-                                : "Всего",
+                                : n,
                             ]}
+                            labelFormatter={(label, payload) => {
+                              const total = payload?.[0]?.payload?.total ?? 0;
+                              return `${label} · всего: ${total}`;
+                            }}
                             cursor={{
                               fill: "rgba(125, 104, 201, 0.12)",
                               radius: 4,

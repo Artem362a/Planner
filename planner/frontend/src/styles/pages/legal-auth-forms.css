@@ -1,5 +1,6 @@
 .legal-checkbox {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 10px;
   margin-top: 14px;
@@ -9,13 +10,18 @@
   color: #5b557f;
 }
 
-.legal-checkbox input {
-  margin-top: 3px;
-  flex-shrink: 0;
+.legal-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  flex: 0 0 16px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: #7d68c9;
 }
 
 .legal-checkbox span {
-  display: inline-block;
+  flex: 1 1 auto;
 }
 
 .legal-checkbox a {
