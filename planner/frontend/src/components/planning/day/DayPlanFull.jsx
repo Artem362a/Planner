@@ -181,6 +181,7 @@ export default function DayPlanFull({ selectedDate }) {
 
   const taskItemRefs = useRef(new Map());
   const previousTaskRectsRef = useRef(new Map());
+  const previousTaskOrderRef = useRef([]);
 
   const setTaskItemRef = (taskId) => (el) => {
     if (el) {
@@ -200,43 +201,53 @@ export default function DayPlanFull({ selectedDate }) {
 
   useEffect(() => {
     previousTaskRectsRef.current = new Map();
+    previousTaskOrderRef.current = [];
     fetchDayTasks(dayString).then(setTasks).catch(console.error);
   }, [dayString]);
 
   useLayoutEffect(() => {
+    const currentOrder = tasks.map((t) => t.id);
+    const prevOrder = previousTaskOrderRef.current;
+    const orderChanged =
+      prevOrder.length === currentOrder.length &&
+      prevOrder.some((id, i) => id !== currentOrder[i]);
+
     const newRects = new Map();
     taskItemRefs.current.forEach((el, id) => {
       newRects.set(id, el.getBoundingClientRect());
     });
 
-    const draggedTaskId =
-      dragIndex !== null && tasks[dragIndex] ? tasks[dragIndex].id : null;
+    if (orderChanged) {
+      const draggedTaskId =
+        dragIndex !== null && tasks[dragIndex] ? tasks[dragIndex].id : null;
 
-    newRects.forEach((nextRect, id) => {
-      if (id === draggedTaskId) return;
+      newRects.forEach((nextRect, id) => {
+        if (id === draggedTaskId) return;
 
-      const prevRect = previousTaskRectsRef.current.get(id);
-      if (!prevRect) return;
+        const prevRect = previousTaskRectsRef.current.get(id);
+        if (!prevRect) return;
 
-      const dy = prevRect.top - nextRect.top;
-      if (Math.abs(dy) < 1) return;
+        const dy = prevRect.top - nextRect.top;
+        if (Math.abs(dy) < 1) return;
 
-      const el = taskItemRefs.current.get(id);
-      if (!el) return;
+        const el = taskItemRefs.current.get(id);
+        if (!el) return;
 
-      el.animate(
-        [
-          { transform: `translateY(${dy}px)` },
-          { transform: "translateY(0)" },
-        ],
-        {
-          duration: 220,
-          easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
-        }
-      );
-    });
+        el.animate(
+          [
+            { transform: `translateY(${dy}px)` },
+            { transform: "translateY(0)" },
+          ],
+          {
+            duration: 220,
+            easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
+          }
+        );
+      });
+    }
 
     previousTaskRectsRef.current = newRects;
+    previousTaskOrderRef.current = currentOrder;
   }, [tasks, dragIndex]);
 
   useEffect(() => {
