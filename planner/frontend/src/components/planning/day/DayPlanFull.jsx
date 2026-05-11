@@ -926,7 +926,7 @@ const overdueImportCandidates = useMemo(
   };
 
   const cycleStatus = async (task) => {
-    const nextStatus = ((task.status ?? 0) + 1) % 3;
+    const nextStatus = task.status === 1 ? 0 : 1;
 
     try {
       const updated = await updateDayTask(dayString, task.id, {
