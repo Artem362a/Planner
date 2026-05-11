@@ -148,17 +148,11 @@ function ImportantToday({ selectedDay }) {
   }, [tasks, dayStartTime]);
 
   const importantTasks = useMemo(
-    () =>
-      tasksWithComputedTime.filter(
-        (t) => t.priority === "high" && Number(t.status) !== 2
-      ),
+    () => tasksWithComputedTime.filter((t) => t.priority === "high"),
     [tasksWithComputedTime]
   );
 
-  const visibleTimelineTasks = useMemo(
-    () => tasksWithComputedTime.filter((t) => Number(t.status) !== 2),
-    [tasksWithComputedTime]
-  );
+  const visibleTimelineTasks = tasksWithComputedTime;
 
   const timelineData = useMemo(() => {
     const startMinute = timeStringToMinutes(dayStartTime);
