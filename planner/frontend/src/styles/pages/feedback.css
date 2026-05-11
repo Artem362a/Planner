@@ -61,7 +61,7 @@
   gap: 16px;
 }
 
-.feedback-form label {
+.feedback-form label:not(.legal-checkbox) {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -69,7 +69,7 @@
   font-weight: 600;
 }
 
-.feedback-form input,
+.feedback-form input:not([type="checkbox"]),
 .feedback-form select,
 .feedback-textarea {
   width: 100%;
@@ -88,7 +88,7 @@
   min-height: 220px;
 }
 
-.feedback-form input:focus,
+.feedback-form input:not([type="checkbox"]):focus,
 .feedback-form select:focus,
 .feedback-textarea:focus {
   outline: none;

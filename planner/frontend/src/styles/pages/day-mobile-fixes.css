@@ -2,6 +2,10 @@
    MOBILE FIXES: DAY PLAN
    ========================= */
 @media (max-width: 768px) {
+  .day-header-title-prefix {
+    display: none;
+  }
+
   .day-page-main {
     padding: 12px;
   }
@@ -125,8 +129,14 @@
 
   .day-task-drag-handle {
     grid-area: drag;
-    margin: 2px 0 0;
-    align-self: start;
+    margin: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 6px 4px;
+    font-size: 18px;
   }
 
   .day-task-checkbox {

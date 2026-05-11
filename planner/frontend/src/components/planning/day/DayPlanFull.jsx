@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   fetchDayTasks,
   createDayTask,
@@ -179,6 +179,17 @@ export default function DayPlanFull({ selectedDate }) {
   const dayString = formatLocalDate(selectedDate);
   const notesStorageKey = `day-notes-${dayString}`;
 
+  const taskItemRefs = useRef(new Map());
+  const previousTaskRectsRef = useRef(new Map());
+
+  const setTaskItemRef = (taskId) => (el) => {
+    if (el) {
+      taskItemRefs.current.set(taskId, el);
+    } else {
+      taskItemRefs.current.delete(taskId);
+    }
+  };
+
   useEffect(() => {
     fetchCategories()
       .then((items) => {
@@ -188,8 +199,45 @@ export default function DayPlanFull({ selectedDate }) {
   }, []);
 
   useEffect(() => {
+    previousTaskRectsRef.current = new Map();
     fetchDayTasks(dayString).then(setTasks).catch(console.error);
   }, [dayString]);
+
+  useLayoutEffect(() => {
+    const newRects = new Map();
+    taskItemRefs.current.forEach((el, id) => {
+      newRects.set(id, el.getBoundingClientRect());
+    });
+
+    const draggedTaskId =
+      dragIndex !== null && tasks[dragIndex] ? tasks[dragIndex].id : null;
+
+    newRects.forEach((nextRect, id) => {
+      if (id === draggedTaskId) return;
+
+      const prevRect = previousTaskRectsRef.current.get(id);
+      if (!prevRect) return;
+
+      const dy = prevRect.top - nextRect.top;
+      if (Math.abs(dy) < 1) return;
+
+      const el = taskItemRefs.current.get(id);
+      if (!el) return;
+
+      el.animate(
+        [
+          { transform: `translateY(${dy}px)` },
+          { transform: "translateY(0)" },
+        ],
+        {
+          duration: 220,
+          easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
+        }
+      );
+    });
+
+    previousTaskRectsRef.current = newRects;
+  }, [tasks, dragIndex]);
 
   useEffect(() => {
     fetchDaySettings(dayString)
@@ -688,6 +736,41 @@ const overdueImportCandidates = useMemo(
     }
   };
 
+  const onTouchStart = (e, index) => {
+    if (e.touches.length !== 1) return;
+    setDragIndex(index);
+  };
+
+  const onTouchMove = (e) => {
+    if (dragIndex === null) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!target) return;
+
+    const taskEl = target.closest("[data-task-index]");
+    if (!taskEl) return;
+
+    const overIndex = Number(taskEl.dataset.taskIndex);
+    if (Number.isNaN(overIndex) || overIndex === dragIndex) return;
+
+    setTasks((prev) => {
+      const copy = [...prev];
+      const [moved] = copy.splice(dragIndex, 1);
+      copy.splice(overIndex, 0, moved);
+
+      return copy.map((task, idx) => ({
+        ...task,
+        order_index: idx,
+      }));
+    });
+
+    setDragIndex(overIndex);
+  };
+
+  const onTouchEnd = onDragEnd;
+
   const openCreateModal = (beforeTaskId = null) => {
     setHoveredTaskId(null);
     setHoverInsertSide(null);
@@ -1101,10 +1184,12 @@ const overdueImportCandidates = useMemo(
                 )}
 
                 <div
+                  ref={setTaskItemRef(t.id)}
                   className={
                     "day-task-item" +
                     (t.status === 1 ? " done" : "") +
-                    (isHovered ? " day-task-item--hovered" : "")
+                    (isHovered ? " day-task-item--hovered" : "") +
+                    (index === dragIndex ? " day-task-item--dragging" : "")
                   }
                   style={{
                     "--task-list-tint": hexToRgba(
@@ -1112,6 +1197,7 @@ const overdueImportCandidates = useMemo(
                       t.status === 1 ? 0.08 : 0.15
                     ),
                   }}
+                  data-task-index={index}
                   draggable
                   onDragStart={() => onDragStart(index)}
                   onDragOver={(e) => onDragOver(e, index)}
@@ -1122,6 +1208,10 @@ const overdueImportCandidates = useMemo(
                   <div
                     className="day-task-drag-handle"
                     onMouseEnter={hideInsertHover}
+                    onTouchStart={(e) => onTouchStart(e, index)}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                    onTouchCancel={onTouchEnd}
                   >
                     ⋮⋮
                   </div>

@@ -829,6 +829,45 @@
   box-shadow: 0 10px 22px rgba(93, 84, 132, 0.12);
 }
 
+.day-task-item--dragging {
+  transform: translateY(-3px) rotate(-0.8deg);
+  box-shadow:
+    0 18px 40px rgba(93, 84, 132, 0.22),
+    0 6px 14px rgba(93, 84, 132, 0.12);
+  z-index: 30;
+  cursor: grabbing;
+  transition:
+    transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.18s ease;
+}
+
+.day-task-item--dragging .day-task-drag-handle {
+  cursor: grabbing;
+  color: #6e63a8;
+}
+
+@keyframes day-task-pickup-pulse {
+  0% {
+    box-shadow:
+      0 18px 40px rgba(93, 84, 132, 0.22),
+      0 0 0 0 rgba(110, 99, 168, 0.35);
+  }
+  100% {
+    box-shadow:
+      0 18px 40px rgba(93, 84, 132, 0.22),
+      0 0 0 14px rgba(110, 99, 168, 0);
+  }
+}
+
+.day-task-item--dragging::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: day-task-pickup-pulse 0.55s ease-out;
+}
+
 .day-task-item.done {
   opacity: 0.72;
 }
@@ -845,6 +884,9 @@
   position: relative;
   z-index: 6;
   flex-shrink: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .day-task-checkbox {

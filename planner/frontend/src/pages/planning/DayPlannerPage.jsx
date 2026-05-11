@@ -61,7 +61,10 @@ function DayPlannerPage() {
                 ‹
               </button>
 
-              <span className="day-header-title">ПЛАН НА ДЕНЬ {selectedDay}</span>
+              <span className="day-header-title">
+                <span className="day-header-title-prefix">ПЛАН НА ДЕНЬ </span>
+                {selectedDay}
+              </span>
 
               <button
                 type="button"

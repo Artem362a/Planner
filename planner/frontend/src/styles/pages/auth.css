@@ -30,14 +30,14 @@
   gap: 14px;
 }
 
-.auth-form label {
+.auth-form label:not(.legal-checkbox) {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
 }
 
-.auth-form input {
+.auth-form input:not([type="checkbox"]) {
   border: 1px solid #d8d8e6;
   border-radius: 12px;
   padding: 10px 12px;

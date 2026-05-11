@@ -38,17 +38,17 @@
   font-weight: 600;
 }
 
-.feedback-form label,
-.auth-form label {
+.feedback-form label:not(.legal-checkbox),
+.auth-form label:not(.legal-checkbox) {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.feedback-form input,
+.feedback-form input:not([type="checkbox"]),
 .feedback-form select,
 .feedback-form textarea,
-.auth-form input {
+.auth-form input:not([type="checkbox"]) {
   width: 100%;
   border: 1px solid #d8cef8;
   border-radius: 14px;
@@ -59,10 +59,10 @@
   color: #2f2c46;
 }
 
-.feedback-form input:focus,
+.feedback-form input:not([type="checkbox"]):focus,
 .feedback-form select:focus,
 .feedback-form textarea:focus,
-.auth-form input:focus {
+.auth-form input:not([type="checkbox"]):focus {
   border-color: #8f73ff;
   box-shadow: 0 0 0 3px rgba(143, 115, 255, 0.12);
 }

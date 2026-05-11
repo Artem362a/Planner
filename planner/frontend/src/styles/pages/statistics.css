@@ -94,6 +94,14 @@
   border: 1px solid #ece6ff;
 }
 
+.stats-chart-wrap .recharts-wrapper,
+.stats-chart-wrap .recharts-surface,
+.stats-chart-wrap svg,
+.stats-chart-wrap svg * {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── Category bars ───────────────────────────────────────────────────────── */
 .stats-category-list {
   display: flex;

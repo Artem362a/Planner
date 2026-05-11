@@ -1,7 +1,9 @@
 .targets-widget {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
 }
 
 .target-widget-item {

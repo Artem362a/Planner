@@ -7,7 +7,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from "recharts";
 import { fetchStatistics } from "../../api/statistics";
 import "../../styles/pages/statistics.css";
@@ -64,6 +63,7 @@ export default function StatisticsPage() {
     date: fmtDate(d.date),
     completed: d.completed,
     total: d.total,
+    remaining: Math.max(0, (d.total || 0) - (d.completed || 0)),
   }));
 
   const barInterval =
@@ -164,22 +164,34 @@ export default function StatisticsPage() {
                           <Tooltip
                             formatter={(v, n) => [
                               v,
-                              n === "completed" ? "Выполнено" : "Всего",
+                              n === "completed"
+                                ? "Выполнено"
+                                : n === "remaining"
+                                ? "Не выполнено"
+                                : "Всего",
                             ]}
+                            cursor={{
+                              fill: "rgba(125, 104, 201, 0.12)",
+                              radius: 4,
+                            }}
                             contentStyle={{
                               borderRadius: 12,
                               border: "1px solid #ece6ff",
                               fontSize: 13,
                             }}
                           />
-                          <Bar dataKey="completed" radius={[4, 4, 0, 0]}>
-                            {chartData.map((e, i) => (
-                              <Cell
-                                key={i}
-                                fill={e.completed > 0 ? "#7d68c9" : "#e0d9f5"}
-                              />
-                            ))}
-                          </Bar>
+                          <Bar
+                            dataKey="completed"
+                            stackId="day"
+                            fill="#7d68c9"
+                            radius={[4, 4, 0, 0]}
+                          />
+                          <Bar
+                            dataKey="remaining"
+                            stackId="day"
+                            fill="#d8cef1"
+                            radius={[4, 4, 0, 0]}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
