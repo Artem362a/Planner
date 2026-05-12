@@ -135,8 +135,8 @@ def apply_template(
     for idx, t in enumerate(template_tasks):
         start_time = None
         if t.get("start_time"):
-            hh, mm = map(int, t["start_time"].split(":"))
-            start_time = _time(hour=hh, minute=mm)
+            parts = t["start_time"].split(":")
+            start_time = _time(hour=int(parts[0]), minute=int(parts[1]))
 
         task = DayTask(
             user_id=current_user_row.id,

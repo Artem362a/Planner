@@ -126,25 +126,29 @@ function ImportantToday({ selectedDay }) {
   }, []);
 
   const tasksWithComputedTime = useMemo(() => {
-    return tasks.reduce((acc, t) => {
+    const dayStartMinutes = timeStringToMinutes(dayStartTime);
+    let offset = 0;
+
+    return tasks.map((t) => {
       const duration = t.duration_min || 0;
-      const start = addMinutesToTime(dayStartTime, acc.offset);
+
+      if (t.start_time) {
+        offset = timeStringToMinutes(t.start_time) - dayStartMinutes;
+      }
+
+      const start = addMinutesToTime(dayStartTime, offset);
       const end = addMinutesToTime(start, duration);
 
+      offset += duration;
+
       return {
-        offset: acc.offset + duration,
-        items: [
-          ...acc.items,
-          {
-            ...t,
-            computed_start_time: start,
-            computed_end_time: end,
-            timeline_start_min: timeStringToMinutes(start),
-            timeline_end_min: timeStringToMinutes(end),
-          },
-        ],
+        ...t,
+        computed_start_time: start,
+        computed_end_time: end,
+        timeline_start_min: timeStringToMinutes(start),
+        timeline_end_min: timeStringToMinutes(end),
       };
-    }, { offset: 0, items: [] }).items;
+    });
   }, [tasks, dayStartTime]);
 
   const importantTasks = useMemo(

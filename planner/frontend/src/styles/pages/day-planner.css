@@ -971,6 +971,11 @@
   margin-left: 12px;
 }
 
+.day-task-time--fixed {
+  background: #fef3c7;
+  color: #7a5f00;
+}
+
 .day-task-color {
   width: 6px;
   min-width: 6px;

@@ -202,6 +202,7 @@ class WeekTaskReorderIn(BaseModel):
 
 class TemplateTask(BaseModel):
     title: str
+    start_time: str | None = None
     duration_min: int | None = None
     priority: str = "medium"
     category: str | None = None

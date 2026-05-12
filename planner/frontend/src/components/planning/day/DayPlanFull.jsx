@@ -154,6 +154,7 @@ export default function DayPlanFull({ selectedDate }) {
     priority: "medium",
     category: "home",
     subtasks: [],
+    start_time: "",
   });
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -175,6 +176,9 @@ export default function DayPlanFull({ selectedDate }) {
   const [weekImportCandidates, setWeekImportCandidates] = useState([]);
   const [selectedImportItems, setSelectedImportItems] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
+
+  const [conflictState, setConflictState] = useState(null);
+  const [formError, setFormError] = useState(null);
 
   const dayString = formatLocalDate(selectedDate);
   const notesStorageKey = `day-notes-${dayString}`;
@@ -285,6 +289,11 @@ const overdueImportCandidates = useMemo(
 
     return tasks.map((t) => {
       const duration = t.duration_min || 0;
+
+      if (t.start_time) {
+        offset = timeStringToMinutes(t.start_time) - dayStartMinutes;
+      }
+
       const start = addMinutesToTime(dayStartTime, offset);
       const end = addMinutesToTime(start, duration);
       const timelineStart = dayStartMinutes + offset;
@@ -624,6 +633,7 @@ const overdueImportCandidates = useMemo(
   const buildTemplateFromTasks = () =>
     tasksWithComputedTime.map((t) => ({
       title: t.title,
+      start_time: t.start_time ? t.start_time.slice(0, 5) : null,
       duration_min: t.duration_min,
       priority: t.priority,
       category: t.category,
@@ -740,8 +750,17 @@ const overdueImportCandidates = useMemo(
     setDragIndex(null);
 
     try {
-      const orderedIds = tasks.map((t) => t.id);
-      await reorderDayTasks(dayString, orderedIds);
+      const hasFixed = tasks.some((t) => t.start_time);
+      if (hasFixed) {
+        const sorted = sortTasksByTime(tasks);
+        const changed = sorted.some((t, i) => t.id !== tasks[i].id);
+        if (changed) {
+          await reorderDayTasks(dayString, sorted.map((t) => t.id));
+          setTasks(sorted);
+          return;
+        }
+      }
+      await reorderDayTasks(dayString, tasks.map((t) => t.id));
     } catch (err) {
       console.error(err);
     }
@@ -815,6 +834,7 @@ const overdueImportCandidates = useMemo(
       priority: "medium",
       category: categories.home ? "home" : Object.keys(categories)[0] || "",
       subtasks: [],
+      start_time: "",
     });
 
     setNewSubtaskTitle("");
@@ -835,6 +855,7 @@ const overdueImportCandidates = useMemo(
         task.category ||
         (categories.home ? "home" : Object.keys(categories)[0] || ""),
       subtasks: task.subtasks || [],
+      start_time: task.start_time ? task.start_time.slice(0, 5) : "",
     });
 
     setNewSubtaskTitle("");
@@ -849,6 +870,7 @@ const overdueImportCandidates = useMemo(
     setIsModalOpen(false);
     setEditingTaskId(null);
     setInsertBeforeId(null);
+    setFormError(null);
   };
 
   const handleTaskMouseMove = (e, taskId) => {
@@ -893,6 +915,82 @@ const overdueImportCandidates = useMemo(
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === "start_time") setFormError(null);
+  };
+
+  const sortTasksByTime = (taskList) => {
+    let offset = 0;
+    const dayStartMinutes = timeStringToMinutes(dayStartTime);
+
+    const withMin = taskList.map((t, i) => {
+      if (t.start_time) {
+        offset = timeStringToMinutes(t.start_time.slice(0, 5)) - dayStartMinutes;
+      }
+      const startMin = dayStartMinutes + offset;
+      offset += t.duration_min || 0;
+      return { task: t, startMin, idx: i };
+    });
+
+    return [...withMin]
+      .sort((a, b) => {
+        if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+        const aFixed = a.task.start_time ? 0 : 1;
+        const bFixed = b.task.start_time ? 0 : 1;
+        if (aFixed !== bFixed) return aFixed - bFixed;
+        return a.idx - b.idx;
+      })
+      .map(({ task }) => task);
+  };
+
+  const doCreateOrUpdate = async (body, conflictTask, newFixedStart) => {
+    try {
+      let newTasks;
+
+      if (editingTaskId === null) {
+        const created = await createDayTask(dayString, body);
+
+        if (insertBeforeId == null) {
+          newTasks = [...tasks, created];
+        } else {
+          const index = tasks.findIndex((t) => t.id === insertBeforeId);
+          const copy = [...tasks];
+          copy.splice(index === -1 ? copy.length : index, 0, created);
+          newTasks = copy;
+        }
+
+        if (conflictTask && newFixedStart) {
+          const updatedConflict = await updateDayTask(dayString, conflictTask.id, {
+            ...conflictTask,
+            start_time: newFixedStart,
+          });
+          newTasks = newTasks.map((t) => (t.id === conflictTask.id ? updatedConflict : t));
+        }
+      } else {
+        const updated = await updateDayTask(dayString, editingTaskId, body);
+        newTasks = tasks.map((t) => (t.id === editingTaskId ? updated : t));
+      }
+
+      if (body.start_time) {
+        const sorted = sortTasksByTime(newTasks);
+        const changed = sorted.some((t, i) => t.id !== newTasks[i].id);
+        if (changed) {
+          await reorderDayTasks(dayString, sorted.map((t) => t.id));
+          newTasks = sorted;
+        }
+      }
+
+      setTasks(newTasks);
+      closeModal();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleForceSubmit = () => {
+    if (!conflictState) return;
+    const { body, conflictTask, newFixedStart } = conflictState;
+    setConflictState(null);
+    doCreateOrUpdate(body, conflictTask, newFixedStart);
   };
 
   const handleSubmit = async (e) => {
@@ -908,7 +1006,7 @@ const overdueImportCandidates = useMemo(
 
     const body = {
       title: form.title,
-      start_time: null,
+      start_time: form.start_time || "",
       duration_min: durationMin,
       priority: form.priority,
       category: form.category,
@@ -917,35 +1015,53 @@ const overdueImportCandidates = useMemo(
       insert_before_id: editingTaskId === null ? insertBeforeId : null,
     };
 
-    try {
-      if (editingTaskId === null) {
-        const created = await createDayTask(dayString, body);
+    if (form.start_time) {
+      const newStart = timeStringToMinutes(form.start_time);
+      const newEnd = newStart + (durationMin || 0);
 
-        setTasks((prev) => {
-          if (insertBeforeId == null) {
-            return [...prev, created];
-          }
+      for (const t of tasksWithComputedTime) {
+        if (!t.start_time) continue;
+        if (editingTaskId !== null && t.id === editingTaskId) continue;
 
-          const index = prev.findIndex((t) => t.id === insertBeforeId);
-          if (index === -1) {
-            return [...prev, created];
-          }
+        const existStart = timeStringToMinutes(t.start_time);
+        const existEnd = existStart + (t.duration_min || 0);
+        const overlaps = newStart === existStart || (newStart < existEnd && existStart < newEnd);
 
-          const copy = [...prev];
-          copy.splice(index, 0, created);
-          return copy;
-        });
-      } else {
-        const updated = await updateDayTask(dayString, editingTaskId, body);
-        setTasks((prev) =>
-          prev.map((t) => (t.id === editingTaskId ? updated : t))
-        );
+        if (overlaps) {
+          setFormError(
+            `Нельзя создать задачу с временем начала ${form.start_time} — в это время уже есть задача «${t.title}»`
+          );
+          return;
+        }
       }
-
-      closeModal();
-    } catch (err) {
-      console.error(err);
     }
+
+    if (editingTaskId === null && durationMin && insertBeforeId !== null) {
+      const insertIdx = tasksWithComputedTime.findIndex((t) => t.id === insertBeforeId);
+      if (insertIdx !== -1) {
+        const taskBStartStr =
+          insertIdx === 0
+            ? dayStartTime
+            : tasksWithComputedTime[insertIdx - 1].computed_end_time;
+        const taskBEndMin = timeStringToMinutes(taskBStartStr) + durationMin;
+
+        for (let j = insertIdx; j < tasksWithComputedTime.length; j++) {
+          const ct = tasksWithComputedTime[j];
+          if (ct.start_time) {
+            const fixedMin = timeStringToMinutes(ct.start_time);
+            if (taskBEndMin > fixedMin) {
+              const newFixedStart = addMinutesToTime("00:00", taskBEndMin);
+              setIsModalOpen(false);
+              setConflictState({ body, conflictTask: ct, newFixedStart });
+              return;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    await doCreateOrUpdate(body, null, null);
   };
 
   const cycleStatus = async (task) => {
@@ -1361,7 +1477,7 @@ const overdueImportCandidates = useMemo(
                     )}
                   </div>
 
-                  <div className="day-task-time">
+                  <div className={`day-task-time${t.start_time ? " day-task-time--fixed" : ""}`}>
                     {t.computed_start_time}
                     {t.duration_min ? `–${t.computed_end_time}` : null}
                   </div>
@@ -1640,8 +1756,8 @@ const overdueImportCandidates = useMemo(
       </div>
 
       {isModalOpen && (
-        <div className="task-modal-backdrop" onClick={closeModal}>
-          <div className="task-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="task-modal-backdrop">
+          <div className="task-modal">
             <h3>
               {editingTaskId === null
                 ? "Новая задача"
@@ -1671,6 +1787,21 @@ const overdueImportCandidates = useMemo(
                   maxLength={5}
                 />
               </label>
+
+              <label>
+                Время начала (опциональное)
+                <input
+                  name="start_time"
+                  type="time"
+                  value={form.start_time}
+                  onChange={handleFormChange}
+                />
+              </label>
+              {form.start_time && (
+                <p className="task-modal-hint">
+                  Задача зафиксирована на {form.start_time}. При вставке задач до неё система предупредит о конфликте.
+                </p>
+              )}
 
               <label>
                 Приоритет
@@ -1736,6 +1867,10 @@ const overdueImportCandidates = useMemo(
                 )}
               </div>
 
+              {formError && (
+                <p className="form-error-banner">{formError}</p>
+              )}
+
               <div className="task-modal-buttons">
                 <button type="submit" className="primary-btn">
                   {editingTaskId === null ? "Добавить" : "Сохранить"}
@@ -1750,6 +1885,32 @@ const overdueImportCandidates = useMemo(
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {conflictState && (
+        <div className="task-modal-backdrop">
+          <div className="task-modal">
+            <h3>Конфликт времени</h3>
+            <p className="conflict-modal-text">
+              Задача <strong>«{conflictState.conflictTask.title}»</strong> зафиксирована на{" "}
+              <strong>{conflictState.conflictTask.start_time.slice(0, 5)}</strong>. Новая задача займёт это
+              время, и начало зафиксированной задачи сдвинется на{" "}
+              <strong>{conflictState.newFixedStart}</strong>.
+            </p>
+            <div className="task-modal-buttons">
+              <button type="button" className="primary-btn" onClick={handleForceSubmit}>
+                Добавить (сдвинет задачу)
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => { setConflictState(null); setIsModalOpen(true); }}
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}
