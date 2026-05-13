@@ -105,7 +105,8 @@ def save_day_settings(
         raise HTTPException(400, "Bad date format, use YYYY-MM-DD")
 
     try:
-        hh, mm = map(int, body.start_time.split(":"))
+        parts = body.start_time.split(":")
+        hh, mm = int(parts[0]), int(parts[1])
         parsed_time = _time(hour=hh, minute=mm)
     except Exception:
         raise HTTPException(400, "Bad time format, use HH:MM")
@@ -150,7 +151,8 @@ def create_task(
 
     start_time = None
     if body.start_time:
-        hh, mm = map(int, body.start_time.split(":"))
+        parts = body.start_time.split(":")
+        hh, mm = int(parts[0]), int(parts[1])
         start_time = _time(hour=hh, minute=mm)
 
     subtasks_payload = [s.dict() for s in body.subtasks] if body.subtasks else []
@@ -259,7 +261,8 @@ def update_task(
         if body.start_time == "":
             task.start_time = None
         else:
-            hh, mm = map(int, body.start_time.split(":"))
+            parts = body.start_time.split(":")
+            hh, mm = int(parts[0]), int(parts[1])
             task.start_time = _time(hour=hh, minute=mm)
     if body.category is not None:
         task.category = body.category
