@@ -610,6 +610,49 @@
 }
 
 /* =========================
+   TIME MODE TOGGLE
+   ========================= */
+
+.time-mode-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.time-mode-btn {
+  flex: 1;
+  min-height: 32px;
+  border: 1px solid #d7cfee;
+  border-radius: 8px;
+  background: #fff;
+  color: #6b5ea8;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.time-mode-btn:hover {
+  background: #f6f0ff;
+  border-color: #c8b6ef;
+}
+
+.time-mode-btn--active {
+  background: #ede4ff;
+  border-color: #b79af0;
+  color: #5440b4;
+  font-weight: 500;
+}
+
+.time-range-row {
+  display: flex;
+  gap: 8px;
+}
+
+.time-range-row label {
+  flex: 1;
+}
+
+/* =========================
    MOBILE
    ========================= */
 

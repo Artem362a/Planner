@@ -155,6 +155,7 @@ export default function DayPlanFull({ selectedDate }) {
     category: "home",
     subtasks: [],
     start_time: "",
+    end_time: "",
   });
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -179,6 +180,7 @@ export default function DayPlanFull({ selectedDate }) {
 
   const [conflictState, setConflictState] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [timeMode, setTimeMode] = useState("duration");
 
   const dayString = formatLocalDate(selectedDate);
   const notesStorageKey = `day-notes-${dayString}`;
@@ -835,7 +837,9 @@ const overdueImportCandidates = useMemo(
       category: categories.home ? "home" : Object.keys(categories)[0] || "",
       subtasks: [],
       start_time: "",
+      end_time: "",
     });
+    setTimeMode("duration");
 
     setNewSubtaskTitle("");
     setEditingTaskId(null);
@@ -847,16 +851,24 @@ const overdueImportCandidates = useMemo(
     setHoveredTaskId(null);
     setHoverInsertSide(null);
 
+    const hasRange = !!task.start_time;
+    const startSliced = hasRange ? task.start_time.slice(0, 5) : "";
+    const endTime = hasRange && task.duration_min
+      ? addMinutesToTime(startSliced, task.duration_min)
+      : "";
+
     setForm({
       title: task.title || "",
-      duration: minutesToDurationString(task.duration_min),
+      duration: hasRange ? "" : minutesToDurationString(task.duration_min),
       priority: task.priority || "medium",
       category:
         task.category ||
         (categories.home ? "home" : Object.keys(categories)[0] || ""),
       subtasks: task.subtasks || [],
-      start_time: task.start_time ? task.start_time.slice(0, 5) : "",
+      start_time: startSliced,
+      end_time: endTime,
     });
+    setTimeMode(hasRange ? "range" : "duration");
 
     setNewSubtaskTitle("");
     setEditingTaskId(task.id);
@@ -871,6 +883,7 @@ const overdueImportCandidates = useMemo(
     setEditingTaskId(null);
     setInsertBeforeId(null);
     setFormError(null);
+    setTimeMode("duration");
   };
 
   const handleTaskMouseMove = (e, taskId) => {
@@ -915,7 +928,7 @@ const overdueImportCandidates = useMemo(
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "start_time") setFormError(null);
+    if (name === "start_time" || name === "end_time") setFormError(null);
   };
 
   const sortTasksByTime = (taskList) => {
@@ -997,16 +1010,34 @@ const overdueImportCandidates = useMemo(
     e.preventDefault();
     if (!form.title.trim()) return;
 
-    const durationMin = durationStringToMinutes(form.duration);
+    let durationMin;
+    let startTime;
 
-    if (form.duration && durationMin === null) {
-      alert("Введите длительность в формате ЧЧ:ММ, например 01:30");
-      return;
+    if (timeMode === "duration") {
+      durationMin = durationStringToMinutes(form.duration);
+      if (form.duration && durationMin === null) {
+        setFormError("Введите длительность в формате ЧЧ:ММ, например 01:30");
+        return;
+      }
+      startTime = "";
+    } else {
+      if (!form.start_time || !form.end_time) {
+        setFormError("Укажите время начала и конца");
+        return;
+      }
+      const startMin = timeStringToMinutes(form.start_time);
+      const endMin = timeStringToMinutes(form.end_time);
+      if (endMin <= startMin) {
+        setFormError("Время окончания должно быть позже времени начала");
+        return;
+      }
+      durationMin = endMin - startMin;
+      startTime = form.start_time;
     }
 
     const body = {
       title: form.title,
-      start_time: form.start_time || "",
+      start_time: startTime,
       duration_min: durationMin,
       priority: form.priority,
       category: form.category,
@@ -1015,8 +1046,8 @@ const overdueImportCandidates = useMemo(
       insert_before_id: editingTaskId === null ? insertBeforeId : null,
     };
 
-    if (form.start_time) {
-      const newStart = timeStringToMinutes(form.start_time);
+    if (startTime) {
+      const newStart = timeStringToMinutes(startTime);
       const newEnd = newStart + (durationMin || 0);
 
       for (const t of tasksWithComputedTime) {
@@ -1027,9 +1058,10 @@ const overdueImportCandidates = useMemo(
         const existEnd = existStart + (t.duration_min || 0);
         const overlaps = newStart === existStart || (newStart < existEnd && existStart < newEnd);
 
+
         if (overlaps) {
           setFormError(
-            `Нельзя создать задачу с временем начала ${form.start_time} — в это время уже есть задача «${t.title}»`
+            `Нельзя создать задачу с временем начала ${startTime} — в это время уже есть задача «${t.title}»`
           );
           return;
         }
@@ -1776,31 +1808,56 @@ const overdueImportCandidates = useMemo(
                 />
               </label>
 
-              <label>
-                Длительность (ЧЧ:ММ)
-                <input
-                  name="duration"
-                  type="text"
-                  value={form.duration}
-                  onChange={handleFormChange}
-                  placeholder="01:30"
-                  maxLength={5}
-                />
-              </label>
+              <div className="time-mode-toggle">
+                <button
+                  type="button"
+                  className={`time-mode-btn${timeMode === "duration" ? " time-mode-btn--active" : ""}`}
+                  onClick={() => { setTimeMode("duration"); setFormError(null); }}
+                >
+                  Длительность
+                </button>
+                <button
+                  type="button"
+                  className={`time-mode-btn${timeMode === "range" ? " time-mode-btn--active" : ""}`}
+                  onClick={() => { setTimeMode("range"); setFormError(null); }}
+                >
+                  Начало–Конец
+                </button>
+              </div>
 
-              <label>
-                Время начала (опциональное)
-                <input
-                  name="start_time"
-                  type="time"
-                  value={form.start_time}
-                  onChange={handleFormChange}
-                />
-              </label>
-              {form.start_time && (
-                <p className="task-modal-hint">
-                  Задача зафиксирована на {form.start_time}. При вставке задач до неё система предупредит о конфликте.
-                </p>
+              {timeMode === "duration" ? (
+                <label>
+                  Длительность (ЧЧ:ММ)
+                  <input
+                    name="duration"
+                    type="text"
+                    value={form.duration}
+                    onChange={handleFormChange}
+                    placeholder="01:30"
+                    maxLength={5}
+                  />
+                </label>
+              ) : (
+                <div className="time-range-row">
+                  <label>
+                    Начало
+                    <input
+                      name="start_time"
+                      type="time"
+                      value={form.start_time}
+                      onChange={handleFormChange}
+                    />
+                  </label>
+                  <label>
+                    Конец
+                    <input
+                      name="end_time"
+                      type="time"
+                      value={form.end_time}
+                      onChange={handleFormChange}
+                    />
+                  </label>
+                </div>
               )}
 
               <label>
