@@ -60,12 +60,12 @@
   padding: 24px;
   display: grid;
   grid-template-columns: 2.1fr 1.65fr 1.15fr;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   grid-template-areas:
     "day month targets"
     "week week targets";
   gap: 20px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .day-card {
