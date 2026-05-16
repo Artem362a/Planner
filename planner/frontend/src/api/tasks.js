@@ -285,3 +285,27 @@ export async function updateWeekTask(taskId, body) {
 
   return await handleResponse(res, "Failed to update week task");
 }
+
+export async function fetchOverdueTasks() {
+  const res = await fetch(`${API_URL}/day-tasks/overdue`, {
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to fetch overdue tasks");
+}
+
+export async function dismissOverdueTask(taskId) {
+  const res = await fetch(`${API_URL}/day-tasks/${taskId}/dismiss`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to dismiss task");
+}
+
+export async function rescheduleTask(taskId, newDate) {
+  const res = await fetch(`${API_URL}/day-tasks/${taskId}/reschedule`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ new_date: newDate }),
+  });
+  return await handleResponse(res, "Failed to reschedule task");
+}

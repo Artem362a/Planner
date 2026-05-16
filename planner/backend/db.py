@@ -28,8 +28,14 @@ engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
+# Domain schemas. Kept in one place so `main.py` and the migration script
+# both reference the same source of truth.
+SCHEMAS = ("auth", "planning", "goals", "notifications", "feedback")
+
+
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = {"schema": "notifications"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
@@ -37,7 +43,7 @@ class Notification(Base):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     created_by_user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("auth.users.id"),
         nullable=True,
         index=True,
     )
@@ -62,17 +68,18 @@ class Notification(Base):
 
 class NotificationRecipient(Base):
     __tablename__ = "notification_recipients"
+    __table_args__ = {"schema": "notifications"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     notification_id: Mapped[int] = mapped_column(
-        ForeignKey("notifications.id"),
+        ForeignKey("notifications.notifications.id"),
         nullable=False,
         index=True,
     )
 
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("auth.users.id"),
         nullable=False,
         index=True,
     )
@@ -91,10 +98,11 @@ class NotificationRecipient(Base):
 
 class Goal(Base):
     __tablename__ = "goals"
+    __table_args__ = {"schema": "goals"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("auth.users.id"),
         nullable=False,
         index=True,
     )
@@ -127,10 +135,11 @@ class Goal(Base):
 
 class GoalStage(Base):
     __tablename__ = "goal_stages"
+    __table_args__ = {"schema": "goals"}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     goal_id: Mapped[int] = mapped_column(
-        ForeignKey("goals.id"),
+        ForeignKey("goals.goals.id"),
         nullable=False,
         index=True,
     )
@@ -144,10 +153,11 @@ class GoalStage(Base):
 
 class GoalCheckin(Base):
     __tablename__ = "goal_checkins"
+    __table_args__ = {"schema": "goals"}
 
     id = Column(Integer, primary_key=True, index=True)
-    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    goal_id = Column(Integer, ForeignKey("goals.goals.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     check_date = Column(Date, nullable=False, index=True)
     done = Column(Boolean, nullable=False, default=False)
@@ -157,6 +167,7 @@ class GoalCheckin(Base):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {"schema": "auth"}
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
@@ -168,12 +179,35 @@ class User(Base):
     role = Column(String, nullable=False, default="user")
     avatar = Column(Text, nullable=True)
 
+    # 'light' | 'dark' ('dark' is currently in development).
+    theme = Column(String, nullable=False, default="light")
+    # Default start_time used when a new DaySettings row is created.
+    default_day_start_time = Column(Time, nullable=False, default=time(6, 0))
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
+
+    # Unique JWT id (jti claim). Logout = delete the row.
+    jti = Column(String, unique=True, nullable=False, index=True)
+
+    user_agent = Column(Text, nullable=True)
+    ip_address = Column(String, nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
 
 class FeedbackMessage(Base):
     __tablename__ = "feedback_messages"
+    __table_args__ = {"schema": "feedback"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=True, index=True)
 
     category = Column(String, nullable=False)
     feedback_type = Column(String, nullable=False)
@@ -192,9 +226,10 @@ class FeedbackMessage(Base):
 
 class TaskCategory(Base):
     __tablename__ = "task_categories"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     key = Column(String, nullable=False, index=True)
     title = Column(String, nullable=False)
@@ -204,9 +239,10 @@ class TaskCategory(Base):
 
 class DayTemplate(Base):
     __tablename__ = "day_templates"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     name = Column(String, nullable=False)
     color = Column(String, nullable=False, default="#f0e7ff")
@@ -215,9 +251,10 @@ class DayTemplate(Base):
 
 class WeekTemplate(Base):
     __tablename__ = "week_templates"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     name = Column(String, nullable=False)
     color = Column(String, nullable=False, default="#f0e7ff")
@@ -231,9 +268,10 @@ class TaskPriority(str, enum.Enum):
 
 class DayTask(Base):
     __tablename__ = "day_tasks"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     day = Column(Date, index=True)
 
@@ -247,14 +285,15 @@ class DayTask(Base):
 
     subtasks = Column(JSON, nullable=True)
     order_index = Column(Integer, nullable=False, default=0, index=True)
-    source_week_task_id = Column(Integer, ForeignKey("week_tasks.id"), nullable=True, index=True)
+    source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
 
 
 class DaySettings(Base):
     __tablename__ = "day_settings"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     day = Column(Date, index=True)
     start_time = Column(Time, nullable=False, default=time(6, 0))
@@ -262,9 +301,10 @@ class DaySettings(Base):
 
 class WeekTask(Base):
     __tablename__ = "week_tasks"
+    __table_args__ = {"schema": "planning"}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
 
     name = Column(String, nullable=False)
     start_date = Column(Date, nullable=False)
@@ -278,3 +318,19 @@ class WeekTask(Base):
     task_type = Column(String, default="normal")
     repeat_days = Column(JSON, nullable=True)
     volume_value = Column(Integer, nullable=True)
+
+
+class InboxTask(Base):
+    __tablename__ = "inbox_tasks"
+    __table_args__ = {"schema": "planning"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
+
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    priority = Column(String, nullable=False, default="medium")
+    category = Column(String, nullable=True)
+    subtasks = Column(JSON, nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

@@ -2,61 +2,70 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.orm import Session
 
-from db import TaskCategory, engine
+from db import SCHEMAS, TaskCategory, engine
 
 BASE_DIR = Path(__file__).resolve().parent
 DOCS_DIR = BASE_DIR / "docs"
 
 
-def _columns(table_name: str) -> set[str]:
-    return {col["name"] for col in sa_inspect(engine).get_columns(table_name)}
+def _columns(schema: str, table_name: str) -> set[str]:
+    return {col["name"] for col in sa_inspect(engine).get_columns(table_name, schema=schema)}
+
+
+def ensure_schemas() -> None:
+    """Create all domain schemas if they don't exist yet. Must run before
+    `Base.metadata.create_all`, otherwise SQLAlchemy will fail trying to
+    place tables into missing namespaces."""
+    with engine.begin() as conn:
+        for schema in SCHEMAS:
+            conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
 
 
 def ensure_task_category_icon_column() -> None:
-    if "icon" not in _columns("task_categories"):
+    if "icon" not in _columns("planning", "task_categories"):
         with engine.connect() as conn:
             conn.exec_driver_sql(
-                "ALTER TABLE task_categories ADD COLUMN icon VARCHAR NOT NULL DEFAULT 'tag'"
+                "ALTER TABLE planning.task_categories ADD COLUMN icon VARCHAR NOT NULL DEFAULT 'tag'"
             )
             conn.commit()
 
 
 def ensure_user_avatar_column() -> None:
-    if "avatar" not in _columns("users"):
+    if "avatar" not in _columns("auth", "users"):
         with engine.connect() as conn:
-            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN avatar TEXT")
+            conn.exec_driver_sql("ALTER TABLE auth.users ADD COLUMN avatar TEXT")
             conn.commit()
 
 
 def ensure_goal_columns() -> None:
-    cols = _columns("goals")
+    cols = _columns("goals", "goals")
     with engine.connect() as conn:
         if "goal_type" not in cols:
             conn.exec_driver_sql(
-                "ALTER TABLE goals ADD COLUMN goal_type VARCHAR NOT NULL DEFAULT 'one_time'"
+                "ALTER TABLE goals.goals ADD COLUMN goal_type VARCHAR NOT NULL DEFAULT 'one_time'"
             )
         if "target_date" not in cols:
-            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN target_date DATE")
+            conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN target_date DATE")
         if "repeat_unit" not in cols:
-            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN repeat_unit VARCHAR")
+            conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN repeat_unit VARCHAR")
         if "has_stages" not in cols:
             conn.exec_driver_sql(
-                "ALTER TABLE goals ADD COLUMN has_stages BOOLEAN NOT NULL DEFAULT FALSE"
+                "ALTER TABLE goals.goals ADD COLUMN has_stages BOOLEAN NOT NULL DEFAULT FALSE"
             )
         if "schedule_mode" not in cols:
-            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN schedule_mode VARCHAR")
+            conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN schedule_mode VARCHAR")
         if "category_key" not in cols:
-            conn.exec_driver_sql("ALTER TABLE goals ADD COLUMN category_key VARCHAR")
+            conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN category_key VARCHAR")
         conn.commit()
 
 
 def ensure_goal_stage_columns() -> None:
-    if "planned_date" not in _columns("goal_stages"):
+    if "planned_date" not in _columns("goals", "goal_stages"):
         with engine.connect() as conn:
-            conn.exec_driver_sql("ALTER TABLE goal_stages ADD COLUMN planned_date DATE")
+            conn.exec_driver_sql("ALTER TABLE goals.goal_stages ADD COLUMN planned_date DATE")
             conn.commit()
 
 
@@ -76,10 +85,28 @@ DEFAULT_CATEGORIES = [
 
 
 def ensure_feedback_screenshots_column() -> None:
-    if "screenshots" not in _columns("feedback_messages"):
+    if "screenshots" not in _columns("feedback", "feedback_messages"):
         with engine.connect() as conn:
-            conn.exec_driver_sql("ALTER TABLE feedback_messages ADD COLUMN screenshots JSON")
+            conn.exec_driver_sql("ALTER TABLE feedback.feedback_messages ADD COLUMN screenshots JSON")
             conn.commit()
+
+
+def ensure_user_theme_column() -> None:
+    cols = _columns("auth", "users")
+    with engine.connect() as conn:
+        if "theme" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE auth.users ADD COLUMN theme VARCHAR NOT NULL DEFAULT 'light'"
+            )
+        if "default_day_start_time" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE auth.users ADD COLUMN default_day_start_time TIME NOT NULL DEFAULT '06:00:00'"
+            )
+        # The 'system' option was removed from the UI; migrate any leftovers
+        # to 'light' and bring the column default in line with the new model.
+        conn.exec_driver_sql("ALTER TABLE auth.users ALTER COLUMN theme SET DEFAULT 'light'")
+        conn.exec_driver_sql("UPDATE auth.users SET theme = 'light' WHERE theme = 'system'")
+        conn.commit()
 
 
 def ensure_default_categories_for_user(db: Session, user_id: int) -> None:

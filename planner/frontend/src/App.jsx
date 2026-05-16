@@ -25,6 +25,13 @@ import GoalsPage from "./pages/goals/GoalsPage";
 import NotificationsBell from "./components/NotificationsBell";
 import AccountPage from "./pages/account/AccountPage";
 import StatisticsPage from "./pages/statistics/StatisticsPage";
+import InboxPage from "./pages/inbox/InboxPage";
+
+function applyTheme(theme) {
+  // 'system' was removed from the UI; legacy localStorage values fall back to light.
+  const resolved = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", resolved);
+}
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -121,6 +128,9 @@ const Home = ({ user, onLogout }) => {
         </div>
 
         <nav className="side-menu-nav">
+          <Link to="/inbox" onClick={() => setMenuOpen(false)}>
+            Входящие
+          </Link>
           <Link to="/statistics" onClick={() => setMenuOpen(false)}>
             Статистика
           </Link>
@@ -260,6 +270,9 @@ const App = () => {
   const [user, setUser] = React.useState(null);
 
   React.useEffect(() => {
+    // Apply whatever was last seen so the first paint isn't a flash of the wrong theme.
+    applyTheme(localStorage.getItem("theme") || "light");
+
     const token = getToken();
 
     if (!token) {
@@ -283,6 +296,12 @@ const App = () => {
         setAuthChecked(true);
       });
   }, []);
+
+  React.useEffect(() => {
+    const theme = user?.theme || "light";
+    localStorage.setItem("theme", theme);
+    applyTheme(theme);
+  }, [user?.theme]);
 
   function handleLogout() {
     removeToken();
@@ -413,6 +432,15 @@ const App = () => {
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
               <WeekPlannerPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/inbox"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <InboxPage />
             </ProtectedRoute>
           }
         />

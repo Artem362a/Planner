@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -18,13 +19,17 @@ def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict) -> tuple[str, str]:
+    """Return (token, jti). Caller is responsible for persisting the jti
+    as a session row so the token can be revoked."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    jti = uuid4().hex
+    to_encode.update({"exp": expire, "jti": jti})
+    encoded = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded, jti
 
 
 def decode_access_token(token: str) -> dict | None:

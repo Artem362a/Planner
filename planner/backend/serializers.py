@@ -61,12 +61,19 @@ def _notification_to_out(recipient_row: Any) -> NotificationOut:
 
 def _user_to_out(user: User) -> UserResponse:
     row = cast(Any, user)
+    raw_start = getattr(row, "default_day_start_time", None)
+    if raw_start is None:
+        start_str = "06:00"
+    else:
+        start_str = raw_start.strftime("%H:%M")
     return UserResponse(
         id=row.id,
         email=row.email,
         username=row.username,
         role=row.role,
         avatar=getattr(row, "avatar", None),
+        theme=getattr(row, "theme", "light") or "light",
+        default_day_start_time=start_str,
     )
 
 

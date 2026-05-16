@@ -106,17 +106,40 @@ class UserPasswordUpdateIn(BaseModel):
     new_password: str
 
 
+class UserThemeUpdateIn(BaseModel):
+    theme: Literal["light", "dark"]
+
+
+class UserDayStartUpdateIn(BaseModel):
+    default_day_start_time: str  # "HH:MM" or "HH:MM:SS"
+
+
 class UserResponse(BaseModel):
     id: int
     email: str
     username: str
     role: str
     avatar: str | None = None
+    theme: str = "light"
+    default_day_start_time: str = "06:00"
 
 
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class SessionOut(BaseModel):
+    id: int
+    user_agent: str | None = None
+    ip_address: str | None = None
+    created_at: str
+    last_seen_at: str
+    is_current: bool = False
+
+
+class AccountDeleteIn(BaseModel):
+    password: str
 
 
 class SubTask(BaseModel):
@@ -379,3 +402,54 @@ class GoalDayItemToggleIn(BaseModel):
     goal_id: int
     stage_id: int | None = None
     day: date
+
+
+class OverdueTaskOut(BaseModel):
+    id: int
+    title: str
+    category: str | None = None
+    category_color: str | None = None
+    priority: str
+    day: date
+    source_week_task_id: int | None = None
+    week_start_date: date | None = None
+    week_end_date: date | None = None
+    subtasks: List[SubTask] = []
+
+
+class RescheduleIn(BaseModel):
+    new_date: date
+
+
+class InboxTaskIn(BaseModel):
+    title: str
+    description: str | None = None
+    priority: str = "medium"
+    category: str | None = None
+    subtasks: List[SubTask] = []
+
+
+class InboxTaskUpdateIn(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    priority: str | None = None
+    category: str | None = None
+    subtasks: List[SubTask] | None = None
+
+
+class InboxTaskOut(BaseModel):
+    id: int
+    title: str
+    description: str | None = None
+    priority: str
+    category: str | None = None
+    subtasks: List[SubTask] = []
+    created_at: str
+
+
+class InboxAssignDayIn(BaseModel):
+    day: date
+
+
+class InboxAssignWeekIn(BaseModel):
+    week_start: date

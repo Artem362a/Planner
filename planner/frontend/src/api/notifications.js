@@ -52,3 +52,19 @@ export async function sendNotification(body) {
 
   return await handleResponse(res, "Failed to send notification");
 }
+
+export async function markAllNotificationsRead() {
+  const res = await fetch(`${API_URL}/notifications/read-all`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to mark all notifications as read");
+}
+
+export async function createOverdueReminder() {
+  const res = await fetch(`${API_URL}/notifications/overdue-reminder`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to create overdue reminder");
+}

@@ -205,6 +205,95 @@ def send_notification(
 
     return MessageOut(message="Notification sent")
 
+@router.post("/notifications/overdue-reminder")
+def create_overdue_reminder(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Создаёт или обновляет сегодняшнее уведомление о просроченных задачах."""
+    today = date.today()
+    today_start = datetime.combine(today, datetime.min.time())
+    current_user_row = cast(Any, current_user)
+
+    count = (
+        db.query(DayTask)
+        .filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.day < today,
+            DayTask.status == 0,
+        )
+        .count()
+    )
+
+    if count == 0:
+        return {"created": False, "count": 0}
+
+    def _pluralize(n: int) -> str:
+        if 11 <= n % 100 <= 19:
+            return "задач"
+        r = n % 10
+        if r == 1:
+            return "задача"
+        if 2 <= r <= 4:
+            return "задачи"
+        return "задач"
+
+    message = f"У вас {count} просроченных {_pluralize(count)}. Откройте план на день, чтобы перенести или игнорировать их."
+
+    # Все существующие уведомления этого типа за сегодня для этого пользователя
+    today_notifs = (
+        db.query(Notification)
+        .join(NotificationRecipient, NotificationRecipient.notification_id == Notification.id)
+        .filter(
+            NotificationRecipient.user_id == current_user_row.id,
+            Notification.title == "Просроченные задачи",
+            Notification.created_at >= today_start,
+        )
+        .order_by(Notification.created_at.asc())
+        .all()
+    )
+
+    if today_notifs:
+        # Обновляем самое первое, остальные удаляем (вместе с их recipients по cascade)
+        first = cast(Any, today_notifs[0])
+        first.message = message
+
+        first_recipient = (
+            db.query(NotificationRecipient)
+            .filter(
+                NotificationRecipient.notification_id == first.id,
+                NotificationRecipient.user_id == current_user_row.id,
+            )
+            .first()
+        )
+        if first_recipient is not None:
+            cast(Any, first_recipient).is_read = False
+
+        for dup in today_notifs[1:]:
+            db.delete(dup)
+
+        db.commit()
+        return {"created": False, "updated": True, "count": count}
+
+    notification = Notification(
+        title="Просроченные задачи",
+        message=message,
+        created_by_user_id=current_user_row.id,
+        audience_type="single",
+    )
+    db.add(notification)
+    db.flush()
+
+    db.add(NotificationRecipient(
+        notification_id=cast(Any, notification).id,
+        user_id=current_user_row.id,
+        is_read=False,
+    ))
+    db.commit()
+
+    return {"created": True, "count": count}
+
+
 @router.get("/notifications", response_model=list[NotificationOut])
 def list_my_notifications(
     db: Session = Depends(get_db),

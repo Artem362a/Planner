@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchGoals } from "../api/goals";
 import {
   fetchMyNotifications,
-  markNotificationRead,
+  markAllNotificationsRead,
 } from "../api/notifications";
 
 function parseLocalDate(dateStr) {
@@ -157,6 +157,21 @@ export default function NotificationsBell() {
   }, []);
 
   React.useEffect(() => {
+    if (!open) return;
+    const hasUnread = items.some((item) => !item.is_virtual && !item.is_read);
+    if (!hasUnread) return;
+    markAllNotificationsRead()
+      .then(() => {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.is_virtual ? item : { ...item, is_read: true }
+          )
+        );
+      })
+      .catch(() => {});
+  }, [open]);
+
+  React.useEffect(() => {
     function handleClickOutside(event) {
       if (!wrapRef.current) return;
       if (!wrapRef.current.contains(event.target)) {
@@ -170,23 +185,7 @@ export default function NotificationsBell() {
     };
   }, []);
 
-  async function handleNotificationClick(item) {
-    if (!item.is_virtual && !item.is_read) {
-      try {
-        await markNotificationRead(item.id);
-
-        setItems((prev) =>
-          prev.map((notification) =>
-            notification.id === item.id
-              ? { ...notification, is_read: true }
-              : notification
-          )
-        );
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
+  function handleNotificationClick() {
     setOpen(false);
   }
 

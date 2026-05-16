@@ -1,0 +1,112 @@
+/* Empty state */
+.inbox-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+  color: #9d93c4;
+  gap: 10px;
+}
+.inbox-empty-title { font-size: 18px; font-weight: 700; color: #6b5fa6; }
+.inbox-empty-hint { font-size: 14px; color: #b0a8d4; max-width: 320px; }
+
+/* Description toggle button — looks like the subtasks toggle */
+.inbox-desc-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: #7b5ecf;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.inbox-desc-toggle:hover {
+  color: #5a3db8;
+}
+
+/* Expanded description area */
+.inbox-task-desc {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #ede8ff;
+  border: 1px solid #d4c9f7;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #4a4070;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* Created-at timestamp in meta row */
+.inbox-task-date {
+  font-size: 11px;
+  color: #b0a8d4;
+  white-space: nowrap;
+}
+
+/* Assign buttons in meta row */
+.inbox-assign-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.inbox-assign-btn--day {
+  background: #ece4ff;
+  color: #6b3fc4;
+}
+.inbox-assign-btn--day:hover { background: #ddd4ff; }
+
+.inbox-assign-btn--week {
+  background: #e0f0ff;
+  color: #2563a8;
+}
+.inbox-assign-btn--week:hover { background: #cce4ff; }
+
+/* Week range label inside assign-week modal */
+.inbox-week-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7b5ecf;
+  background: #ece4ff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* Task name inside assign modals */
+.inbox-modal-task-name {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #4a3a8c;
+  word-break: break-word;
+}
+
+/* Description textarea in create/edit modal */
+.inbox-textarea {
+  width: 100%;
+  border: 1px solid #d8d8e6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-top: 4px;
+  color: #2d2c72;
+  background: #faf9ff;
+}
+.inbox-textarea:focus {
+  outline: none;
+  border-color: #9b7cf4;
+  box-shadow: 0 0 0 2px rgba(155, 124, 244, 0.18);
+}

@@ -98,3 +98,76 @@ export async function verifyEmail(token) {
 
   return await handleResponse(res, "Failed to verify email");
 }
+
+export async function updateTheme(theme) {
+  const res = await fetch(`${API_URL}/auth/theme`, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ theme }),
+  });
+
+  return await handleResponse(res, "Failed to update theme");
+}
+
+export async function updateDayStart(timeHHMM) {
+  const res = await fetch(`${API_URL}/auth/day-start`, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ default_day_start_time: timeHHMM }),
+  });
+
+  return await handleResponse(res, "Failed to update default day start");
+}
+
+export async function fetchSessions() {
+  const res = await fetch(`${API_URL}/auth/sessions`, {
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to fetch sessions");
+}
+
+export async function revokeSession(sessionId) {
+  const res = await fetch(`${API_URL}/auth/sessions/${sessionId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to revoke session");
+}
+
+export async function revokeOtherSessions() {
+  const res = await fetch(`${API_URL}/auth/sessions`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to revoke sessions");
+}
+
+export async function exportAccountData() {
+  const res = await fetch(`${API_URL}/auth/export`, {
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to export account data");
+}
+
+export async function deleteAccount(password) {
+  const res = await fetch(`${API_URL}/auth/account`, {
+    method: "DELETE",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ password }),
+  });
+
+  return await handleResponse(res, "Failed to delete account");
+}
+
+export async function importSchedule() {
+  const res = await fetch(`${API_URL}/auth/import-schedule`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to import schedule");
+}

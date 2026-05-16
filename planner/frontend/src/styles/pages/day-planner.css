@@ -1038,3 +1038,352 @@
   color: var(--text-soft);
   padding: 12px 4px;
 }
+
+/* =========================
+   OVERDUE BADGE
+   ========================= */
+
+.overdue-badge-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s ease;
+}
+
+.overdue-badge-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.overdue-badge-icon {
+  font-size: 13px;
+  color: #ffaa88;
+}
+
+.overdue-badge-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* =========================
+   OVERDUE MODAL  (od-* namespace)
+   ========================= */
+
+.overdue-modal {
+  position: relative;
+  z-index: 1001;
+  width: min(480px, 100%);
+  max-width: 95vw;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: #f7f3ff;
+  border-radius: 22px;
+  box-shadow: 0 18px 40px rgba(50, 36, 92, 0.18);
+}
+
+/* ---- header ---- */
+.od-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #ebe5f7;
+  flex-shrink: 0;
+}
+
+.od-header-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.od-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #312654;
+}
+
+.od-header-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.od-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.od-dismiss-all {
+  padding: 5px 11px;
+  border: 1px solid #e0d5f5;
+  border-radius: 8px;
+  background: transparent;
+  color: #8b7db5;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+}
+
+.od-dismiss-all:hover {
+  background: #f3eeff;
+  color: #5440b4;
+}
+
+.od-dismiss-all:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.od-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #9b92b3;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.od-close:hover {
+  background: #f0ebfb;
+  color: #5440b4;
+}
+
+/* ---- list ---- */
+.od-list {
+  overflow-y: auto;
+  max-height: 62vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+}
+
+.od-empty {
+  color: #9b92b3;
+  text-align: center;
+  padding: 20px 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.od-all-clear {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 0;
+  color: #7b72a3;
+  font-size: 14px;
+}
+
+.od-all-clear-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- card ---- */
+.od-card {
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(60, 40, 110, 0.07);
+  border: 1px solid #ece6f8;
+  border-left: 4px solid #bbb;
+  padding: 10px 12px;
+  display: block;
+  transition: opacity 0.18s ease;
+}
+
+.od-card--busy {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.od-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.od-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2d2545;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.od-card-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.od-card-cat {
+  font-size: 11px;
+  color: #7b6aaa;
+  background: #f0ebff;
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.od-card-date {
+  font-size: 11px;
+  color: #b0a7cc;
+  white-space: nowrap;
+}
+
+.od-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.od-btn {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.od-btn--move {
+  background: #ede4ff;
+  color: #5440b4;
+}
+
+.od-btn--move:hover { background: #dfd3ff; }
+
+.od-btn--ignore {
+  background: #f5f2fc;
+  color: #8b7db5;
+}
+
+.od-btn--ignore:hover { background: #ece7f7; }
+
+.od-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ---- reschedule panel ---- */
+.od-card-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.od-quick-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.od-chip {
+  padding: 5px 10px;
+  border-radius: 7px;
+  border: 1px solid #ddd5f1;
+  background: #faf7ff;
+  color: #6b5ea8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease;
+  white-space: nowrap;
+}
+
+.od-chip:hover {
+  background: #ede4ff;
+  border-color: #b79af0;
+}
+
+.od-chip--active {
+  background: #ede4ff;
+  border-color: #b79af0;
+  color: #5440b4;
+}
+
+.od-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.od-picker-row {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.od-date-input {
+  flex: 1;
+  padding: 5px 9px;
+  border: 1px solid #ddd5f1;
+  border-radius: 7px;
+  font-size: 12px;
+  color: #2d2545;
+  background: #fff;
+  outline: none;
+}
+
+.od-date-input:focus {
+  border-color: #b79af0;
+  box-shadow: 0 0 0 3px rgba(144, 106, 224, 0.1);
+}
+
+.od-cancel {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #a89ec8;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color 0.13s ease;
+}
+
+.od-cancel:hover { color: #5440b4; }

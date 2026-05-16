@@ -250,6 +250,7 @@ def update_task(
         raise HTTPException(404, "Task not found")
 
     task = cast(DayTaskRow, db_task)
+    old_status = task.status
 
     if body.title is not None:
         task.title = body.title
@@ -292,21 +293,72 @@ def update_task(
                 synced_subtasks = [s.dict() for s in body.subtasks]
                 week_task_row.subtasks = synced_subtasks
 
-                # Автоматически синхронизируем статус недельной задачи по подзадачам
-                if len(synced_subtasks) > 0:
-                    all_done = all(bool(s.get("done")) for s in synced_subtasks)
-                    any_not_done = any(not bool(s.get("done")) for s in synced_subtasks)
+                # Авто-выполнение только когда все подзадачи отмечены
+                if len(synced_subtasks) > 0 and all(bool(s.get("done")) for s in synced_subtasks):
+                    task.status = 1
 
-                    if all_done:
-                        week_task_row.status = 1
-                        task.status = 1
-                    elif any_not_done:
-                        week_task_row.status = 0
-                        task.status = 0
+            # Синхронизируем статус недельной задачи по итоговому статусу дневной
+            week_task_row.status = task.status
 
-            # Если подзадачи не передавались, но статус передали явно — синхронизируем статус
-            if body.status is not None and not (body.subtasks and len(body.subtasks) > 0):
-                week_task_row.status = task.status
+            # Каскад смены статуса: удаление/восстановление дневных задач в других днях
+            if old_status != task.status:
+                if task.status == 1:
+                    # Помечаем прошлые незавершённые дни как выполненные
+                    db.query(DayTask).filter(
+                        DayTask.user_id == current_user_row.id,
+                        DayTask.source_week_task_id == task.source_week_task_id,
+                        DayTask.day < d,
+                        DayTask.status == 0,
+                    ).update({"status": 1}, synchronize_session=False)
+                    # Удаляем будущие незавершённые дни
+                    db.query(DayTask).filter(
+                        DayTask.user_id == current_user_row.id,
+                        DayTask.source_week_task_id == task.source_week_task_id,
+                        DayTask.day > d,
+                        DayTask.status == 0,
+                    ).delete(synchronize_session=False)
+                elif task.status == 0:
+                    restore_day = d + timedelta(days=1)
+                    raw_rd = cast(list[Any] | None, getattr(week_task_row, "repeat_days", None)) or []
+                    restore_repeat_days: set[int] = set()
+                    for rd in raw_rd:
+                        try:
+                            restore_repeat_days.add(int(rd))
+                        except (TypeError, ValueError):
+                            pass
+                    while restore_day <= week_task_row.end_date:
+                        if restore_repeat_days and restore_day.weekday() not in restore_repeat_days:
+                            restore_day += timedelta(days=1)
+                            continue
+                        exists = (
+                            db.query(DayTask)
+                            .filter(
+                                DayTask.user_id == current_user_row.id,
+                                DayTask.day == restore_day,
+                                DayTask.source_week_task_id == task.source_week_task_id,
+                            )
+                            .first()
+                        )
+                        if exists is None:
+                            max_ord = (
+                                db.query(DayTask.order_index)
+                                .filter(DayTask.user_id == current_user_row.id, DayTask.day == restore_day)
+                                .order_by(DayTask.order_index.desc())
+                                .first()
+                            )
+                            db.add(DayTask(
+                                user_id=current_user_row.id,
+                                day=restore_day,
+                                title=week_task_row.name,
+                                duration_min=None,
+                                priority="high" if getattr(week_task_row, "important", False) else "medium",
+                                category=week_task_row.category,
+                                status=0,
+                                subtasks=list(week_task_row.subtasks) if week_task_row.subtasks else [],
+                                source_week_task_id=task.source_week_task_id,
+                                order_index=(max_ord[0] + 1) if max_ord else 0,
+                            ))
+                        restore_day += timedelta(days=1)
 
     db.commit()
     db.refresh(db_task)
@@ -380,6 +432,185 @@ def delete_task(
     db.delete(task)
     db.commit()
     return {"ok": True}
+
+
+@router.get("/day-tasks/overdue", response_model=list[OverdueTaskOut])
+def get_overdue_tasks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    today = date.today()
+    current_user_row = cast(Any, current_user)
+
+    # Загружаем цвета категорий пользователя один раз
+    cat_rows = db.query(TaskCategory).filter(TaskCategory.user_id == current_user_row.id).all()
+    cat_color_map: dict[str, str] = {}
+    for c in cat_rows:
+        cr = cast(Any, c)
+        cat_color_map[cr.key] = cr.color
+        cat_color_map[cr.title] = cr.color  # fallback по title
+
+    pending_past = (
+        db.query(DayTask)
+        .filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.day < today,
+            DayTask.status == 0,
+        )
+        .order_by(DayTask.day.asc(), DayTask.order_index.asc())
+        .all()
+    )
+
+    result = []
+    seen_week_task_ids: set[int] = set()
+
+    for task in pending_past:
+        t = cast(Any, task)
+        cat_color = cat_color_map.get(t.category) if t.category else None
+
+        if t.source_week_task_id is not None:
+            if t.source_week_task_id in seen_week_task_ids:
+                continue
+
+            week_task = (
+                db.query(WeekTask)
+                .filter(
+                    WeekTask.id == t.source_week_task_id,
+                    WeekTask.user_id == current_user_row.id,
+                )
+                .first()
+            )
+            if week_task is None:
+                continue
+
+            wt = cast(Any, week_task)
+            if wt.end_date >= today:
+                continue
+
+            seen_week_task_ids.add(t.source_week_task_id)
+            result.append(OverdueTaskOut(
+                id=t.id,
+                title=t.title,
+                category=t.category,
+                category_color=cat_color,
+                priority=t.priority,
+                day=t.day,
+                source_week_task_id=t.source_week_task_id,
+                week_start_date=wt.start_date,
+                week_end_date=wt.end_date,
+                subtasks=t.subtasks or [],
+            ))
+        else:
+            result.append(OverdueTaskOut(
+                id=t.id,
+                title=t.title,
+                category=t.category,
+                category_color=cat_color,
+                priority=t.priority,
+                day=t.day,
+                subtasks=t.subtasks or [],
+            ))
+
+    return result
+
+
+@router.delete("/day-tasks/{task_id}/dismiss")
+def dismiss_overdue_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    today = date.today()
+    current_user_row = cast(Any, current_user)
+
+    task = (
+        db.query(DayTask)
+        .filter(
+            DayTask.id == task_id,
+            DayTask.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if task is None:
+        raise HTTPException(404, "Task not found")
+
+    t = cast(Any, task)
+
+    if t.source_week_task_id is not None:
+        db.query(DayTask).filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.source_week_task_id == t.source_week_task_id,
+            DayTask.day < today,
+            DayTask.status == 0,
+        ).delete(synchronize_session=False)
+    else:
+        db.delete(task)
+
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/day-tasks/{task_id}/reschedule", response_model=TaskOut)
+def reschedule_task(
+    task_id: int,
+    body: RescheduleIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    today = date.today()
+    current_user_row = cast(Any, current_user)
+
+    if body.new_date < today:
+        raise HTTPException(400, "Новая дата не может быть в прошлом")
+
+    task = (
+        db.query(DayTask)
+        .filter(
+            DayTask.id == task_id,
+            DayTask.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if task is None:
+        raise HTTPException(404, "Task not found")
+
+    t = cast(Any, task)
+
+    if t.source_week_task_id is not None:
+        db.query(DayTask).filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.source_week_task_id == t.source_week_task_id,
+            DayTask.day < today,
+            DayTask.status == 0,
+        ).delete(synchronize_session=False)
+    else:
+        db.delete(task)
+
+    max_order = (
+        db.query(DayTask.order_index)
+        .filter(DayTask.user_id == current_user_row.id, DayTask.day == body.new_date)
+        .order_by(DayTask.order_index.desc())
+        .first()
+    )
+
+    new_task = DayTask(
+        user_id=current_user_row.id,
+        day=body.new_date,
+        title=t.title,
+        duration_min=t.duration_min,
+        start_time=t.start_time,
+        priority=t.priority,
+        category=t.category,
+        status=0,
+        subtasks=list(t.subtasks) if t.subtasks else [],
+        order_index=(max_order[0] + 1) if max_order else 0,
+    )
+
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+
+    return _task_to_out(cast(DayTaskRow, new_task))
 
 
 @router.get("/week-import-candidates/{day}", response_model=list[WeekImportCandidateOut])

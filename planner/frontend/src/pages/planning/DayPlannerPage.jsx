@@ -1,5 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import DayPlanFull from "../../components/planning/day/DayPlanFull";
+import OverdueModal from "../../components/planning/day/OverdueModal";
+import { fetchOverdueTasks } from "../../api/tasks";
+import { createOverdueReminder } from "../../api/notifications";
 
 function parseLocalDate(dateStr) {
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -21,22 +25,43 @@ function addDays(date, days) {
 
 function DayPlannerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [overdueCount, setOverdueCount] = useState(0);
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
 
   const selectedDay = searchParams.get("date") || formatLocalDate(new Date());
   const selectedDate = parseLocalDate(selectedDay);
   const previousDay = formatLocalDate(addDays(selectedDate, -1));
   const nextDay = formatLocalDate(addDays(selectedDate, 1));
 
+  useEffect(() => {
+    fetchOverdueTasks()
+      .then((tasks) => {
+        setOverdueCount(tasks.length);
+        if (tasks.length > 0) {
+          createOverdueReminder().catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   function changeDay(day) {
     setSearchParams({ date: day });
   }
 
-  function handleOpenWeekImport() {
-    window.dispatchEvent(new CustomEvent("open-day-import-week"));
-  }
-
   function handleOpenCreateTask() {
     window.dispatchEvent(new CustomEvent("open-day-create-task"));
+  }
+
+  function handleOverdueClose() {
+    setShowOverdueModal(false);
+    fetchOverdueTasks()
+      .then((tasks) => {
+        setOverdueCount(tasks.length);
+        if (tasks.length > 0) {
+          createOverdueReminder().catch(() => {});
+        }
+      })
+      .catch(() => {});
   }
 
   return (
@@ -78,7 +103,19 @@ function DayPlannerPage() {
             </div>
           </div>
 
-          <div className="app-header-right" />
+          <div className="app-header-right">
+            {overdueCount > 0 && (
+              <button
+                type="button"
+                className="overdue-badge-btn"
+                onClick={() => setShowOverdueModal(true)}
+                title="Просроченные задачи"
+              >
+                <span className="overdue-badge-icon">⚠</span>
+                <span className="overdue-badge-count">{overdueCount}</span>
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="day-page-main">
@@ -88,15 +125,6 @@ function DayPlannerPage() {
             </div>
 
             <div className="day-page-floating-actions">
-              <button
-                type="button"
-                className="fab-secondary-task"
-                onClick={handleOpenWeekImport}
-                title="Импортировать из плана на неделю"
-              >
-                ↓
-              </button>
-
               <button
                 type="button"
                 className="fab-add-task"
@@ -109,6 +137,8 @@ function DayPlannerPage() {
           </div>
         </main>
       </div>
+
+      {showOverdueModal && <OverdueModal onClose={handleOverdueClose} />}
     </div>
   );
 }

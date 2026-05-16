@@ -31,6 +31,9 @@ npm-debug.log*
 *.sw?
 .DS_Store
 
+# Claude Code local data
+.claude/
+
 # User-uploaded files (runtime data, not code)
 planner/backend/uploads/
 

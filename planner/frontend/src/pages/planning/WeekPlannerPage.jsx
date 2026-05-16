@@ -492,7 +492,10 @@ function WeekPlannerPage() {
     let startOffset = Number(form.startOffset);
     let endOffset = Number(form.endOffset);
 
-    if (endOffset < startOffset) {
+    if (form.taskType === "recurring") {
+      startOffset = 0;
+      endOffset = 6;
+    } else if (endOffset < startOffset) {
       endOffset = startOffset;
     }
 
@@ -1358,7 +1361,7 @@ async function handleDragEnd() {
             </section>
 
             {isModalOpen && (
-              <div className="modal-overlay" onClick={closeModal}>
+              <div className="modal-overlay">
                 <div
                   className={
                     "modal" + (form.taskType === "recurring" ? " modal-wide" : "")
