@@ -81,7 +81,13 @@ def get_day_settings(
     )
 
     if settings is None:
-        return {"day": d, "start_time": "06:00"}
+        today = date.today()
+        if d > today:
+            user_default = getattr(current_user_row, "default_day_start_time", None)
+            default_str = user_default.strftime("%H:%M") if user_default else "06:00"
+        else:
+            default_str = "06:00"
+        return {"day": d, "start_time": default_str}
 
     settings_row = cast(DaySettingsRow, settings)
     return {
