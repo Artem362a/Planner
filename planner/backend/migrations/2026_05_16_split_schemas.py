@@ -9,8 +9,9 @@ One-shot migration: split tables in `public` into 5 domain schemas.
   notifications -> notifications, notification_recipients
   feedback      -> feedback_messages
 
-Idempotent. Runs inside a single transaction; on any error the entire move
-rolls back and the database stays in its previous state.
+Idempotent — tables already in the target schema are skipped.
+Uses ALTER TABLE … SET SCHEMA which is a metadata-only operation (no data copy).
+Snapshots row counts before moving and verifies they match after.
 
 Usage:
     python migrations/2026_05_16_split_schemas.py
@@ -43,23 +44,6 @@ SCHEMA_MAP: dict[str, list[str]] = {
     "feedback": ["feedback_messages"],
 }
 
-EXPECTED_COUNTS = {
-    "users": 19,
-    "day_settings": 11,
-    "day_tasks": 971,
-    "day_templates": 25,
-    "week_tasks": 206,
-    "week_templates": 2,
-    "task_categories": 214,
-    "inbox_tasks": 2,
-    "goals": 5,
-    "goal_stages": 18,
-    "goal_checkins": 0,
-    "notifications": 11,
-    "notification_recipients": 81,
-    "feedback_messages": 28,
-}
-
 
 def main() -> int:
     db_url = os.environ.get("DATABASE_URL")
@@ -76,19 +60,28 @@ def main() -> int:
             print(f"  [ok] schema {schema}")
 
         print()
-        print("== Step 2: snapshot current locations ==")
+        print("== Step 2: snapshot current locations and row counts ==")
         current_locations: dict[str, str] = {}
+        before_counts: dict[str, int] = {}
         for schema, tables in SCHEMA_MAP.items():
             for table in tables:
-                where = conn.execute(
+                row = conn.execute(
                     text(
                         "SELECT table_schema FROM information_schema.tables "
                         "WHERE table_name = :t"
                     ),
                     {"t": table},
-                ).scalar()
-                current_locations[table] = where or "<missing>"
-                print(f"  {table:30s}  currently in: {where}")
+                ).first()
+                current_schema = row[0] if row else "<missing>"
+                current_locations[table] = current_schema
+                if current_schema != "<missing>":
+                    count = conn.execute(
+                        text(f'SELECT COUNT(*) FROM "{current_schema}"."{table}"')
+                    ).scalar()
+                    before_counts[table] = count
+                else:
+                    before_counts[table] = 0
+                print(f"  {table:30s}  schema: {current_schema:15s}  rows: {before_counts[table]}")
 
         print()
         print("== Step 3: move tables ==")
@@ -150,16 +143,18 @@ def main() -> int:
         all_ok = True
         for schema, tables in SCHEMA_MAP.items():
             for table in tables:
+                if current_locations[table] == "<missing>":
+                    print(f"  [skip] {schema}.{table}: table not in DB")
+                    continue
                 actual = conn.execute(
                     text(f'SELECT COUNT(*) FROM "{schema}"."{table}"')
                 ).scalar()
-                expected = EXPECTED_COUNTS.get(table)
-                marker = "ok " if actual == expected else "FAIL"
-                if actual != expected:
+                expected = before_counts[table]
+                if actual == expected:
+                    print(f"  [ok]   {schema}.{table:30s}  rows: {actual}")
+                else:
+                    print(f"  [FAIL] {schema}.{table:30s}  rows: {actual}  expected: {expected}")
                     all_ok = False
-                print(
-                    f"  [{marker}] {schema}.{table:30s}  rows: {actual}  expected: {expected}"
-                )
 
         if not all_ok:
             raise RuntimeError(
@@ -167,7 +162,7 @@ def main() -> int:
             )
 
     print()
-    print("migration complete.")
+    print("Migration complete.")
     return 0
 
 
