@@ -110,3 +110,87 @@
   border-color: #9b7cf4;
   box-shadow: 0 0 0 2px rgba(155, 124, 244, 0.18);
 }
+
+/* =========================
+   Mobile (≤700px)
+   Inbox-only: target `.day-task-item` that contains `.inbox-assign-btn` so
+   the day-planner grid layout from day-mobile-fixes (drag/check/time slots)
+   doesn't leak in and squeeze the card. Goal: wider cards, shorter rows.
+   ========================= */
+@media (max-width: 700px) {
+  .day-page-main:has(.inbox-assign-btn) {
+    padding: 12px 8px;
+  }
+  .day-big-card:has(.inbox-assign-btn) {
+    padding: 12px 10px;
+    border-radius: 18px;
+  }
+  .page-tasks-wrapper:has(.inbox-assign-btn) {
+    gap: 10px;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) {
+    display: flex !important;
+    flex-direction: row;
+    align-items: flex-start;
+    grid-template-columns: none !important;
+    grid-template-areas: none !important;
+    padding: 10px 12px !important;
+    gap: 8px;
+    border-radius: 14px !important;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .day-task-content {
+    grid-area: unset !important;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .day-task-title {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .day-task-meta {
+    margin-top: 5px;
+    gap: 4px 6px;
+    font-size: 12px;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .inbox-assign-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .inbox-task-date {
+    font-size: 10px;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .day-task-color {
+    grid-area: unset !important;
+    width: 4px;
+    height: 28px;
+    align-self: center;
+    margin-left: 2px;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .day-task-actions {
+    grid-area: unset !important;
+    flex-direction: column;
+    align-self: stretch;
+    justify-content: space-between;
+    gap: 4px;
+    min-width: 24px;
+  }
+  .day-task-item:has(.inbox-assign-btn) .day-task-delete,
+  .day-task-item:has(.inbox-assign-btn) .day-task-edit {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 14px !important;
+  }
+
+  .day-task-item:has(.inbox-assign-btn) .inbox-task-desc {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}

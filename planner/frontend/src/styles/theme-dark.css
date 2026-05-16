@@ -752,7 +752,11 @@
 }
 
 :root[data-theme="dark"] .targets-open-link {
-  color: #c2b3ff;
+  background: #382b6a;
+  color: #ffffff;
+}
+:root[data-theme="dark"] .targets-open-link:hover {
+  background: #4a3a8c;
 }
 
 /* Generic goal/target card backgrounds across goals-* CSS files */
@@ -1055,10 +1059,690 @@
   background: rgba(255, 255, 255, 0.16);
 }
 
+/* ---------- App header: menu trigger icon ---------- */
+
+:root[data-theme="dark"] .icon-circle {
+  background: rgba(255, 255, 255, 0.1);
+}
+/* Inline SVG inside the hamburger uses fill="#7b5ecf"; CSS fill wins. */
+:root[data-theme="dark"] .icon-circle svg rect,
+:root[data-theme="dark"] .icon-circle svg path {
+  fill: #d6c6ff;
+}
+
+/* "Открыть" link on cards — boost contrast */
+:root[data-theme="dark"] .day-open-link,
+:root[data-theme="dark"] .week-open-link {
+  background: #382b6a;
+  color: #ffffff;
+}
+:root[data-theme="dark"] .day-open-link:hover,
+:root[data-theme="dark"] .week-open-link:hover {
+  background: #4a3a8c;
+}
+
+/* ---------- Shared buttons (secondary / modal-cancel) ---------- */
+
+:root[data-theme="dark"] .secondary-btn,
+:root[data-theme="dark"] .modal-cancel-btn {
+  background: #322a4f;
+  color: #e7e2f5;
+}
+:root[data-theme="dark"] .secondary-btn:hover,
+:root[data-theme="dark"] .modal-cancel-btn:hover {
+  background: #4a3a8c;
+}
+
+/* "Сохранить как шаблон", "Применить шаблон" toolbar buttons inherit
+   .secondary-btn, so they're covered above. The day-view-toggle wrapper
+   plus pinpoint overrides on its inner buttons: */
+:root[data-theme="dark"] .day-view-toggle {
+  background: #1f1932;
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .day-view-toggle button {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .day-view-toggle button.active {
+  background: #4a3a8c;
+  color: #ffffff;
+}
+
+/* ---------- Generic .modal / .task-modal surfaces ---------- */
+
+:root[data-theme="dark"] .modal-overlay,
+:root[data-theme="dark"] .task-modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .task-modal {
+  background: #251f37;
+  color: var(--text-main);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="dark"] .modal h3,
+:root[data-theme="dark"] .task-modal h3 {
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .task-modal-form label,
+:root[data-theme="dark"] .modal label {
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .task-modal-form input,
+:root[data-theme="dark"] .task-modal-form select,
+:root[data-theme="dark"] .week-modal-input,
+:root[data-theme="dark"] .modal input[type="text"],
+:root[data-theme="dark"] .modal input[type="number"],
+:root[data-theme="dark"] .modal input[type="color"],
+:root[data-theme="dark"] .modal select {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .template-name-input {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .template-name-label {
+  color: var(--text-soft);
+}
+
+/* Duration/Range mode toggle (Длительность / Начало–Конец) — pill row inside
+   the task modal. Uses no unique class; common pattern is `.task-modal button`. */
+:root[data-theme="dark"] .task-modal button[type="button"]:not(.primary-btn):not(.modal-cancel-btn):not(.secondary-btn) {
+  color: var(--text-soft);
+}
+
+/* ---------- Category select trigger + dropdown (used inside modals) ---------- */
+
+:root[data-theme="dark"] .category-select-trigger {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-select-trigger--open {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18);
+}
+:root[data-theme="dark"] .category-select-placeholder {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .category-select-arrow {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .category-select-dropdown {
+  background: #251f37;
+  border-color: var(--line);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
+}
+:root[data-theme="dark"] .category-select-option {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-select-option:hover {
+  background: #322a4f;
+}
+:root[data-theme="dark"] .category-select-option--active {
+  background: #382b6a;
+}
+:root[data-theme="dark"] .category-select-divider {
+  background: var(--line);
+}
+:root[data-theme="dark"] .category-select-manage {
+  color: #c2b3ff;
+}
+:root[data-theme="dark"] .category-select-manage:hover {
+  background: #322a4f;
+}
+
+/* ---------- Category Manager modal ---------- */
+
+:root[data-theme="dark"] .category-manager-item {
+  background: #1c1729;
+  border-color: var(--line);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-manager-name {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-manager-icon {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .category-manager-create h4 {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-manager-modal input[type="text"] {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-color-palette,
+:root[data-theme="dark"] .category-icon-grid {
+  background: #1c1729;
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .category-icon-picker-trigger {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .category-icon-preview {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .category-icon-picker-arrow {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .category-icon-option {
+  background: #251f37;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .category-icon-option:hover {
+  background: #322a4f;
+}
+:root[data-theme="dark"] .category-icon-option--active {
+  background: #382b6a;
+  border-color: var(--accent);
+}
+
+/* ---------- Goals page ---------- */
+
+:root[data-theme="dark"] .goals-shell-card {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .goals-page-title {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .goals-page-subtitle {
+  color: var(--text-soft);
+}
+
+/* Filter pills (Активные / Завершённые / Все) */
+:root[data-theme="dark"] .goal-filter-btn {
+  background: #1f1932;
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .goal-filter-btn:hover {
+  background: #2a2440;
+  border-color: var(--accent);
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .goal-filter-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Goal type chips inside the create modal */
+:root[data-theme="dark"] .goal-type-chip {
+  background: #1f1932;
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .goal-type-chip:hover {
+  background: #2a2440;
+  border-color: var(--accent);
+}
+:root[data-theme="dark"] .goal-type-chip--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Goal cards on the goals list */
+:root[data-theme="dark"] .goal-card--soft {
+  background: #1f1932;
+  border-color: var(--line);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .goal-card-title {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .goal-expand-icon {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .goal-meta-chip {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+
+/* Action buttons (check / delete) */
+:root[data-theme="dark"] .goal-action-btn--success {
+  background: #1a3a25;
+  color: var(--success);
+}
+:root[data-theme="dark"] .goal-action-btn--danger {
+  background: #3a1e1e;
+  color: #ff9d9d;
+}
+
+/* Create-goal modal header & footer text */
+:root[data-theme="dark"] .goal-create-modal-header p {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .goal-modal-close {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .goal-form-field span {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .goal-advanced-toggle {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .goal-checkbox-row {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .subtasks-form-block--soft {
+  background: #1c1729;
+  border-color: var(--line);
+}
+
+/* ---------- Day Planner toolbar bits I missed ---------- */
+
+/* "Начало дня" label + edit icon row */
+:root[data-theme="dark"] .day-tasks-page,
+:root[data-theme="dark"] .day-page-main {
+  color: var(--text-main);
+}
+
+/* Inline label e.g. "Начало дня:06:00" — usually rendered in a span with no
+   specific class. Match anything inside the toolbar that isn't a button. */
+:root[data-theme="dark"] .day-plan-toolbar {
+  color: var(--text-soft);
+}
+
+/* ---------- PrioritySelect (custom dropdown) ---------- */
+
+:root[data-theme="dark"] .priority-select-trigger,
+:root[data-theme="dark"] [class*="priority-select"][class*="trigger"] {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .priority-select-dropdown,
+:root[data-theme="dark"] [class*="priority-select"][class*="dropdown"] {
+  background: #251f37;
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .priority-select-option,
+:root[data-theme="dark"] [class*="priority-select"][class*="option"] {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .priority-select-option:hover {
+  background: #322a4f;
+}
+
+/* ---------- Notifications bell + dropdown ---------- */
+
+:root[data-theme="dark"] .header-bell-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+:root[data-theme="dark"] .header-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+:root[data-theme="dark"] .notifications-dropdown {
+  background: #251f37;
+  border-color: var(--line);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme="dark"] .notifications-title {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .notifications-refresh-btn {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .notifications-empty {
+  background: #1c1729;
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .notification-item {
+  background: #1c1729;
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .notification-item:hover {
+  background: #2a2440;
+}
+:root[data-theme="dark"] .notification-item-title {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .notification-item-text {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .notification-item-source {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .notification-item--danger {
+  background: #3a1e1e;
+  border-color: #6b3737;
+}
+:root[data-theme="dark"] .notification-item--warning {
+  background: #3a2f1a;
+  border-color: #6b5a2f;
+}
+:root[data-theme="dark"] .notification-item--info {
+  background: #1c1729;
+  border-color: var(--line);
+}
+
+/* ---------- Templates UI (save / apply / list inside modals) ---------- */
+
+:root[data-theme="dark"] .templates-list {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .template-item {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .template-name {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .template-delete-btn {
+  color: #ff9d9d;
+}
+
+/* ---------- Week planner table ---------- */
+
+:root[data-theme="dark"] .week-period-label {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .week-nav-btn {
+  background: #322a4f;
+  color: #d6c6ff;
+}
+:root[data-theme="dark"] .week-nav-btn:hover {
+  background: #4a3a8c;
+}
+
+:root[data-theme="dark"] .week-grid-excel {
+  background: #1f1932;
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .week-grid-cell--corner,
+:root[data-theme="dark"] .week-grid-cell--day,
+:root[data-theme="dark"] .week-grid-cell--task-name,
+:root[data-theme="dark"] .week-grid-cell--day-box {
+  border-right-color: var(--line);
+  border-bottom-color: var(--line);
+}
+:root[data-theme="dark"] .week-grid-cell--corner,
+:root[data-theme="dark"] .week-grid-cell--day {
+  background: #2a2440;
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .week-grid-cell--task-name {
+  background: #1f1932;
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .week-grid-cell--task-name-important {
+  background: #382b6a;
+  color: #ffffff;
+}
+:root[data-theme="dark"] .week-grid-cell--task-name-done {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .week-grid-days-track {
+  background: #1f1932;
+}
+:root[data-theme="dark"] .week-grid-row--done .week-grid-days-track {
+  background: #1a1428;
+}
+:root[data-theme="dark"] .week-loading {
+  color: var(--text-muted);
+}
+
+/* Tags / chips inside the week table */
+:root[data-theme="dark"] .tag {
+  background: #322a4f;
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .tag-important {
+  background: #5a1e25;
+  color: #ff9d9d;
+}
+:root[data-theme="dark"] .tag-light {
+  background: #2a2440;
+  color: #d6c6ff;
+}
+
 /* ---------- Form controls in dark mode ---------- */
 
 :root[data-theme="dark"] input,
 :root[data-theme="dark"] textarea,
 :root[data-theme="dark"] select {
   color-scheme: dark;
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+
+/* ============================================================
+   !important overrides
+   modal-polish.css and week-modal.css apply many styles with
+   !important; only !important wins over !important. Specificity
+   ties go to my selector since :root[data-theme="dark"] adds an
+   attribute selector on top of the class.
+   ============================================================ */
+
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .task-modal {
+  background: #251f37 !important;
+  color: var(--text-main) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55) !important;
+}
+
+:root[data-theme="dark"] .modal h3,
+:root[data-theme="dark"] .task-modal h3 {
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] .modal label,
+:root[data-theme="dark"] .task-modal-form label {
+  color: var(--text-soft) !important;
+}
+
+:root[data-theme="dark"] .modal input,
+:root[data-theme="dark"] .modal select,
+:root[data-theme="dark"] .modal textarea,
+:root[data-theme="dark"] .task-modal-form input,
+:root[data-theme="dark"] .task-modal-form select,
+:root[data-theme="dark"] .task-modal-form textarea {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] .modal input::placeholder,
+:root[data-theme="dark"] .modal textarea::placeholder,
+:root[data-theme="dark"] .task-modal-form input::placeholder,
+:root[data-theme="dark"] .task-modal-form textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
+:root[data-theme="dark"] .modal input:focus,
+:root[data-theme="dark"] .modal select:focus,
+:root[data-theme="dark"] .modal textarea:focus,
+:root[data-theme="dark"] .task-modal-form input:focus,
+:root[data-theme="dark"] .task-modal-form select:focus,
+:root[data-theme="dark"] .task-modal-form textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18) !important;
+}
+
+/* Priority select inside modals (modal-polish.css uses !important) */
+:root[data-theme="dark"] .priority-select-trigger,
+:root[data-theme="dark"] .category-select-trigger {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .priority-select-trigger:hover,
+:root[data-theme="dark"] .category-select-trigger:hover {
+  border-color: var(--accent) !important;
+}
+:root[data-theme="dark"] .priority-select-trigger--open,
+:root[data-theme="dark"] .category-select-trigger--open {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18) !important;
+}
+:root[data-theme="dark"] .category-select-placeholder {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .priority-select-trigger-content span,
+:root[data-theme="dark"] .category-select-trigger-content span {
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .priority-select-arrow,
+:root[data-theme="dark"] .category-select-arrow {
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .priority-select-dropdown,
+:root[data-theme="dark"] .category-select-dropdown {
+  background: #251f37 !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55) !important;
+}
+:root[data-theme="dark"] .priority-select-option,
+:root[data-theme="dark"] .category-select-option {
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .priority-select-option:hover,
+:root[data-theme="dark"] .category-select-option:hover {
+  background: #322a4f !important;
+}
+:root[data-theme="dark"] .priority-select-option--active,
+:root[data-theme="dark"] .category-select-option--active {
+  background: #382b6a !important;
+  color: #ffffff !important;
+}
+:root[data-theme="dark"] .category-select-manage {
+  color: #c2b3ff !important;
+}
+:root[data-theme="dark"] .category-select-manage:hover {
+  background: #322a4f !important;
+}
+
+/* Time-mode toggle inside the day-task modal */
+:root[data-theme="dark"] .time-mode-btn {
+  background: #1c1729;
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .time-mode-btn:hover {
+  background: #2a2440;
+  border-color: var(--accent);
+}
+:root[data-theme="dark"] .time-mode-btn--active {
+  background: #382b6a;
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Week task type chips (Обычная / Повторяющаяся / Объёмная) */
+:root[data-theme="dark"] .week-task-type-option {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .week-task-type-option:has(input:checked) {
+  background: #382b6a !important;
+  border-color: var(--accent) !important;
+}
+:root[data-theme="dark"] .week-task-type-option input {
+  background: #1c1729 !important;
+  border-color: #5a4f7a !important;
+}
+:root[data-theme="dark"] .week-task-type-option input:checked {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Week range block (volumetric task) */
+:root[data-theme="dark"] .week-range-block {
+  background: #1c1729 !important;
+  border-color: var(--line) !important;
+}
+
+/* Day-of-week pills (Пн / Вт / ...) */
+:root[data-theme="dark"] .week-repeat-day {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .week-repeat-day:hover {
+  background: #2a2440 !important;
+  border-color: var(--accent) !important;
+}
+:root[data-theme="dark"] .week-repeat-day.is-selected,
+:root[data-theme="dark"] .week-repeat-day:has(input:checked) {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #ffffff !important;
+}
+:root[data-theme="dark"] .week-range-day.is-selected:not(.is-edge) {
+  background: #2a2440 !important;
+  border-color: #4a3f6c !important;
+  color: #d6c6ff !important;
+}
+
+/* Goal create modal type chips already styled without !important;
+   keeping the same accent treatment with !important to be safe. */
+:root[data-theme="dark"] .goal-type-chip {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .goal-type-chip:hover {
+  background: #2a2440 !important;
+  border-color: var(--accent) !important;
+}
+:root[data-theme="dark"] .goal-type-chip--active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #ffffff !important;
+}
+
+/* Cancel / secondary buttons — week-modal.css forces them light with !important. */
+:root[data-theme="dark"] .modal-cancel-btn,
+:root[data-theme="dark"] .secondary-btn {
+  background: #322a4f !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .modal-cancel-btn:hover,
+:root[data-theme="dark"] .secondary-btn:hover {
+  background: #4a3a8c !important;
+}
+
+/* Subtasks form inside modals */
+:root[data-theme="dark"] .subtasks-form-title {
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .subtasks-form-input-row input {
+  background: #1c1729 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .subtasks-form-input-row input::placeholder {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .subtasks-form-input-row button {
+  color: #d6c6ff !important;
+}
+:root[data-theme="dark"] .subtasks-form-text {
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .subtasks-form-remove {
+  color: #ff9d9d !important;
 }

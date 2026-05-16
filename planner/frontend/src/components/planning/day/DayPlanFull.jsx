@@ -1882,6 +1882,7 @@ const overdueImportCandidates = useMemo(
                     setForm((prev) => ({ ...prev, category: newCategory }))
                   }
                   onManageClick={() => setIsCategoryManagerOpen(true)}
+                  dropUp={true}
                 />
               </label>
 
