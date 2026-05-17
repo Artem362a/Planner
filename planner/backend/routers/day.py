@@ -462,6 +462,7 @@ def get_overdue_tasks(
             DayTask.user_id == current_user_row.id,
             DayTask.day < today,
             DayTask.status == 0,
+            DayTask.dismissed.isnot(True),
         )
         .order_by(DayTask.day.asc(), DayTask.order_index.asc())
         .all()
@@ -548,9 +549,9 @@ def dismiss_overdue_task(
             DayTask.source_week_task_id == t.source_week_task_id,
             DayTask.day < today,
             DayTask.status == 0,
-        ).delete(synchronize_session=False)
+        ).update({"dismissed": True}, synchronize_session=False)
     else:
-        db.delete(task)
+        t.dismissed = True
 
     db.commit()
     return {"ok": True}

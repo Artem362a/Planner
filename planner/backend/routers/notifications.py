@@ -221,6 +221,7 @@ def create_overdue_reminder(
             DayTask.user_id == current_user_row.id,
             DayTask.day < today,
             DayTask.status == 0,
+            DayTask.dismissed.isnot(True),
         )
         .count()
     )

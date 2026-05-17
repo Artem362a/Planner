@@ -286,6 +286,7 @@ class DayTask(Base):
     subtasks = Column(JSON, nullable=True)
     order_index = Column(Integer, nullable=False, default=0, index=True)
     source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
+    dismissed = Column(Boolean, default=False, nullable=False)
 
 
 class DaySettings(Base):

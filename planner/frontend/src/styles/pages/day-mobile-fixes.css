@@ -7,7 +7,7 @@
   }
 
   .day-page-main {
-    padding: 12px;
+    padding: 6px 4px;
   }
 
   .day-page-layout {
@@ -18,10 +18,14 @@
   .day-big-card {
     width: 100%;
     max-width: 100%;
-    padding: 14px 12px 18px;
-    border-radius: 20px;
+    padding: 12px 4px 16px;
+    border-radius: 18px;
     box-sizing: border-box;
-    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  .day-big-card:has(.day-tasks-list--dragging) {
+    overflow: visible;
   }
 
   .day-tasks-page,
@@ -29,7 +33,11 @@
   .day-tasks-list {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  .day-tasks-list--dragging {
+    overflow: visible !important;
   }
 
   .day-tasks-list {

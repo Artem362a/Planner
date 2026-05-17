@@ -60,8 +60,7 @@
 
 .day-overview-scroll {
   flex: 1;
-  min-height: 0;
-  max-height: 300px;
+  min-height: 80px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -187,8 +186,7 @@
 
 .day-overview-timeline-scroll {
   flex: 1;
-  min-height: 0;
-  max-height: 260px;
+  min-height: 80px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;

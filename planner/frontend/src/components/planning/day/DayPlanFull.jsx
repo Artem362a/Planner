@@ -142,6 +142,10 @@ export default function DayPlanFull({ selectedDate }) {
   const [expandedTimelineGroupId, setExpandedTimelineGroupId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
+  const [swapTick, setSwapTick] = useState(0);
+  const dragIndexRef = useRef(null);
+  const dragHoverTimerRef = useRef(null);
+  const dragHoverTargetRef = useRef(null);
   const [dayStartTime, setDayStartTime] = useState("06:00");
 
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -728,27 +732,86 @@ const overdueImportCandidates = useMemo(
     };
   }, [dayString, categories]);
 
-  const onDragStart = (index) => setDragIndex(index);
+  const onDragStart = (e, index) => {
+    dragIndexRef.current = index;
+    setDragIndex(index);
+    setHoveredTaskId(null);
+    setHoverInsertSide(null);
+    const card = e.currentTarget.closest(".day-task-item");
+    if (card && e.dataTransfer) {
+      const rect = card.getBoundingClientRect();
+      e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", String(index)); } catch (_) {}
+    }
+  };
+
+  const cancelDragHoverTimer = () => {
+    if (dragHoverTimerRef.current !== null) {
+      clearTimeout(dragHoverTimerRef.current);
+      dragHoverTimerRef.current = null;
+    }
+    dragHoverTargetRef.current = null;
+    setHoveredTaskId(null);
+    setHoverInsertSide(null);
+  };
+
+  const scheduleSwap = (index) => {
+    dragHoverTargetRef.current = index;
+    const target = tasks[index];
+    if (target) setHoveredTaskId(target.id);
+    setHoverInsertSide(null);
+    dragHoverTimerRef.current = setTimeout(() => {
+      const current = dragIndexRef.current;
+      dragHoverTimerRef.current = null;
+      dragHoverTargetRef.current = null;
+      if (current === null || current === index) return;
+
+      setTasks((prev) => {
+        const copy = [...prev];
+        const [moved] = copy.splice(current, 1);
+        copy.splice(index, 0, moved);
+        return copy.map((task, idx) => ({
+          ...task,
+          order_index: idx,
+        }));
+      });
+
+      dragIndexRef.current = index;
+      setDragIndex(index);
+      setSwapTick((t) => t + 1);
+      setHoveredTaskId(null);
+    }, 40);
+  };
 
   const onDragOver = (e, index) => {
     e.preventDefault();
-    if (dragIndex === null || dragIndex === index) return;
+    const current = dragIndexRef.current;
+    if (current === null || current === index) {
+      cancelDragHoverTimer();
+      return;
+    }
 
-    setTasks((prev) => {
-      const copy = [...prev];
-      const [moved] = copy.splice(dragIndex, 1);
-      copy.splice(index, 0, moved);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (current < index && e.clientY < midY) {
+      cancelDragHoverTimer();
+      return;
+    }
+    if (current > index && e.clientY > midY) {
+      cancelDragHoverTimer();
+      return;
+    }
 
-      return copy.map((task, idx) => ({
-        ...task,
-        order_index: idx,
-      }));
-    });
+    if (dragHoverTargetRef.current === index) return;
 
-    setDragIndex(index);
+    cancelDragHoverTimer();
+    scheduleSwap(index);
   };
 
   const onDragEnd = async () => {
+    cancelDragHoverTimer();
+    dragIndexRef.current = null;
     setDragIndex(null);
 
     try {
@@ -786,41 +849,54 @@ const overdueImportCandidates = useMemo(
     const touch = e.touches[0];
     if (!touch) return;
 
-    let activeIndex = dragIndex;
+    let activeIndex = dragIndexRef.current;
 
     if (activeIndex === null) {
       const dx = touch.clientX - startPos.x;
       const dy = touch.clientY - startPos.y;
       if (Math.hypot(dx, dy) < 8) return;
+      dragIndexRef.current = pendingIndex;
       setDragIndex(pendingIndex);
       activeIndex = pendingIndex;
     }
 
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (!target) return;
+    if (!target) {
+      cancelDragHoverTimer();
+      return;
+    }
 
     const taskEl = target.closest("[data-task-index]");
-    if (!taskEl) return;
+    if (!taskEl) {
+      cancelDragHoverTimer();
+      return;
+    }
 
     const overIndex = Number(taskEl.dataset.taskIndex);
-    if (Number.isNaN(overIndex) || overIndex === activeIndex) return;
+    if (Number.isNaN(overIndex) || overIndex === activeIndex) {
+      cancelDragHoverTimer();
+      return;
+    }
 
-    setTasks((prev) => {
-      const copy = [...prev];
-      const [moved] = copy.splice(activeIndex, 1);
-      copy.splice(overIndex, 0, moved);
+    const rect = taskEl.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (activeIndex < overIndex && touch.clientY < midY) {
+      cancelDragHoverTimer();
+      return;
+    }
+    if (activeIndex > overIndex && touch.clientY > midY) {
+      cancelDragHoverTimer();
+      return;
+    }
 
-      return copy.map((task, idx) => ({
-        ...task,
-        order_index: idx,
-      }));
-    });
+    if (dragHoverTargetRef.current === overIndex) return;
 
-    setDragIndex(overIndex);
+    cancelDragHoverTimer();
+    scheduleSwap(overIndex);
   };
 
   const onTouchEnd = () => {
-    const wasDragging = dragIndex !== null;
+    const wasDragging = dragIndexRef.current !== null;
     touchStartPosRef.current = null;
     touchPendingIndexRef.current = null;
     if (wasDragging) onDragEnd();
@@ -887,6 +963,8 @@ const overdueImportCandidates = useMemo(
   };
 
   const handleTaskMouseMove = (e, taskId) => {
+    if (dragIndexRef.current !== null) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const height = rect.height;
@@ -1343,7 +1421,7 @@ const overdueImportCandidates = useMemo(
         </div>
 
         {viewMode === "list" ? (
-          <ul className="day-tasks-list">
+          <ul className={"day-tasks-list" + (dragIndex !== null ? " day-tasks-list--dragging" : "")}>
             {tasksWithComputedTime.map((t, index) => {
             const nextTask = tasksWithComputedTime[index + 1];
             const isHovered = hoveredTaskId === t.id;
@@ -1385,10 +1463,13 @@ const overdueImportCandidates = useMemo(
                   onMouseMove={(e) => handleTaskMouseMove(e, t.id)}
                   onMouseLeave={handleTaskMouseLeave}
                 >
+                  {index === dragIndex && (
+                    <span key={swapTick} className="day-task-swap-flash" aria-hidden="true" />
+                  )}
                   <div
                     className="day-task-drag-handle"
                     draggable
-                    onDragStart={() => onDragStart(index)}
+                    onDragStart={(e) => onDragStart(e, index)}
                     onMouseEnter={hideInsertHover}
                     onTouchStart={(e) => onTouchStart(e, index)}
                     onTouchMove={onTouchMove}

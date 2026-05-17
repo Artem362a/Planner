@@ -200,7 +200,7 @@
   }
 
   .about-page {
-    padding: 16px;
+    padding: 8px;
   }
 
   .about-hero-text,
@@ -208,8 +208,8 @@
   .about-card,
   .about-story-left,
   .about-story-right {
-    padding: 18px;
-    border-radius: 20px;
+    padding: 14px;
+    border-radius: 18px;
   }
 
   .about-subtitle {
@@ -217,7 +217,8 @@
   }
 
   .about-quote {
-    font-size: 20px;
+    font-size: 18px;
+    padding: 16px;
   }
 }
 

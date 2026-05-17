@@ -13,6 +13,8 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .custom-month-header {
@@ -54,7 +56,9 @@
   width: 100%;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 38px;
+  grid-template-rows: repeat(6, 1fr);
+  flex: 1;
+  min-height: 0;
   gap: 6px;
 }
 
@@ -85,4 +89,16 @@
 .custom-month-cell.selected {
   background: #ffffff;
   border: 2px solid #b783d4;
+}
+
+@media (max-width: 1024px) {
+  .custom-month-calendar {
+    flex: unset;
+  }
+
+  .custom-month-grid {
+    flex: unset;
+    grid-template-rows: unset;
+    grid-auto-rows: 38px;
+  }
 }

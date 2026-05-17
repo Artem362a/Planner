@@ -60,7 +60,7 @@
   padding: 24px;
   display: grid;
   grid-template-columns: 2.1fr 1.65fr 1.15fr;
-  grid-template-rows: auto auto;
+  grid-template-rows: minmax(auto, 52vh) auto;
   grid-template-areas:
     "day month targets"
     "week week targets";
@@ -108,6 +108,7 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+
 
 .day-open-link,
 .week-open-link {

@@ -136,6 +136,23 @@
     width: 100%;
   }
 }
+
+@media (max-width: 768px) {
+  .feedback-page-card {
+    width: calc(100% - 12px);
+    margin: 8px auto;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .feedback-page-title {
+    font-size: 26px;
+  }
+
+  .feedback-page-subtitle {
+    font-size: 15px;
+  }
+}
 .feedback-back-link {
   display: inline-flex;
   align-items: center;

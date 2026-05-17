@@ -128,19 +128,18 @@ const Home = ({ user, onLogout }) => {
         </div>
 
         <nav className="side-menu-nav">
+          <Link to="/account" onClick={() => setMenuOpen(false)}>
+            Аккаунт
+          </Link>
           <Link to="/inbox" onClick={() => setMenuOpen(false)}>
             Входящие
           </Link>
           <Link to="/statistics" onClick={() => setMenuOpen(false)}>
             Статистика
           </Link>
-<Link to="/about" onClick={() => setMenuOpen(false)}>
+          <Link to="/about" onClick={() => setMenuOpen(false)}>
             О нас
           </Link>
-<Link to="/account" onClick={() => setMenuOpen(false)}>
-            Аккаунт
-          </Link>
-
           <Link to="/feedback" onClick={() => setMenuOpen(false)}>
             Обратная связь
           </Link>
