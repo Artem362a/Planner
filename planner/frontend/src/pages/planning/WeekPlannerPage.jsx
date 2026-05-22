@@ -1159,6 +1159,12 @@ async function handleDragEnd() {
                         "day-task-item" +
                         (Number(t.status) === 1 ? " done" : "")
                       }
+                      style={{
+                        "--task-list-tint": hexToRgba(
+                          categories[t.category]?.color || "#BBBBBB",
+                          Number(t.status) === 1 ? 0.08 : 0.15
+                        ),
+                      }}
                       draggable
                       onDragStart={() => handleDragStart(t.id)}
                       onDragOver={(e) => handleDragOver(e, t.id)}

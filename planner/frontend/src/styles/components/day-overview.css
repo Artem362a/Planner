@@ -12,6 +12,7 @@
   padding: 8px 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
   font-size: 12px;
+  overflow: hidden;
 }
 
 .day-overview-mode {
@@ -211,7 +212,7 @@
   font-size: 10px;
   font-weight: 650;
   line-height: 1;
-  transform: translateY(-1px);
+  transform: translateY(-50%);
 }
 
 .day-overview-timeline-track {
@@ -267,8 +268,8 @@
   grid-template-columns: 26px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 5px 8px;
+  min-height: 32px;
+  padding: 4px 8px;
   border: 1px solid #e4def0;
   border-left: 3px solid #bbb;
   border-radius: 8px;
@@ -310,7 +311,9 @@
   font-size: 11px;
   font-weight: 750;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .day-overview-timeline-meta {
@@ -393,6 +396,54 @@
 }
 
 .day-overview-timeline-attached em {
+  flex-shrink: 0;
+  color: #9a91b4;
+  font-style: normal;
+}
+
+.day-overview-sg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.day-overview-sg-toggle {
+  border: none;
+  background: transparent;
+  font-size: 9px;
+  color: #8b79bb;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.day-overview-sg-list {
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.day-overview-sg-task {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 10px;
+  color: #4a4170;
+  min-width: 0;
+}
+
+.day-overview-sg-task span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-overview-sg-task em {
   flex-shrink: 0;
   color: #9a91b4;
   font-style: normal;

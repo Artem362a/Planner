@@ -1,19 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-function findScrollableAncestor(el) {
-  let parent = el.parentElement;
-  while (parent && parent !== document.body && parent !== document.documentElement) {
-    const style = getComputedStyle(parent);
-    const overflowY = style.overflowY;
-    if (overflowY === "auto" || overflowY === "scroll") {
-      return parent;
-    }
-    parent = parent.parentElement;
-  }
-  return document.body;
-}
-
 export default function CategorySelect({
   value,
   categories,
@@ -22,73 +9,36 @@ export default function CategorySelect({
   placeholder = "Выбери категорию",
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [portalContainer, setPortalContainer] = useState(null);
   const rootRef = useRef(null);
   const dropdownRef = useRef(null);
-  const restorePositionRef = useRef(null);
 
   useLayoutEffect(() => {
-    if (!isOpen || !rootRef.current) {
-      setPortalContainer(null);
-      return;
-    }
-
-    const container = findScrollableAncestor(rootRef.current);
-
-    // Ensure absolute children anchor to this container
-    if (container !== document.body) {
-      const computed = getComputedStyle(container);
-      if (computed.position === "static") {
-        container.style.position = "relative";
-        restorePositionRef.current = container;
-      }
-    }
-
-    setPortalContainer(container);
-
-    return () => {
-      if (restorePositionRef.current) {
-        restorePositionRef.current.style.position = "";
-        restorePositionRef.current = null;
-      }
-    };
-  }, [isOpen]);
-
-  useLayoutEffect(() => {
-    if (!isOpen || !portalContainer) return;
+    if (!isOpen) return;
 
     function calcPosition() {
       const root = rootRef.current;
       const dropdown = dropdownRef.current;
       if (!root || !dropdown) return;
 
-      const rootRect = root.getBoundingClientRect();
-      const isBody = portalContainer === document.body;
-      const containerRect = isBody
-        ? { top: 0, left: 0 }
-        : portalContainer.getBoundingClientRect();
-      const scrollTop = isBody ? window.scrollY : portalContainer.scrollTop;
-      const scrollLeft = isBody ? window.scrollX : portalContainer.scrollLeft;
-
-      const offsetTop = rootRect.bottom - containerRect.top + scrollTop + 8;
-      const offsetLeft = rootRect.left - containerRect.left + scrollLeft;
-
+      const rect = root.getBoundingClientRect();
       const vh = window.innerHeight;
-      const spaceBelow = vh - rootRect.bottom - 16;
-      const spaceAbove = rootRect.top - 16;
+      const spaceBelow = vh - rect.bottom - 16;
+      const spaceAbove = rect.top - 16;
       const useAbove = spaceBelow < 200 && spaceAbove > spaceBelow;
 
-      dropdown.style.position = "absolute";
-      dropdown.style.left = `${Math.round(offsetLeft)}px`;
-      dropdown.style.width = `${rootRect.width}px`;
-      dropdown.style.zIndex = "9999";
+      dropdown.style.position = "fixed";
+      dropdown.style.left = `${Math.round(rect.left)}px`;
+      dropdown.style.width = `${Math.round(rect.width)}px`;
+      dropdown.style.zIndex = "99999";
 
       if (useAbove) {
         const h = dropdown.offsetHeight || 0;
-        dropdown.style.top = `${Math.round(rootRect.top - containerRect.top + scrollTop - h - 8)}px`;
+        dropdown.style.top = `${Math.round(rect.top - h - 8)}px`;
+        dropdown.style.bottom = "auto";
         dropdown.style.maxHeight = `${Math.max(160, Math.min(spaceAbove, 360))}px`;
       } else {
-        dropdown.style.top = `${Math.round(offsetTop)}px`;
+        dropdown.style.top = `${Math.round(rect.bottom + 8)}px`;
+        dropdown.style.bottom = "auto";
         dropdown.style.maxHeight = `${Math.max(160, Math.min(spaceBelow, 360))}px`;
       }
       dropdown.style.visibility = "visible";
@@ -96,12 +46,13 @@ export default function CategorySelect({
 
     calcPosition();
 
-    const onResize = () => calcPosition();
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", calcPosition);
+    window.addEventListener("scroll", calcPosition, true);
     return () => {
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", calcPosition);
+      window.removeEventListener("scroll", calcPosition, true);
     };
-  }, [isOpen, portalContainer]);
+  }, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -144,16 +95,16 @@ export default function CategorySelect({
         <span className="category-select-arrow">{isOpen ? "▲" : "▼"}</span>
       </button>
 
-      {isOpen && portalContainer &&
+      {isOpen &&
         createPortal(
           <div
             ref={dropdownRef}
             className="category-select-dropdown"
             style={{
-              position: "absolute",
+              position: "fixed",
               top: 0,
               left: 0,
-              zIndex: 9999,
+              zIndex: 99999,
               visibility: "hidden",
             }}
           >
@@ -191,7 +142,7 @@ export default function CategorySelect({
               ⚙ Управление категориями
             </button>
           </div>,
-          portalContainer
+          document.body
         )}
     </div>
   );

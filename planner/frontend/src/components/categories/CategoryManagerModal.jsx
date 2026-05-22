@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ReactDOM from "react-dom";
 import {
   createCategory,
   updateCategory,
@@ -129,54 +130,30 @@ export default function CategoryManagerModal({
     [items]
   );
 
-  const [title, setTitle] = useState("");
-  const [color, setColor] = useState(CATEGORY_COLOR_PALETTE[0].value);
-  const [icon, setIcon] = useState("tag");
-
   const [editingKey, setEditingKey] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingColor, setEditingColor] = useState(CATEGORY_COLOR_PALETTE[0].value);
   const [editingIcon, setEditingIcon] = useState("tag");
-  const isCreateColorUnavailable = usedColors.has(normalizeColor(color));
 
-  useEffect(() => {
-    if (usedColors.has(normalizeColor(color))) {
-      setColor(getFirstAvailableColor(usedColors));
-    }
-  }, [color, usedColors]);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newColor, setNewColor] = useState(() => getFirstAvailableColor(new Set()));
+  const [newIcon, setNewIcon] = useState("tag");
+
+  const isEditing = !!editingKey || creatingNew;
 
   const getUnavailableColorsForEdit = (key) => {
     const result = new Set();
-
     items.forEach(([itemKey, item]) => {
       if (itemKey !== key) {
         result.add(normalizeColor(item.color));
       }
     });
-
     return result;
   };
 
-  const handleCreate = async () => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    if (usedColors.has(normalizeColor(color))) return;
-
-    try {
-      await createCategory({
-        title: trimmed,
-        color,
-        icon,
-      });
-      setTitle("");
-      setIcon("tag");
-      await onCategoriesChanged();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const startEdit = (key, item) => {
+    setCreatingNew(false);
     setEditingKey(key);
     setEditingTitle(item.title);
     setEditingColor(item.color);
@@ -221,12 +198,41 @@ export default function CategoryManagerModal({
     }
   };
 
-  return (
+  const handleStartNew = () => {
+    setEditingKey(null);
+    setNewTitle("");
+    setNewIcon("tag");
+    setNewColor(getFirstAvailableColor(usedColors));
+    setCreatingNew(true);
+  };
+
+  const handleSaveNew = async () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    if (usedColors.has(normalizeColor(newColor))) return;
+
+    try {
+      await createCategory({ title: trimmed, color: newColor, icon: newIcon });
+      setCreatingNew(false);
+      setNewTitle("");
+      setNewIcon("tag");
+      await onCategoriesChanged();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCancelNew = () => {
+    setCreatingNew(false);
+    setNewTitle("");
+  };
+
+  return ReactDOM.createPortal(
     <div className="task-modal-backdrop" onClick={onClose}>
       <div
         className={
           "task-modal category-manager-modal" +
-          (editingKey ? " category-manager-modal--editing" : "")
+          (isEditing ? " category-manager-modal--editing" : "")
         }
         onClick={(e) => e.stopPropagation()}
       >
@@ -235,7 +241,7 @@ export default function CategoryManagerModal({
         <div
           className={
             "category-manager-list" +
-            (editingKey ? " category-manager-list--editing" : "")
+            (isEditing ? " category-manager-list--editing" : "")
           }
         >
           {items.map(([key, item]) => (
@@ -253,6 +259,7 @@ export default function CategoryManagerModal({
                     value={editingTitle}
                     onChange={(e) => setEditingTitle(e.target.value)}
                     placeholder="Название"
+                    autoFocus
                   />
                   <CategoryColorPalette
                     value={editingColor}
@@ -312,43 +319,54 @@ export default function CategoryManagerModal({
             </div>
           ))}
 
-          {items.length === 0 && (
+          {creatingNew && (
+            <div className="category-manager-item category-manager-item--editing">
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Название"
+                autoFocus
+              />
+              <CategoryColorPalette
+                value={newColor}
+                onChange={setNewColor}
+                unavailableColors={usedColors}
+              />
+              <CategoryIconPicker value={newIcon} onChange={setNewIcon} />
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={handleSaveNew}
+                disabled={!newTitle.trim()}
+              >
+                Сохранить
+              </button>
+              <button type="button" className="secondary-btn" onClick={handleCancelNew}>
+                Отмена
+              </button>
+            </div>
+          )}
+
+          {items.length === 0 && !creatingNew && (
             <div className="day-task-empty">
               Добавь категории, чтобы раскладывать задачи по сферам и цветам
             </div>
           )}
         </div>
 
-        <div className="category-manager-create">
-          <h4>Новая категория</h4>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Название категории"
-          />
-          <CategoryColorPalette
-            value={color}
-            onChange={setColor}
-            unavailableColors={usedColors}
-          />
-          <CategoryIconPicker value={icon} onChange={setIcon} />
-          <button
-            type="button"
-            className="primary-btn"
-            onClick={handleCreate}
-            disabled={!title.trim() || isCreateColorUnavailable}
-          >
-            Добавить
-          </button>
-        </div>
-
         <div className="task-modal-buttons">
+          {!creatingNew && !editingKey && (
+            <button type="button" className="primary-btn" onClick={handleStartNew}>
+              + Новая категория
+            </button>
+          )}
           <button type="button" className="secondary-btn" onClick={onClose}>
             Закрыть
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

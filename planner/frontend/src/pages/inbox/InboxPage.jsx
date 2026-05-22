@@ -38,8 +38,14 @@ function formatWeekLabel(mondayStr) {
   return `${fmt(mon)} — ${fmt(sun)}`;
 }
 
+function parseUtc(isoStr) {
+  if (!isoStr) return null;
+  const s = isoStr.endsWith("Z") || isoStr.includes("+") ? isoStr : isoStr + "Z";
+  return new Date(s);
+}
+
 function formatCreatedAt(isoStr) {
-  const d = new Date(isoStr);
+  const d = parseUtc(isoStr);
   return d.toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "short",
@@ -161,7 +167,10 @@ export default function InboxPage() {
     if (!assignDay || !assignDayDate) return;
     try {
       await assignInboxToDay(assignDay.id, assignDayDate);
-      setTasks((prev) => prev.filter((t) => t.id !== assignDay.id));
+      const stampedAt = new Date().toISOString();
+      setTasks((prev) =>
+        prev.map((t) => (t.id === assignDay.id ? { ...t, assigned_at: stampedAt } : t))
+      );
     } catch (err) {
       console.error(err);
     }
@@ -173,7 +182,10 @@ export default function InboxPage() {
     const monday = getMonday(assignWeekDate);
     try {
       await assignInboxToWeek(assignWeek.id, monday);
-      setTasks((prev) => prev.filter((t) => t.id !== assignWeek.id));
+      const stampedAt = new Date().toISOString();
+      setTasks((prev) =>
+        prev.map((t) => (t.id === assignWeek.id ? { ...t, assigned_at: stampedAt } : t))
+      );
     } catch (err) {
       console.error(err);
     }
@@ -206,113 +218,154 @@ export default function InboxPage() {
                       Записывай задачи сюда, чтобы не забыть — потом назначишь на день или неделю
                     </div>
                   </div>
-                ) : (
-                  <ul className="day-tasks-list">
-                    {tasks.map((task) => {
-                      const catColor = categories[task.category]?.color;
-                      const priColor = PRIORITY_COLORS[task.priority] || "#7b5ecf";
-                      const tintColor = catColor || priColor;
+                ) : (() => {
+                  const activeTasks = tasks.filter(t => !t.completed_at);
+                  const doneTasks = tasks.filter(t => !!t.completed_at);
 
-                      return (
-                        <li
-                          key={task.id}
-                          className="day-task-item"
-                          style={{ "--task-list-tint": `${tintColor}22` }}
-                        >
-                          <div className="day-task-content">
-                            <div className="day-task-title">{task.title}</div>
+                  const renderTask = (task, showAssignBtns) => {
+                    const catColor = categories[task.category]?.color;
+                    const priColor = PRIORITY_COLORS[task.priority] || "#7b5ecf";
+                    const tintColor = catColor || priColor;
+                    const isAssigned = !!task.assigned_at;
+                    const isCompleted = !!task.completed_at;
 
-                            <div className="day-task-meta">
-                              {task.category && categories[task.category] && (
-                                <span
-                                  className="tag"
-                                  style={{
-                                    background: `${catColor}22`,
-                                    color: catColor,
-                                  }}
-                                >
-                                  {categories[task.category].title}
-                                </span>
-                              )}
+                    return (
+                      <li
+                        key={task.id}
+                        className={
+                          "day-task-item" +
+                          (isCompleted ? " day-task-item--inbox-done" : isAssigned ? " day-task-item--assigned" : "")
+                        }
+                        style={{ "--task-list-tint": `${tintColor}22` }}
+                      >
+                        <div className="day-task-content">
+                          <div className="day-task-title">{task.title}</div>
 
-                              {task.priority !== "medium" && (
-                                <span
-                                  className="tag"
-                                  style={{
-                                    background: `${priColor}18`,
-                                    color: priColor,
-                                  }}
-                                >
-                                  {PRIORITY_LABELS[task.priority]}
-                                </span>
-                              )}
-
-                              <span className="inbox-task-date">
-                                {formatCreatedAt(task.created_at)}
+                          <div className="day-task-meta">
+                            {isCompleted && (
+                              <span
+                                className="tag"
+                                style={{ background: "#27ae6022", color: "#27ae60" }}
+                                title="Задача выполнена"
+                              >
+                                ✓ Выполнено
                               </span>
+                            )}
+                            {!isCompleted && isAssigned && (
+                              <span
+                                className="tag"
+                                style={{ background: "#7b5ecf22", color: "#7b5ecf" }}
+                                title="Задача добавлена в план"
+                              >
+                                В плане
+                              </span>
+                            )}
 
-                              {task.description && (
+                            {task.category && categories[task.category] && (
+                              <span
+                                className="tag"
+                                style={{ background: `${catColor}22`, color: catColor }}
+                              >
+                                {categories[task.category].title}
+                              </span>
+                            )}
+
+                            {task.priority !== "medium" && (
+                              <span
+                                className="tag"
+                                style={{ background: `${priColor}18`, color: priColor }}
+                              >
+                                {PRIORITY_LABELS[task.priority]}
+                              </span>
+                            )}
+
+                            <span className="inbox-task-date">
+                              {formatCreatedAt(task.created_at)}
+                            </span>
+
+                            {task.description && (
+                              <button
+                                className="inbox-desc-toggle"
+                                onClick={() => toggleDesc(task.id)}
+                              >
+                                описание {expandedDesc.has(task.id) ? "▲" : "▼"}
+                              </button>
+                            )}
+
+                            {showAssignBtns && (
+                              <>
                                 <button
-                                  className="inbox-desc-toggle"
-                                  onClick={() => toggleDesc(task.id)}
+                                  className="inbox-assign-btn inbox-assign-btn--day"
+                                  onClick={() => {
+                                    setAssignDay(task);
+                                    setAssignDayDate(formatLocalDate(new Date()));
+                                  }}
                                 >
-                                  описание {expandedDesc.has(task.id) ? "▲" : "▼"}
+                                  В день
                                 </button>
-                              )}
-
-                              <button
-                                className="inbox-assign-btn inbox-assign-btn--day"
-                                onClick={() => {
-                                  setAssignDay(task);
-                                  setAssignDayDate(formatLocalDate(new Date()));
-                                }}
-                              >
-                                В день
-                              </button>
-
-                              <button
-                                className="inbox-assign-btn inbox-assign-btn--week"
-                                onClick={() => {
-                                  setAssignWeek(task);
-                                  setAssignWeekDate(formatLocalDate(new Date()));
-                                }}
-                              >
-                                В неделю
-                              </button>
-                            </div>
-
-                            {task.description && expandedDesc.has(task.id) && (
-                              <div className="inbox-task-desc">{task.description}</div>
+                                <button
+                                  className="inbox-assign-btn inbox-assign-btn--week"
+                                  onClick={() => {
+                                    setAssignWeek(task);
+                                    setAssignWeekDate(formatLocalDate(new Date()));
+                                  }}
+                                >
+                                  В неделю
+                                </button>
+                              </>
                             )}
                           </div>
 
-                          <div
-                            className="day-task-color"
-                            style={{ backgroundColor: tintColor }}
-                          />
+                          {task.description && expandedDesc.has(task.id) && (
+                            <div className="inbox-task-desc">{task.description}</div>
+                          )}
+                        </div>
 
-                          <div className="day-task-actions">
-                            <button
-                              className="day-task-delete"
-                              onClick={() => handleDelete(task.id)}
-                              title="Удалить"
-                            >
-                              ×
-                            </button>
-                            <button
-                              className="day-task-edit"
-                              onClick={() => openEdit(task)}
-                              title="Редактировать"
-                            >
-                              ✎
-                            </button>
+                        <div
+                          className="day-task-color"
+                          style={{ backgroundColor: tintColor }}
+                        />
+
+                        <div className="day-task-actions">
+                          <button
+                            className="day-task-delete"
+                            onClick={() => handleDelete(task.id)}
+                            title="Удалить"
+                          >
+                            ×
+                          </button>
+                          <button
+                            className="day-task-edit"
+                            onClick={() => openEdit(task)}
+                            title="Редактировать"
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {activeTasks.length > 0 && (
+                        <ul className="day-tasks-list">
+                          {activeTasks.map(t => renderTask(t, true))}
+                        </ul>
+                      )}
+                      {doneTasks.length > 0 && (
+                        <>
+                          <div className="inbox-section-divider">
+                            <span>Выполнено · {doneTasks.length}</span>
                           </div>
-
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                          <ul className="day-tasks-list">
+                            {doneTasks.map(t => renderTask(t, false))}
+                          </ul>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </section>
 

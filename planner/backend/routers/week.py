@@ -379,6 +379,12 @@ def api_delete_week_task(
         DayTask.status == 0,
     ).delete(synchronize_session=False)
 
+    # У завершённых дневных задач обнуляем FK, чтобы они пережили удаление недельной
+    db.query(DayTask).filter(
+        DayTask.user_id == current_user_row.id,
+        DayTask.source_week_task_id == task_id,
+    ).update({"source_week_task_id": None}, synchronize_session=False)
+
     db.delete(row)
     db.commit()
     return {"ok": True}

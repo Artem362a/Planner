@@ -9,9 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from bootstrap import (
+    ensure_day_task_source_inbox_column,
     ensure_feedback_screenshots_column,
     ensure_goal_columns,
     ensure_goal_stage_columns,
+    ensure_inbox_assigned_at_column,
+    ensure_inbox_completed_at_column,
     ensure_schemas,
     ensure_task_category_icon_column,
     ensure_user_avatar_column,
@@ -35,6 +38,9 @@ ensure_user_theme_column()
 ensure_goal_columns()
 ensure_goal_stage_columns()
 ensure_feedback_screenshots_column()
+ensure_inbox_assigned_at_column()
+ensure_inbox_completed_at_column()
+ensure_day_task_source_inbox_column()
 
 app.add_middleware(
     CORSMiddleware,

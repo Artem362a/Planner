@@ -119,6 +119,7 @@ class Goal(Base):
     has_stages: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     schedule_mode: Mapped[str | None] = mapped_column(String, nullable=True)
     category_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_focus: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -286,6 +287,7 @@ class DayTask(Base):
     subtasks = Column(JSON, nullable=True)
     order_index = Column(Integer, nullable=False, default=0, index=True)
     source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
+    source_inbox_task_id = Column(Integer, ForeignKey("planning.inbox_tasks.id"), nullable=True, index=True)
     dismissed = Column(Boolean, default=False, nullable=False)
 
 
@@ -335,3 +337,8 @@ class InboxTask(Base):
     subtasks = Column(JSON, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # Set when the user assigns this inbox item to a day/week. We keep the
+    # row alive as a reminder — the user removes it manually with the × button.
+    assigned_at = Column(DateTime, nullable=True)
+    # Set automatically when the linked DayTask is marked done.
+    completed_at = Column(DateTime, nullable=True)

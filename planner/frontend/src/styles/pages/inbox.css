@@ -1,3 +1,23 @@
+/* Section divider between active and done tasks */
+.inbox-section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 8px;
+  color: #9d93c4;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.inbox-section-divider::before,
+.inbox-section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e8e2f5;
+}
+
 /* Empty state */
 .inbox-empty {
   display: flex;
@@ -109,6 +129,21 @@
   outline: none;
   border-color: #9b7cf4;
   box-shadow: 0 0 0 2px rgba(155, 124, 244, 0.18);
+}
+
+.day-task-item--assigned {
+  opacity: 0.65;
+}
+.day-task-item--assigned .day-task-title {
+  font-weight: 500;
+}
+
+.day-task-item--inbox-done {
+  opacity: 0.5;
+}
+.day-task-item--inbox-done .day-task-title {
+  text-decoration: line-through;
+  font-weight: 500;
 }
 
 /* =========================

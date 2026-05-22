@@ -14,6 +14,7 @@ import {
   fetchCategories,
   fetchWeekImportCandidates,
   importWeekTasksToDay,
+  updateDayTemplate,
 } from "../../../api/tasks";
 import PrioritySelect from "../../forms/PrioritySelect";
 import CategorySelect from "../../forms/CategorySelect";
@@ -25,6 +26,13 @@ import DayGoalsPanel from "../../goals/DayGoalsPanel";
 const PRIORITIES = [
   { value: "high", label: "Важный" },
   { value: "medium", label: "Обычный" },
+];
+
+const TEMPLATE_COLORS = [
+  "#9B7BE8", "#7C67D8", "#7EA7F2", "#6F8EDB", "#67C5D8",
+  "#5FD6C0", "#72C99F", "#8BCB6F", "#B9C86A", "#D5C65F",
+  "#F0B36A", "#E99A6D", "#F1848E", "#E36F9E", "#D985C7",
+  "#B97AD6", "#A6A2D8", "#95A0BF",
 ];
 
 function hexToRgba(hex, alpha = 0.14) {
@@ -136,9 +144,8 @@ function categoriesArrayToMap(items) {
 
 export default function DayPlanFull({ selectedDate }) {
   const [tasks, setTasks] = useState([]);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState("timeline");
   const [dayNotes, setDayNotes] = useState("");
-  const [activeTimelineTaskId, setActiveTimelineTaskId] = useState(null);
   const [expandedTimelineGroupId, setExpandedTimelineGroupId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
@@ -172,7 +179,13 @@ export default function DayPlanFull({ selectedDate }) {
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState("");
-  const [templateColor, setTemplateColor] = useState("#f0e7ff");
+  const [templateColor, setTemplateColor] = useState("#9B7BE8");
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [editingTemplateName, setEditingTemplateName] = useState("");
+  const [editingTemplateColor, setEditingTemplateColor] = useState("#9B7BE8");
+  const [editingTasksTpl, setEditingTasksTpl] = useState(null);
+  const [editingTasksList, setEditingTasksList] = useState([]);
+  const [applyTemplateError, setApplyTemplateError] = useState("");
 
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoverInsertSide, setHoverInsertSide] = useState(null);
@@ -341,10 +354,10 @@ const overdueImportCandidates = useMemo(
   const timelineMinTaskHeight = 48;
   const timelineSmallTaskMinutes = 20;
   const timelineStandaloneSmallGroupSize = 3;
-  const timelineSmallGroupBaseHeight = 56;
-  const timelineSmallGroupRowHeight = 24;
-  const timelineSmallGroupExpandedPadding = 18;
-  const timelineSmallGroupMaxListHeight = 180;
+  const timelineSmallGroupBaseHeight = 60;
+  const timelineSmallGroupRowHeight = 26;
+  const timelineSmallGroupExpandedPadding = 30;
+  const timelineSmallGroupMaxListHeight = 260;
   const getSmallGroupId = (run) => `small-${run[0].id}-${run[run.length - 1].id}`;
   const getSmallGroupHeight = (run) => {
     const id = getSmallGroupId(run);
@@ -380,7 +393,6 @@ const overdueImportCandidates = useMemo(
     };
 
     const isSmallTask = (task) =>
-      (task.duration_min || 0) > 0 &&
       (task.duration_min || 0) <= timelineSmallTaskMinutes;
 
     for (let index = 0; index < tasksWithComputedTime.length; index += 1) {
@@ -485,7 +497,6 @@ const overdueImportCandidates = useMemo(
     const pendingBefore = new Map();
 
     const isSmallTask = (task) =>
-      (task.duration_min || 0) > 0 &&
       (task.duration_min || 0) <= timelineSmallTaskMinutes;
 
     const makeSmallGroup = (run) => ({
@@ -1113,6 +1124,17 @@ const overdueImportCandidates = useMemo(
       startTime = form.start_time;
     }
 
+    if (durationMin) {
+      const currentTotal = tasks.reduce(
+        (sum, t) => sum + (editingTaskId !== null && t.id === editingTaskId ? 0 : t.duration_min || 0),
+        0
+      );
+      if (currentTotal + durationMin > 1440) {
+        setFormError("День не может превышать 24 часа.");
+        return;
+      }
+    }
+
     const body = {
       title: form.title,
       start_time: startTime,
@@ -1347,6 +1369,24 @@ const overdueImportCandidates = useMemo(
     );
   };
 
+  const sidePanel = (
+    <aside className="day-side-panel">
+      <section className="day-side-section">
+        <div className="day-side-title-row">
+          <h3>Заметки дня</h3>
+        </div>
+
+        <textarea
+          value={dayNotes}
+          onChange={(e) => saveDayNotes(e.target.value)}
+          placeholder="Мысли, итоги, важные детали..."
+        />
+      </section>
+
+      <DayGoalsPanel selectedDay={dayString} />
+    </aside>
+  );
+
   return (
     <div className="day-tasks-page">
       <div className="day-tasks-wrapper">
@@ -1380,24 +1420,18 @@ const overdueImportCandidates = useMemo(
           <div className="day-view-toggle" aria-label="Режим отображения">
             <button
               type="button"
-              className={viewMode === "list" ? "active" : ""}
-              onClick={() => {
-                setActiveTimelineTaskId(null);
-                setViewMode("list");
-              }}
+              className={viewMode === "timeline" ? "active" : ""}
+              onClick={() => setViewMode("timeline")}
             >
-              Список
+              Таймлайн
             </button>
 
             <button
               type="button"
-              className={viewMode === "timeline" ? "active" : ""}
-              onClick={() => {
-                setActiveTimelineTaskId(null);
-                setViewMode("timeline");
-              }}
+              className={viewMode === "list" ? "active" : ""}
+              onClick={() => setViewMode("list")}
             >
-              Таймлайн
+              Список
             </button>
           </div>
         </div>
@@ -1421,6 +1455,7 @@ const overdueImportCandidates = useMemo(
         </div>
 
         {viewMode === "list" ? (
+          <div className="day-timeline-layout">
           <ul className={"day-tasks-list" + (dragIndex !== null ? " day-tasks-list--dragging" : "")}>
             {tasksWithComputedTime.map((t, index) => {
             const nextTask = tasksWithComputedTime[index + 1];
@@ -1646,6 +1681,8 @@ const overdueImportCandidates = useMemo(
               <li className="day-task-empty">Пока нет задач на этот день</li>
             )}
           </ul>
+          {sidePanel}
+          </div>
         ) : (
           <div className="day-timeline-layout">
             <div
@@ -1751,7 +1788,6 @@ const overdueImportCandidates = useMemo(
 
                   const { task, top, height, before, after } = item;
                   const color = categories[task.category]?.color || "#BBBBBB";
-                  const isMenuOpen = activeTimelineTaskId === task.id;
                   const attachedTasks = [...before, ...after];
                   const isCompact =
                     attachedTasks.length === 0 && (task.duration_min || 0) <= 30;
@@ -1799,43 +1835,14 @@ const overdueImportCandidates = useMemo(
                       <button
                         type="button"
                         className="day-timeline-menu"
-                        aria-label="Показать детали задачи"
+                        aria-label="Редактировать задачу"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setActiveTimelineTaskId((prev) =>
-                            prev === task.id ? null : task.id
-                          );
+                          openEditModal(task);
                         }}
                       >
-                        ⋮
+                        ✎
                       </button>
-
-                      {isMenuOpen && (
-                        <div className="day-timeline-popover">
-                          <div className="day-timeline-popover-title">
-                            {task.title}
-                          </div>
-
-                          <div className="day-timeline-popover-row">
-                            {task.computed_start_time}
-                            {task.duration_min
-                              ? ` – ${task.computed_end_time}`
-                              : ""}
-                          </div>
-
-                          {task.category && (
-                            <div className="day-timeline-popover-row">
-                              #{categories[task.category]?.title || task.category}
-                            </div>
-                          )}
-
-                          {task.subtasks && task.subtasks.length > 0 && (
-                            <div className="day-timeline-popover-row">
-                              Подзадач: {task.subtasks.length}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </article>
                   );
                 })}
@@ -1848,22 +1855,7 @@ const overdueImportCandidates = useMemo(
               </div>
             </div>
 
-            <aside className="day-side-panel">
-              <section className="day-side-section">
-                <div className="day-side-title-row">
-                  <h3>Заметки дня</h3>
-                  <span>{dayNotes.trim() ? "•" : ""}</span>
-                </div>
-
-                <textarea
-                  value={dayNotes}
-                  onChange={(e) => saveDayNotes(e.target.value)}
-                  placeholder="Мысли, итоги, важные детали..."
-                />
-              </section>
-
-              <DayGoalsPanel selectedDay={dayString} />
-            </aside>
+            {sidePanel}
           </div>
         )}
       </div>
@@ -2059,33 +2051,42 @@ const overdueImportCandidates = useMemo(
           className="task-modal-backdrop"
           onClick={() => setIsSaveTemplateOpen(false)}
         >
-          <div className="task-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Новый шаблон дня</h3>
+          <div className="task-modal save-template-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="save-template-title">Сохранить шаблон</h3>
 
-            <div className="template-name-row">
-              <span className="template-name-label">Название:</span>
+            <div className="save-template-field">
+              <label className="save-template-label">Название</label>
               <input
                 type="text"
-                className="template-name-input"
+                className="save-template-input"
                 placeholder="Например, Учёба + спорт"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
+                autoFocus
               />
             </div>
 
-            <label>
-              Цвет
-              <input
-                type="color"
-                value={templateColor}
-                onChange={(e) => setTemplateColor(e.target.value)}
-              />
-            </label>
+            <div className="save-template-field">
+              <label className="save-template-label">Цвет</label>
+              <div className="category-color-palette save-template-palette">
+                {TEMPLATE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={"category-color-swatch" + (templateColor === color ? " category-color-swatch--active" : "")}
+                    style={{ "--swatch-color": color }}
+                    onClick={() => setTemplateColor(color)}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
 
             <div className="task-modal-buttons">
               <button
                 type="button"
                 className="primary-btn"
+                disabled={!templateName.trim()}
                 onClick={async () => {
                   if (!templateName.trim()) return;
 
@@ -2097,6 +2098,7 @@ const overdueImportCandidates = useMemo(
                     });
                     setIsSaveTemplateOpen(false);
                     setTemplateName("");
+                    setTemplateColor("#9B7BE8");
                   } catch (e) {
                     console.error(e);
                   }
@@ -2120,62 +2122,160 @@ const overdueImportCandidates = useMemo(
       {isApplyTemplateOpen && (
         <div
           className="task-modal-backdrop"
-          onClick={() => setIsApplyTemplateOpen(false)}
+          onClick={() => { setIsApplyTemplateOpen(false); setEditingTemplateId(null); setApplyTemplateError(""); }}
         >
-          <div className="task-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Выбери шаблон</h3>
+          <div className="task-modal apply-template-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="save-template-title">Шаблоны</h3>
+            {applyTemplateError && (
+              <p className="form-error-banner">{applyTemplateError}</p>
+            )}
 
             <ul className="templates-list">
-              {templates.map((tpl) => (
-                <li key={tpl.id} className="template-item">
-                  <span
-                    className="template-color-dot"
-                    style={{ backgroundColor: tpl.color }}
-                  />
-                  <span className="template-name">{tpl.name}</span>
+              {templates.map((tpl) => {
+                const isEditing = editingTemplateId === tpl.id;
+                return (
+                  <li key={tpl.id} className={"template-item" + (isEditing ? " template-item--editing" : "")}>
+                    {isEditing ? (
+                      <div className="template-edit-form">
+                        <div className="template-edit-row">
+                          <span
+                            className="template-color-dot"
+                            style={{ backgroundColor: editingTemplateColor }}
+                          />
+                          <input
+                            className="template-edit-name-input"
+                            type="text"
+                            value={editingTemplateName}
+                            onChange={(e) => setEditingTemplateName(e.target.value)}
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            className="primary-btn template-edit-save"
+                            disabled={!editingTemplateName.trim()}
+                            onClick={async () => {
+                              try {
+                                const updated = await updateDayTemplate(tpl.id, {
+                                  name: editingTemplateName.trim(),
+                                  color: editingTemplateColor,
+                                });
+                                setTemplates((prev) =>
+                                  prev.map((t) => (t.id === updated.id ? updated : t))
+                                );
+                                setEditingTemplateId(null);
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            className="secondary-btn"
+                            onClick={() => setEditingTemplateId(null)}
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                        <div className="category-color-palette template-edit-palette">
+                          {TEMPLATE_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              className={"category-color-swatch" + (editingTemplateColor === color ? " category-color-swatch--active" : "")}
+                              style={{ "--swatch-color": color }}
+                              onClick={() => setEditingTemplateColor(color)}
+                              title={color}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <span
+                          className="template-color-dot"
+                          style={{ backgroundColor: tpl.color }}
+                        />
+                        <span className="template-name">{tpl.name}</span>
 
-                  <div className="template-actions">
-                    <button
-                      type="button"
-                      className="primary-btn"
-                      onClick={async () => {
-                        try {
-                          await applyDayTemplate(tpl.id, dayString);
-                          const updated = await fetchDayTasks(dayString);
-                          setTasks(updated);
-                          setIsApplyTemplateOpen(false);
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
-                    >
-                      Импорт
-                    </button>
+                        <div className="template-actions">
+                          <button
+                            type="button"
+                            className="primary-btn"
+                            onClick={async () => {
+                              try {
+                                setApplyTemplateError("");
+                                await applyDayTemplate(tpl.id, dayString);
+                                const updated = await fetchDayTasks(dayString);
+                                setTasks(updated);
+                                setIsApplyTemplateOpen(false);
+                                setEditingTemplateId(null);
+                              } catch (e) {
+                                const msg = e?.message || "";
+                                setApplyTemplateError(
+                                  msg.includes("24") ? "День не может превышать 24 часа." : "Не удалось применить шаблон."
+                                );
+                              }
+                            }}
+                          >
+                            Импорт
+                          </button>
 
-                    <button
-                      type="button"
-                      className="template-delete-btn"
-                      onClick={async () => {
-                        const ok = window.confirm(
-                          `Удалить шаблон "${tpl.name}"?`
-                        );
-                        if (!ok) return;
+                          <button
+                            type="button"
+                            className="template-edit-btn"
+                            title="Переименовать / цвет"
+                            onClick={() => {
+                              setEditingTemplateId(tpl.id);
+                              setEditingTemplateName(tpl.name);
+                              setEditingTemplateColor(tpl.color);
+                            }}
+                          >
+                            ✎
+                          </button>
 
-                        try {
-                          await deleteDayTemplate(tpl.id);
-                          setTemplates((prev) =>
-                            prev.filter((item) => item.id !== tpl.id)
-                          );
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </li>
-              ))}
+                          <button
+                            type="button"
+                            className="template-edit-btn"
+                            title="Редактировать задачи"
+                            onClick={() => {
+                              setEditingTasksTpl(tpl);
+                              setEditingTasksList(
+                                (tpl.tasks || []).map((t, i) => ({ ...t, _id: i }))
+                              );
+                            }}
+                          >
+                            ☰
+                          </button>
+
+                          <button
+                            type="button"
+                            className="template-delete-btn"
+                            onClick={async () => {
+                              const ok = window.confirm(
+                                `Удалить шаблон "${tpl.name}"?`
+                              );
+                              if (!ok) return;
+
+                              try {
+                                await deleteDayTemplate(tpl.id);
+                                setTemplates((prev) =>
+                                  prev.filter((item) => item.id !== tpl.id)
+                                );
+                              } catch (e) {
+                                console.error(e);
+                              }
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
 
             {templates.length === 0 && (
@@ -2183,6 +2283,204 @@ const overdueImportCandidates = useMemo(
                 Сохрани шаблон дня и используй его для похожих планов
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {editingTasksTpl && (
+        <div
+          className="task-modal-backdrop"
+          onClick={() => setEditingTasksTpl(null)}
+        >
+          <div
+            className="task-modal tpl-tasks-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="save-template-title">
+              Задачи шаблона: {editingTasksTpl.name}
+            </h3>
+
+            <div className="tpl-task-header">
+              <span />
+              <span>Название</span>
+              <span>Время</span>
+              <span>Длит.</span>
+              <span>Приоритет</span>
+              <span />
+            </div>
+
+            <div className="tpl-tasks-list">
+              {editingTasksList.map((task, idx) => (
+                <div key={task._id} className="tpl-task-card">
+                  <div className="tpl-task-row">
+                    <button
+                      type="button"
+                      className={"tpl-task-expand" + (task._expanded ? " is-open" : "")}
+                      title="Подзадачи"
+                      onClick={() =>
+                        setEditingTasksList((prev) =>
+                          prev.map((t, i) => i === idx ? { ...t, _expanded: !t._expanded } : t)
+                        )
+                      }
+                    >
+                      {task._expanded ? "▾" : "▸"}
+                    </button>
+                    <input
+                      className="tpl-task-title"
+                      type="text"
+                      placeholder="Название"
+                      value={task.title}
+                      onChange={(e) =>
+                        setEditingTasksList((prev) =>
+                          prev.map((t, i) => i === idx ? { ...t, title: e.target.value } : t)
+                        )
+                      }
+                    />
+                    <input
+                      className="tpl-task-time"
+                      type="text"
+                      placeholder="ЧЧ:ММ"
+                      value={task.start_time || ""}
+                      onChange={(e) =>
+                        setEditingTasksList((prev) =>
+                          prev.map((t, i) => i === idx ? { ...t, start_time: e.target.value || null } : t)
+                        )
+                      }
+                    />
+                    <input
+                      className="tpl-task-dur"
+                      type="number"
+                      placeholder="мин"
+                      min="1"
+                      value={task.duration_min || ""}
+                      onChange={(e) =>
+                        setEditingTasksList((prev) =>
+                          prev.map((t, i) =>
+                            i === idx ? { ...t, duration_min: e.target.value ? parseInt(e.target.value) : null } : t
+                          )
+                        )
+                      }
+                    />
+                    <select
+                      className="tpl-task-priority"
+                      value={task.priority || "medium"}
+                      onChange={(e) =>
+                        setEditingTasksList((prev) =>
+                          prev.map((t, i) => i === idx ? { ...t, priority: e.target.value } : t)
+                        )
+                      }
+                    >
+                      <option value="medium">Обычный</option>
+                      <option value="high">Важный</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="tpl-task-delete"
+                      onClick={() =>
+                        setEditingTasksList((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {task._expanded && (
+                    <div className="tpl-task-subtasks">
+                      {(task.subtasks || []).map((st, si) => (
+                        <div key={si} className="tpl-subtask-row">
+                          <span className="tpl-subtask-dot">·</span>
+                          <input
+                            className="tpl-subtask-title"
+                            type="text"
+                            placeholder="Подзадача"
+                            value={st.title}
+                            onChange={(e) =>
+                              setEditingTasksList((prev) =>
+                                prev.map((t, i) => {
+                                  if (i !== idx) return t;
+                                  const subs = [...(t.subtasks || [])];
+                                  subs[si] = { ...subs[si], title: e.target.value };
+                                  return { ...t, subtasks: subs };
+                                })
+                              )
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="tpl-task-delete"
+                            onClick={() =>
+                              setEditingTasksList((prev) =>
+                                prev.map((t, i) => {
+                                  if (i !== idx) return t;
+                                  return { ...t, subtasks: (t.subtasks || []).filter((_, j) => j !== si) };
+                                })
+                              )
+                            }
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        className="tpl-subtask-add"
+                        onClick={() =>
+                          setEditingTasksList((prev) =>
+                            prev.map((t, i) => {
+                              if (i !== idx) return t;
+                              return { ...t, subtasks: [...(t.subtasks || []), { id: null, title: "", done: false }] };
+                            })
+                          )
+                        }
+                      >
+                        + Подзадача
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="tpl-tasks-add"
+              onClick={() =>
+                setEditingTasksList((prev) => [
+                  ...prev,
+                  { _id: Date.now(), title: "", start_time: null, duration_min: null, priority: "medium", category: null, subtasks: [], _expanded: false },
+                ])
+              }
+            >
+              + Добавить задачу
+            </button>
+
+            <div className="task-modal-buttons">
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={async () => {
+                  const cleaned = editingTasksList.map(({ _id, _expanded, ...rest }) => rest);
+                  try {
+                    const updated = await updateDayTemplate(editingTasksTpl.id, { tasks: cleaned });
+                    setTemplates((prev) =>
+                      prev.map((t) => (t.id === updated.id ? updated : t))
+                    );
+                    setEditingTasksTpl(null);
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
+              >
+                Сохранить
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => setEditingTasksTpl(null)}
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}

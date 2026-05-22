@@ -91,6 +91,16 @@ export async function deleteGoal(goalId) {
   return await handleResponse(res, "Failed to delete goal");
 }
 
+export async function toggleGoalFocus(goalId) {
+  const res = await fetch(`${API_URL}/goals/${goalId}/focus`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(res, "Failed to toggle goal focus");
+  return normalizeGoal(data);
+}
+
 export async function reorderGoals(orderedIds) {
   const res = await fetch(`${API_URL}/goals/reorder`, {
     method: "POST",

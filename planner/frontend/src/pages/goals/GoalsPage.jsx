@@ -8,6 +8,7 @@ import {
   createGoalStage,
   updateGoalStage,
   deleteGoalStage,
+  toggleGoalFocus,
 } from "../../api/goals";
 import { fetchCategories } from "../../api/tasks";
 import { CategoryIcon } from "../../components/icons";
@@ -152,6 +153,7 @@ export default function GoalsPage() {
   const [filter, setFilter] = useState("active");
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState(null);
   const [expandedGoals, setExpandedGoals] = useState({});
   const [inlineStageInputs, setInlineStageInputs] = useState({});
 
@@ -161,6 +163,8 @@ export default function GoalsPage() {
 
   const [createForm, setCreateForm] = useState(createEmptyForm());
   const [newStageTitle, setNewStageTitle] = useState("");
+
+  const isEditing = editingGoalId !== null;
 
   async function loadGoals() {
     try {
@@ -218,14 +222,38 @@ export default function GoalsPage() {
   }, [filter, goals.length]);
 
   function openCreateModal() {
+    setEditingGoalId(null);
     setCreateForm(createEmptyForm());
     setNewStageTitle("");
     setShowAdvancedCreate(false);
     setIsCreateOpen(true);
   }
 
+  function openEditModal(goal) {
+    setEditingGoalId(goal.id);
+    setCreateForm({
+      title: goal.title || "",
+      description: goal.description || "",
+      color: goal.color || "#7ECF8A",
+      category_key: goal.category_key || null,
+      goal_type: goal.goal_type || "one_time",
+      target_date: goal.target_date || "",
+      repeat_unit: goal.repeat_unit || "day",
+      has_stages: !!goal.has_stages,
+      schedule_mode: goal.schedule_mode || "auto",
+      schedule_interval: 7,
+      stages: (Array.isArray(goal.stages) ? goal.stages : []).map((s) => ({ ...s, _isNew: false })),
+    });
+    setNewStageTitle("");
+    setShowAdvancedCreate(
+      !!(goal.description || goal.has_stages)
+    );
+    setIsCreateOpen(true);
+  }
+
   function closeCreateModal() {
     setIsCreateOpen(false);
+    setEditingGoalId(null);
   }
 
   function toggleGoalExpanded(goalId) {
@@ -271,6 +299,7 @@ export default function GoalsPage() {
     setCreateForm((prev) => ({
       ...prev,
       goal_type: goalType,
+      has_stages: false,
       target_date: prev.target_date || "",
       repeat_unit: goalType === "recurring" ? prev.repeat_unit || "day" : "day",
     }));
@@ -289,6 +318,7 @@ export default function GoalsPage() {
           title,
           done: false,
           planned_date: "",
+          _isNew: true,
         },
       ],
     }));
@@ -336,21 +366,63 @@ export default function GoalsPage() {
       return;
     }
 
-    try {
-      const createdGoal = await createGoal({
-        title,
-        description: createForm.description.trim() || null,
-        color: createForm.color,
-        category_key: createForm.category_key || null,
-        status: "active",
-        goal_type: createForm.goal_type,
-        target_date: createForm.target_date || null,
-        repeat_unit:
-          createForm.goal_type === "recurring" ? createForm.repeat_unit : null,
-        has_stages: createForm.has_stages,
-        schedule_mode: createForm.has_stages ? createForm.schedule_mode : null,
-      });
+    const payload = {
+      title,
+      description: createForm.description.trim() || null,
+      color: createForm.color,
+      category_key: createForm.category_key || null,
+      status: "active",
+      goal_type: createForm.goal_type,
+      target_date: createForm.target_date || null,
+      repeat_unit:
+        createForm.goal_type === "recurring" ? createForm.repeat_unit : null,
+      has_stages: createForm.has_stages,
+      schedule_mode: createForm.has_stages ? createForm.schedule_mode : null,
+    };
 
+    try {
+      if (isEditing) {
+        const existing = goals.find((g) => g.id === editingGoalId);
+        await updateGoal(editingGoalId, {
+          ...payload,
+          status: existing?.status || "active",
+        });
+
+        if (createForm.has_stages) {
+          const originalIds = new Set((existing?.stages || []).map((s) => s.id));
+          const keptIds = new Set(
+            createForm.stages.filter((s) => !s._isNew).map((s) => s.id)
+          );
+
+          for (const origId of originalIds) {
+            if (!keptIds.has(origId)) {
+              await deleteGoalStage(editingGoalId, origId).catch(console.error);
+            }
+          }
+
+          for (const stage of createForm.stages) {
+            if (stage._isNew) {
+              await createGoalStage(editingGoalId, {
+                title: stage.title,
+                done: false,
+                planned_date: stage.planned_date || null,
+              }).catch(console.error);
+            } else {
+              await updateGoalStage(editingGoalId, stage.id, {
+                title: stage.title,
+                done: stage.done || false,
+                planned_date: stage.planned_date || null,
+              }).catch(console.error);
+            }
+          }
+        }
+
+        await loadGoals();
+        closeCreateModal();
+        return;
+      }
+
+      const createdGoal = await createGoal(payload);
       let actualGoal = createdGoal;
 
       if (createForm.has_stages && createForm.stages.length > 0) {
@@ -376,7 +448,7 @@ export default function GoalsPage() {
       closeCreateModal();
     } catch (error) {
       console.error(error);
-      alert(error.message || "Не удалось создать цель");
+      alert(error.message || (isEditing ? "Не удалось сохранить цель" : "Не удалось создать цель"));
     }
   }
 
@@ -492,21 +564,10 @@ export default function GoalsPage() {
           <div className="day-big-card goals-shell-card">
             <section className="goals-page-section">
               <div className="goals-page-head">
-                <div className="goals-page-head-left">
-                  <span className="feedback-badge">Цели</span>
-                  <h2 className="goals-page-title">Твои цели</h2>
-                  <p className="goals-page-subtitle">
-                    Простые, регулярные и цели с этапами — всё в одном месте
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className="week-add-btn goals-create-btn"
-                  onClick={openCreateModal}
-                >
-                  + Новая цель
-                </button>
+                <h2 className="goals-page-title">Твои цели</h2>
+                <p className="goals-page-subtitle">
+                  Простые, регулярные и цели с этапами — всё в одном месте
+                </p>
               </div>
 
               <div className="goals-toolbar goals-toolbar--clean">
@@ -667,11 +728,37 @@ export default function GoalsPage() {
 
                               <button
                                 type="button"
+                                className={
+                                  "goal-action-btn goal-action-btn--focus" +
+                                  (goal.is_focus ? " is-active" : "")
+                                }
+                                title={goal.is_focus ? "Убрать из фокуса" : "В фокус"}
+                                onClick={async () => {
+                                  const updated = await toggleGoalFocus(goal.id);
+                                  setGoals((prev) =>
+                                    prev.map((g) => (g.id === updated.id ? updated : g))
+                                  );
+                                }}
+                              >
+                                ◎
+                              </button>
+
+                              <button
+                                type="button"
                                 className="goal-action-btn goal-action-btn--danger"
                                 title="Удалить цель"
                                 onClick={() => handleDeleteGoal(goal.id)}
                               >
                                 ×
+                              </button>
+
+                              <button
+                                type="button"
+                                className="goal-action-btn"
+                                title="Редактировать цель"
+                                onClick={() => openEditModal(goal)}
+                              >
+                                ✎
                               </button>
                             </div>
                           </div>
@@ -768,14 +855,23 @@ export default function GoalsPage() {
             {isCreateOpen && (
               <div className="modal-overlay" onClick={closeCreateModal}>
                 <div
-                  className="modal goal-create-modal goal-create-modal--soft"
+                  className={
+                    "modal goal-create-modal goal-create-modal--soft" +
+                    (createForm.has_stages ? " goal-create-modal--expanded" : "")
+                  }
+                  style={createForm.has_stages
+                    ? { width: "min(740px, calc(100vw - 24px))", maxWidth: "740px" }
+                    : undefined
+                  }
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="goal-create-modal-header">
                     <div>
-                      <h3>Новая цель</h3>
+                      <h3>{isEditing ? "Редактировать цель" : "Новая цель"}</h3>
                       <p>
-                        Сначала заполни только главное. Остальное — по желанию.
+                        {isEditing
+                          ? "Название, срок и этапы — всё можно изменить здесь."
+                          : "Сначала заполни только главное. Остальное — по желанию."}
                       </p>
                     </div>
 
@@ -789,12 +885,13 @@ export default function GoalsPage() {
                   </div>
 
                   <form onSubmit={handleCreateGoal} className="task-modal-form">
+                    {/* 3 mutually exclusive types */}
                     <div className="goal-type-switch">
                       <button
                         type="button"
                         className={
                           "goal-type-chip" +
-                          (createForm.goal_type === "one_time"
+                          (createForm.goal_type === "one_time" && !createForm.has_stages
                             ? " goal-type-chip--active"
                             : "")
                         }
@@ -820,258 +917,266 @@ export default function GoalsPage() {
                         type="button"
                         className={
                           "goal-type-chip" +
-                          (createForm.has_stages
-                            ? " goal-type-chip--active"
-                            : "")
+                          (createForm.has_stages ? " goal-type-chip--active" : "")
                         }
                         onClick={() => {
-                          setGoalType("one_time");
-                          setShowAdvancedCreate(true);
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            goal_type: "one_time",
-                            has_stages: true,
-                            schedule_mode: prev.schedule_mode || "auto",
-                          }));
+                          if (!isEditing) {
+                            setCreateForm((prev) => ({
+                              ...prev,
+                              goal_type: "one_time",
+                              has_stages: true,
+                              schedule_mode: prev.schedule_mode || "auto",
+                            }));
+                          }
                         }}
                       >
                         С этапами
                       </button>
                     </div>
 
-                    <div className="goal-form-grid">
-                      <label className="goal-form-field goal-form-field--full">
-                        <span>Название цели</span>
-                        <input
-                          type="text"
-                          name="title"
-                          value={createForm.title}
-                          onChange={handleCreateFormChange}
-                          placeholder="Например, Сделать систему целей"
-                        />
-                      </label>
+                    {/* Two-column on desktop when С этапами, single column otherwise */}
+                    <div className={createForm.has_stages ? "goal-form-cols" : ""}>
 
-                      {categories.length > 0 && (
-                        <label className="goal-form-field goal-form-field--full goal-form-field--cat">
-                          <span>Категория</span>
-                          <CategorySelect
-                            value={createForm.category_key || ""}
-                            categories={categoriesMap}
-                            placeholder="Без категории"
-                            dropUp
-                            onChange={(key) => {
-                              const cat = categoriesMap[key];
-                              setCreateForm((prev) => ({
-                                ...prev,
-                                category_key: key || null,
-                                color: cat ? cat.color : "#7ECF8A",
-                              }));
-                            }}
-                            onManageClick={() => setIsCategoryManagerOpen(true)}
-                          />
-                        </label>
-                      )}
+                      {/* Main / left column */}
+                      <div className={createForm.has_stages ? "goal-form-col-main" : ""}>
+                        <div className="goal-form-grid">
+                          <label className="goal-form-field goal-form-field--full">
+                            <span>Название цели</span>
+                            <input
+                              type="text"
+                              name="title"
+                              value={createForm.title}
+                              onChange={handleCreateFormChange}
+                              placeholder="Например, Сделать систему целей"
+                            />
+                          </label>
 
-                      {(createForm.goal_type === "one_time" ||
-                        createForm.goal_type === "recurring") && (
-                        <label className="goal-form-field goal-form-field--full">
-                          <span>
-                            {createForm.goal_type === "recurring"
-                              ? "Повторять до"
-                              : "Срок достижения"}
-                          </span>
-                          <input
-                            type="date"
-                            name="target_date"
-                            value={createForm.target_date}
-                            onChange={handleCreateFormChange}
-                          />
-                        </label>
-                      )}
+                          {categories.length > 0 && (
+                            <label className="goal-form-field goal-form-field--full goal-form-field--cat">
+                              <span>Категория</span>
+                              <CategorySelect
+                                value={createForm.category_key || ""}
+                                categories={categoriesMap}
+                                placeholder="Без категории"
+                                dropUp
+                                onChange={(key) => {
+                                  const cat = categoriesMap[key];
+                                  setCreateForm((prev) => ({
+                                    ...prev,
+                                    category_key: key || null,
+                                    color: cat ? cat.color : "#7ECF8A",
+                                  }));
+                                }}
+                                onManageClick={() => setIsCategoryManagerOpen(true)}
+                              />
+                            </label>
+                          )}
 
-                      {createForm.goal_type === "recurring" && (
-                        <label className="goal-form-field goal-form-field--full">
-                          <span>Частота</span>
-                          <select
-                            name="repeat_unit"
-                            value={createForm.repeat_unit}
-                            onChange={handleCreateFormChange}
-                          >
-                            <option value="day">Каждый день</option>
-                            <option value="week">Каждую неделю</option>
-                            <option value="month">Каждый месяц</option>
-                          </select>
-                        </label>
-                      )}
-                    </div>
+                          <label className="goal-form-field goal-form-field--full">
+                            <span>
+                              {createForm.goal_type === "recurring"
+                                ? "Повторять до"
+                                : "Срок достижения"}
+                            </span>
+                            <input
+                              type="date"
+                              name="target_date"
+                              value={createForm.target_date}
+                              onChange={handleCreateFormChange}
+                            />
+                          </label>
 
-                    <button
-                      type="button"
-                      className="goal-advanced-toggle"
-                      onClick={() => setShowAdvancedCreate((prev) => !prev)}
-                    >
-                      {showAdvancedCreate
-                        ? "Скрыть расширенные настройки"
-                        : "Показать расширенные настройки"}
-                    </button>
-
-                    {showAdvancedCreate && (
-                      <div className="goal-advanced-block">
-                        <label className="goal-form-field goal-form-field--full">
-                          <span>Описание</span>
-                          <input
-                            type="text"
-                            name="description"
-                            value={createForm.description}
-                            onChange={handleCreateFormChange}
-                            placeholder="Коротко о цели"
-                          />
-                        </label>
-
-                        <label className="goal-checkbox-row">
-                          <input
-                            type="checkbox"
-                            name="has_stages"
-                            checked={createForm.has_stages}
-                            onChange={handleCreateFormChange}
-                          />
-                          <span>Разбить цель на этапы</span>
-                        </label>
-
-                        {createForm.has_stages && (
-                          <div className="subtasks-form-block subtasks-form-block--soft">
+                          {createForm.goal_type === "recurring" && (
                             <label className="goal-form-field goal-form-field--full">
-                              <span>Способ планирования этапов</span>
+                              <span>Частота</span>
                               <select
-                                name="schedule_mode"
-                                value={createForm.schedule_mode}
+                                name="repeat_unit"
+                                value={createForm.repeat_unit}
                                 onChange={handleCreateFormChange}
                               >
-                                <option value="auto">
-                                  Автоматическое распределение
-                                </option>
-                                <option value="every_n_days">
-                                  Раз в N дней
-                                </option>
-                                <option value="weekly">
-                                  По неделям
-                                </option>
-                                <option value="monthly">
-                                  По месяцам
-                                </option>
-                                <option value="dates">
-                                  По конкретным датам
-                                </option>
+                                <option value="day">Каждый день</option>
+                                <option value="week">Каждую неделю</option>
+                                <option value="month">Каждый месяц</option>
                               </select>
                             </label>
+                          )}
+                        </div>
 
-                            {createForm.schedule_mode === "every_n_days" && (
-                              <label className="goal-form-field goal-form-field--full">
-                                <span>Интервал в днях</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  name="schedule_interval"
-                                  value={createForm.schedule_interval}
-                                  onChange={handleCreateFormChange}
-                                />
-                              </label>
-                            )}
+                        <button
+                          type="button"
+                          className="goal-advanced-toggle"
+                          onClick={() => setShowAdvancedCreate((prev) => !prev)}
+                        >
+                          {showAdvancedCreate
+                            ? "Скрыть описание"
+                            : "Добавить описание"}
+                        </button>
 
-                            {createForm.schedule_mode === "auto" &&
-                              createForm.goal_type === "one_time" &&
-                              createForm.target_date &&
-                              createForm.stages.length > 0 && (
-                                <div className="goal-auto-plan-note">
-                                  Этапы будут равномерно распределены до{" "}
-                                  {createForm.target_date}
-                                </div>
-                              )}
-
-                            <div className="subtasks-form-title">Этапы</div>
-
-                            <div className="subtasks-form-input-row">
+                        {showAdvancedCreate && (
+                          <div className="goal-advanced-block">
+                            <label className="goal-form-field goal-form-field--full">
+                              <span>Описание</span>
                               <input
                                 type="text"
-                                placeholder="Добавить этап"
-                                value={newStageTitle}
-                                onChange={(e) =>
-                                  setNewStageTitle(e.target.value)
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addStageToCreateForm();
-                                  }
-                                }}
+                                name="description"
+                                value={createForm.description}
+                                onChange={handleCreateFormChange}
+                                placeholder="Коротко о цели"
                               />
-
-                              <button
-                                type="button"
-                                onClick={addStageToCreateForm}
-                              >
-                                +
-                              </button>
-                            </div>
-
-                            {createForm.stages.length > 0 && (
-                              <ul className="subtasks-form-list">
-                                {createForm.stages.map((stage, index) => (
-                                  <li key={stage.id}>
-                                    <div className="goal-stage-draft">
-                                      <span className="subtasks-form-text">
-                                        {stage.title}
-                                      </span>
-
-                                      {createForm.schedule_mode !== "dates" &&
-                                        getStagePlannedDate(
-                                          stage,
-                                          index,
-                                          createForm
-                                        ) && (
-                                          <em>
-                                            {getStagePlannedDate(
-                                              stage,
-                                              index,
-                                              createForm
-                                            )}
-                                          </em>
-                                        )}
-
-                                      {createForm.schedule_mode === "dates" && (
-                                        <input
-                                          type="date"
-                                          value={stage.planned_date || ""}
-                                          onChange={(e) =>
-                                            updateStageInCreateForm(stage.id, {
-                                              planned_date: e.target.value,
-                                            })
-                                          }
-                                        />
-                                      )}
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      className="subtasks-form-remove"
-                                      onClick={() =>
-                                        removeStageFromCreateForm(stage.id)
-                                      }
-                                    >
-                                      ×
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                            </label>
                           </div>
                         )}
                       </div>
-                    )}
+
+                      {/* Right column: stages panel (create mode = draft; edit mode = live) */}
+                      {createForm.has_stages && (
+                        <div className="goal-form-col-aside">
+                          {isEditing ? (
+                              <div className="subtasks-form-block subtasks-form-block--soft">
+                                <div className="subtasks-form-title">Этапы</div>
+
+                                {createForm.stages.length > 0 ? (
+                                  <ul className="subtasks-form-list goal-stages-scroll">
+                                    {createForm.stages.map((stage) => (
+                                      <li key={stage.id}>
+                                        <input
+                                          type="text"
+                                          value={stage.title}
+                                          onChange={(e) =>
+                                            updateStageInCreateForm(stage.id, { title: e.target.value })
+                                          }
+                                          style={{ flex: 1, minWidth: 0 }}
+                                        />
+                                        <button
+                                          type="button"
+                                          className="subtasks-form-remove"
+                                          onClick={() => removeStageFromCreateForm(stage.id)}
+                                        >
+                                          ×
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <div className="goal-empty-stages">Этапов пока нет</div>
+                                )}
+
+                                <div className="subtasks-form-input-row">
+                                  <input
+                                    type="text"
+                                    placeholder="Добавить этап"
+                                    value={newStageTitle}
+                                    onChange={(e) => setNewStageTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        addStageToCreateForm();
+                                      }
+                                    }}
+                                  />
+                                  <button type="button" onClick={addStageToCreateForm}>+</button>
+                                </div>
+                              </div>
+                          ) : (
+                            <div className="subtasks-form-block subtasks-form-block--soft goal-stages-panel">
+                              <label className="goal-form-field goal-form-field--full">
+                                <span>Способ планирования</span>
+                                <select
+                                  name="schedule_mode"
+                                  value={createForm.schedule_mode}
+                                  onChange={handleCreateFormChange}
+                                >
+                                  <option value="auto">Автоматически</option>
+                                  <option value="every_n_days">Раз в N дней</option>
+                                  <option value="weekly">По неделям</option>
+                                  <option value="monthly">По месяцам</option>
+                                  <option value="dates">По датам</option>
+                                </select>
+                              </label>
+
+                              {createForm.schedule_mode === "every_n_days" && (
+                                <label className="goal-form-field goal-form-field--full">
+                                  <span>Интервал в днях</span>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    name="schedule_interval"
+                                    value={createForm.schedule_interval}
+                                    onChange={handleCreateFormChange}
+                                  />
+                                </label>
+                              )}
+
+                              {createForm.schedule_mode === "auto" &&
+                                createForm.target_date &&
+                                createForm.stages.length > 0 && (
+                                  <div className="goal-auto-plan-note">
+                                    Этапы распределятся до {createForm.target_date}
+                                  </div>
+                                )}
+
+                              <div className="subtasks-form-title">Этапы</div>
+
+                              <div className="subtasks-form-input-row">
+                                <input
+                                  type="text"
+                                  placeholder="Добавить этап"
+                                  value={newStageTitle}
+                                  onChange={(e) => setNewStageTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addStageToCreateForm();
+                                    }
+                                  }}
+                                />
+                                <button type="button" onClick={addStageToCreateForm}>+</button>
+                              </div>
+
+                              {createForm.stages.length > 0 && (
+                                <ul className="subtasks-form-list goal-stages-scroll">
+                                  {createForm.stages.map((stage, index) => (
+                                    <li key={stage.id}>
+                                      <div className="goal-stage-draft">
+                                        <span className="subtasks-form-text">
+                                          {stage.title}
+                                        </span>
+                                        {createForm.schedule_mode !== "dates" &&
+                                          getStagePlannedDate(stage, index, createForm) && (
+                                            <em>{getStagePlannedDate(stage, index, createForm)}</em>
+                                          )}
+                                        {createForm.schedule_mode === "dates" && (
+                                          <input
+                                            type="date"
+                                            value={stage.planned_date || ""}
+                                            onChange={(e) =>
+                                              updateStageInCreateForm(stage.id, {
+                                                planned_date: e.target.value,
+                                              })
+                                            }
+                                          />
+                                        )}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="subtasks-form-remove"
+                                        onClick={() => removeStageFromCreateForm(stage.id)}
+                                      >
+                                        ×
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="modal-buttons">
                       <button type="submit" className="week-add-btn">
-                        Добавить цель
+                        {isEditing ? "Сохранить" : "Добавить цель"}
                       </button>
 
                       <button

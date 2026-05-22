@@ -10,6 +10,7 @@ FRONTEND_DIR="$REPO_DIR/planner/frontend"
 VENV="$BACKEND_DIR/venv"
 SERVICE="dayplan-backend"
 BRANCH="${1:-v0.1}"
+STATIC_DIR="/var/www/planner"
 
 info()    { printf '\033[1;34m==> %s\033[0m\n' "$*"; }
 success() { printf '\033[1;32m ok \033[0m %s\n' "$*"; }
@@ -31,7 +32,8 @@ info "Building frontend ..."
 cd "$FRONTEND_DIR"
 npm ci --silent
 npm run build
-success "frontend built → planner/frontend/dist/"
+cp -r "$FRONTEND_DIR/dist/." "$STATIC_DIR/"
+success "frontend built and copied → $STATIC_DIR"
 
 # ── 4. Restart backend ────────────────────────────────────────────────────────
 info "Restarting $SERVICE ..."

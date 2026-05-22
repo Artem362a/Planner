@@ -74,7 +74,7 @@
   }
 
   .day-timeline-board {
-    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-columns: 52px minmax(0, 1fr);
   }
 
   .day-timeline-track {
@@ -82,7 +82,7 @@
   }
 
   .day-timeline-task {
-    left: 10px;
+    left: 14px;
     grid-template-columns: 34px minmax(0, 1fr) 28px;
     gap: 8px;
     padding: 8px 8px 8px 10px;

@@ -238,6 +238,12 @@ class DayTemplateIn(BaseModel):
     tasks: list[TemplateTask]
 
 
+class DayTemplatePatch(BaseModel):
+    name: str | None = None
+    color: str | None = None
+    tasks: list[TemplateTask] | None = None
+
+
 class DayTemplateOut(BaseModel):
     id: int
     name: str
@@ -340,6 +346,7 @@ class GoalOut(BaseModel):
     stages: list[GoalStageOut] = []
     progress: float = 0.0
     day_done: bool = False
+    is_focus: bool = False
 
 
 class GoalReorderIn(BaseModel):
@@ -445,6 +452,8 @@ class InboxTaskOut(BaseModel):
     category: str | None = None
     subtasks: List[SubTask] = []
     created_at: str
+    assigned_at: str | None = None
+    completed_at: str | None = None
 
 
 class InboxAssignDayIn(BaseModel):

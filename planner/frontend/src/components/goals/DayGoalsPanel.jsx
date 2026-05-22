@@ -167,12 +167,8 @@ export default function DayGoalsPanel({ selectedDay }) {
                   "day-goals-card" +
                   (doneForDay ? " day-goals-card--done" : "")
                 }
+                style={{ borderLeftColor: goal.color || "#7ECF8A" }}
               >
-                <div
-                  className="day-goals-card-accent"
-                  style={{ backgroundColor: goal.color || "#7ECF8A" }}
-                />
-
                 <div className="day-goals-card-main">
                   <label className="day-goals-card-top">
                     <input

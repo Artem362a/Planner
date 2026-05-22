@@ -127,6 +127,7 @@ def _goal_to_out(goal: Any) -> GoalOut:
         ],
         progress=progress,
         day_done=bool(getattr(goal, "day_done", False)),
+        is_focus=bool(getattr(goal, "is_focus", False)),
     )
 
 

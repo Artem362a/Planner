@@ -10,6 +10,13 @@
   justify-content: center;
   align-items: stretch;
   padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Только главная страница — фиксирована в экран без скролла */
+.app-wrapper--home {
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app {
@@ -21,6 +28,12 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* На главной app растягивается ровно в экран */
+.app-wrapper--home .app {
+  height: calc(100vh - 40px);
+  min-height: unset;
 }
 
 .app-header {
@@ -60,10 +73,10 @@
   padding: 24px;
   display: grid;
   grid-template-columns: 2.1fr 1.65fr 1.15fr;
-  grid-template-rows: minmax(auto, 52vh) auto;
+  grid-template-rows: minmax(0, 52vh) minmax(0, 1fr);
   grid-template-areas:
     "day month targets"
-    "week week targets";
+    "day week  week";
   gap: 20px;
   overflow: hidden;
 }

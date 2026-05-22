@@ -19,6 +19,7 @@ from db import (
     Goal,
     GoalCheckin,
     GoalStage,
+    InboxTask,
     Notification,
     NotificationRecipient,
     TaskCategory,
@@ -299,6 +300,16 @@ def update_task(
                 synced_subtasks = [s.dict() for s in body.subtasks]
                 week_task_row.subtasks = synced_subtasks
 
+                # Подзадачи общие для всех инстансов недельной задачи: их состояние
+                # пропихиваем в pending sibling-дни, чтобы юзер видел одно и то же
+                # на каждый день. Completed дни — это исторический снапшот, их не трогаем.
+                db.query(DayTask).filter(
+                    DayTask.user_id == current_user_row.id,
+                    DayTask.source_week_task_id == task.source_week_task_id,
+                    DayTask.id != task.id,
+                    DayTask.status == 0,
+                ).update({"subtasks": synced_subtasks}, synchronize_session=False)
+
                 # Авто-выполнение только когда все подзадачи отмечены
                 if len(synced_subtasks) > 0 and all(bool(s.get("done")) for s in synced_subtasks):
                     task.status = 1
@@ -365,6 +376,14 @@ def update_task(
                                 order_index=(max_ord[0] + 1) if max_ord else 0,
                             ))
                         restore_day += timedelta(days=1)
+
+    # Если задача из Inbox и только что выполнена — фиксируем completed_at
+    if old_status != task.status and task.status == 1:
+        source_inbox_id = getattr(task, "source_inbox_task_id", None)
+        if source_inbox_id:
+            inbox_row = db.query(InboxTask).filter(InboxTask.id == source_inbox_id).first()
+            if inbox_row is not None:
+                cast(Any, inbox_row).completed_at = datetime.utcnow()
 
     db.commit()
     db.refresh(db_task)

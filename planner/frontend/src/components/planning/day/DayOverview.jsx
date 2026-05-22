@@ -11,7 +11,7 @@ function addMinutesToTime(timeStr, minutesToAdd) {
   const [hh, mm] = timeStr.split(":").map(Number);
   const base = hh * 60 + mm + (minutesToAdd || 0);
   const total = Math.max(base, 0);
-  const h = Math.floor(total / 60) % 24;
+  const h = Math.floor(total / 60);
   const m = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
@@ -63,7 +63,8 @@ function ImportantToday({ selectedDay }) {
   const [tasks, setTasks] = useState([]);
   const [categories, setCategories] = useState({});
   const [expandedId, setExpandedId] = useState(null);
-  const [viewMode, setViewMode] = useState("important");
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
+  const [viewMode, setViewMode] = useState("timeline");
   const [dayStartTime, setDayStartTime] = useState("06:00");
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
@@ -156,7 +157,12 @@ function ImportantToday({ selectedDay }) {
     [tasksWithComputedTime]
   );
 
-  const visibleTimelineTasks = tasksWithComputedTime;
+  const visibleTimelineTasks = useMemo(() => {
+    const dayStartMinutes = timeStringToMinutes(dayStartTime);
+    return tasksWithComputedTime.filter(
+      (t) => t.timeline_start_min < dayStartMinutes + 1440
+    );
+  }, [tasksWithComputedTime, dayStartTime]);
 
   const timelineData = useMemo(() => {
     const startMinute = timeStringToMinutes(dayStartTime);
@@ -165,7 +171,7 @@ function ImportantToday({ selectedDay }) {
       startMinute + 60
     );
     const endMinute = Math.max(startMinute + 60, Math.ceil(lastEnd / 60) * 60);
-    const pxPerMinute = 0.95;
+    const pxPerMinute = 1.6;
     const hours = [];
 
     for (
@@ -186,17 +192,17 @@ function ImportantToday({ selectedDay }) {
   }, [visibleTimelineTasks, dayStartTime]);
 
   const timelineLayouts = useMemo(() => {
-    const smallTaskMinutes = 30;
+    const smallTaskMinutes = 20;
     const maxAttachedSmallGroupMinutes = 30;
-    const minTaskHeight = 44;
-    const attachedRowHeight = 18;
-    const smallGroupHeaderHeight = 18;
-    const smallGroupTaskHeight = 16;
+    const minTaskHeight = 46;
+    const attachedRowHeight = 14;
+    const expandedGroupRowHeight = 20;
+    const { startMinute, pxPerMinute } = timelineData;
     const pendingBefore = new Map();
     const items = [];
 
     const isSmallTask = (task) =>
-      (task.duration_min || 0) > 0 && (task.duration_min || 0) <= smallTaskMinutes;
+      (task.duration_min || 0) <= smallTaskMinutes;
 
     const getStart = (item) => item.timeline_start_min;
     const getEnd = (item) => item.timeline_end_min;
@@ -218,39 +224,22 @@ function ImportantToday({ selectedDay }) {
     const normalizeSmallRun = (run) =>
       run.length > 1 ? [makeSmallGroup(run)] : run;
 
-    const getAttachedHeight = (item) =>
-      item.type === "small-group"
-        ? smallGroupHeaderHeight + item.tasks.length * smallGroupTaskHeight
-        : attachedRowHeight;
-
+    // Compute just heights + time ranges, tops assigned after scale is built
     const makeLayout = (task, before = [], after = []) => {
       const attached = [...before, ...after];
-      const start = Math.min(task.timeline_start_min, ...attached.map(getStart));
-      const end = Math.max(task.timeline_end_min, ...attached.map(getEnd));
-      const attachedHeight = attached.reduce(
-        (total, item) => total + getAttachedHeight(item),
-        0
-      );
-      const top = Math.max(
-        0,
-        (start - timelineData.startMinute) * timelineData.pxPerMinute
-      );
-      const height = Math.max(
-        task.type === "small-group"
-          ? smallGroupHeaderHeight + task.tasks.length * smallGroupTaskHeight + 18
-          : 0,
-        minTaskHeight + attachedHeight,
-        (end - start) * timelineData.pxPerMinute - 3
-      );
+      const start = attached.length > 0
+        ? Math.min(task.timeline_start_min, ...attached.map(getStart))
+        : task.timeline_start_min;
+      const end = attached.length > 0
+        ? Math.max(task.timeline_end_min, ...attached.map(getEnd))
+        : task.timeline_end_min;
+      const attachedHeight = attached.length * attachedRowHeight;
+      const isExpandedGroup = task.type === "small-group" && attached.length === 0 && expandedGroupId === task.id;
+      const height = isExpandedGroup
+        ? minTaskHeight + task.tasks.length * expandedGroupRowHeight
+        : Math.max(minTaskHeight + attachedHeight, (end - start) * pxPerMinute - 3);
 
-      return {
-        type: "task",
-        task,
-        before,
-        after,
-        top,
-        height,
-      };
+      return { type: "task", task, before, after, start, end, height, top: 0 };
     };
 
     for (let index = 0; index < visibleTimelineTasks.length; index += 1) {
@@ -291,23 +280,7 @@ function ImportantToday({ selectedDay }) {
         continue;
       }
 
-      if (previousLayout?.type === "task" && nextIsLarge) {
-        const previousDuration = previousLayout.task.duration_min || 0;
-        const nextDuration = nextTask.duration_min || 0;
-
-        if (nextDuration > previousDuration) {
-          pendingBefore.set(nextTask.id, [
-            ...(pendingBefore.get(nextTask.id) || []),
-            ...attachedRun,
-          ]);
-        } else {
-          previousLayout.after.push(...attachedRun);
-          Object.assign(
-            previousLayout,
-            makeLayout(previousLayout.task, previousLayout.before, previousLayout.after)
-          );
-        }
-      } else if (nextIsLarge) {
+      if (nextIsLarge) {
         pendingBefore.set(nextTask.id, [
           ...(pendingBefore.get(nextTask.id) || []),
           ...attachedRun,
@@ -325,27 +298,54 @@ function ImportantToday({ selectedDay }) {
       index = cursor - 1;
     }
 
-    const packedItems = items.map((item) => ({ ...item }));
+    // Build piecewise-linear scale: inflate Y where min-height > natural height
+    // so hour markers and task tops are consistent with task heights.
+    const scalePoints = [{ minute: startMinute, y: 0 }];
+    let curMinute = startMinute;
+    let curY = 0;
 
-    for (let index = 1; index < packedItems.length; index += 1) {
-      const previous = packedItems[index - 1];
-      const current = packedItems[index];
-      const minTop = previous.top + previous.height + 4;
+    const sortedByStart = [...items].sort((a, b) => a.start - b.start);
 
-      if (current.top < minTop) {
-        current.top = minTop;
+    for (const item of sortedByStart) {
+      if (item.start > curMinute) {
+        curY += (item.start - curMinute) * pxPerMinute;
+        curMinute = item.start;
+        scalePoints.push({ minute: curMinute, y: curY });
       }
+      curY += item.height;
+      curMinute = item.end;
+      scalePoints.push({ minute: curMinute, y: curY });
+    }
+
+    const minuteToY = (minute) => {
+      if (minute <= scalePoints[0].minute) return scalePoints[0].y;
+      for (let i = 1; i < scalePoints.length; i++) {
+        const prev = scalePoints[i - 1];
+        const next = scalePoints[i];
+        if (minute <= next.minute) {
+          const t = (minute - prev.minute) / Math.max(1, next.minute - prev.minute);
+          return prev.y + (next.y - prev.y) * t;
+        }
+      }
+      const last = scalePoints[scalePoints.length - 1];
+      return last.y + (minute - last.minute) * pxPerMinute;
+    };
+
+    // Assign tops using scale
+    for (const item of items) {
+      item.top = Math.max(0, minuteToY(item.start));
     }
 
     return {
-      items: packedItems,
+      items,
+      minuteToY,
       height: Math.max(
         180,
         timelineData.height,
-        ...packedItems.map((item) => item.top + item.height + 28)
+        ...items.map((item) => item.top + item.height + 28)
       ),
     };
-  }, [visibleTimelineTasks, timelineData]);
+  }, [visibleTimelineTasks, timelineData, expandedGroupId]);
 
   const timelineNowMarker = useMemo(() => {
     if (dayString !== formatLocalDate(currentTime)) {
@@ -358,8 +358,7 @@ function ImportantToday({ selectedDay }) {
       return null;
     }
 
-    const elapsedTop = (currentMinute - timelineData.startMinute) * timelineData.pxPerMinute;
-    const top = Math.min(timelineLayouts.height, Math.max(0, elapsedTop));
+    const top = Math.min(timelineLayouts.height, Math.max(0, timelineLayouts.minuteToY(currentMinute)));
 
     return {
       top,
@@ -369,7 +368,7 @@ function ImportantToday({ selectedDay }) {
         minute: "2-digit",
       }),
     };
-  }, [currentTime, dayString, timelineData, timelineLayouts.height]);
+  }, [currentTime, dayString, timelineData, timelineLayouts]);
 
   const toggleExpanded = (id) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -394,39 +393,28 @@ function ImportantToday({ selectedDay }) {
     <div className="day-overview-mode">
       <button
         type="button"
-        className={viewMode === "important" ? "active" : ""}
-        onClick={() => setViewMode("important")}
-      >
-        Важное
-      </button>
-      <button
-        type="button"
         className={viewMode === "timeline" ? "active" : ""}
         onClick={() => setViewMode("timeline")}
       >
         Таймлайн
+      </button>
+      <button
+        type="button"
+        className={viewMode === "important" ? "active" : ""}
+        onClick={() => setViewMode("important")}
+      >
+        Важное
       </button>
     </div>
   );
 
   const renderTimelineAttachedTask = (task) => (
     task.type === "small-group" ? (
-      <div key={task.id} className="day-overview-timeline-attached-group">
-        <div className="day-overview-timeline-attached-group-title">
-          <span>{task.tasks.length} короткие задачи</span>
-          <em>
-            {task.computed_start_time} - {task.computed_end_time}
-          </em>
-        </div>
-        {task.tasks.map((smallTask) => (
-          <div key={smallTask.id} className="day-overview-timeline-attached">
-            <span>{smallTask.title}</span>
-            <em>
-              {smallTask.computed_start_time}
-              {smallTask.duration_min ? ` - ${smallTask.computed_end_time}` : ""}
-            </em>
-          </div>
-        ))}
+      <div key={task.id} className="day-overview-timeline-attached">
+        <span>{task.tasks.length} коротких задач</span>
+        <em>
+          {task.computed_start_time} - {task.computed_end_time}
+        </em>
       </div>
     ) : (
       <div key={task.id} className="day-overview-timeline-attached">
@@ -457,13 +445,7 @@ function ImportantToday({ selectedDay }) {
                   <div
                     key={minute}
                     className="day-overview-timeline-hour"
-                    style={{
-                      top: `${Math.max(
-                        0,
-                        (minute - timelineData.startMinute) *
-                          timelineData.pxPerMinute
-                      )}px`,
-                    }}
+                    style={{ top: `${Math.max(6, timelineLayouts.minuteToY(minute))}px` }}
                   >
                     {`${String(Math.floor(minute / 60)).padStart(2, "0")}:00`}
                   </div>
@@ -490,13 +472,7 @@ function ImportantToday({ selectedDay }) {
                   <div
                     key={minute}
                     className="day-overview-timeline-line"
-                    style={{
-                      top: `${Math.max(
-                        0,
-                        (minute - timelineData.startMinute) *
-                          timelineData.pxPerMinute
-                      )}px`,
-                    }}
+                    style={{ top: `${Math.max(0, timelineLayouts.minuteToY(minute))}px` }}
                   />
                 ))}
 
@@ -536,18 +512,49 @@ function ImportantToday({ selectedDay }) {
 
                     <div className="day-overview-timeline-body">
                       {before.map(renderTimelineAttachedTask)}
-                      {isSmallGroup ? renderTimelineAttachedTask(t) : (
+                      {isSmallGroup ? (
                         <>
-                      <div className="day-overview-timeline-title">{t.title}</div>
-                      <div className="day-overview-timeline-meta">
-                        <span>
-                          {t.computed_start_time}
-                          {t.duration_min ? ` – ${t.computed_end_time}` : ""}
-                        </span>
-                        {t.duration_min ? <span>{formatDuration(t.duration_min)}</span> : null}
-                        {t.category ? <span>#{categoryTitle}</span> : null}
-                        {isImportant ? <span>важно</span> : null}
-                      </div>
+                          <div className="day-overview-sg-header">
+                            <span className="day-overview-timeline-title">
+                              {t.tasks.length} коротких задач
+                            </span>
+                            <button
+                              type="button"
+                              className="day-overview-sg-toggle"
+                              onClick={() => setExpandedGroupId((prev) => prev === t.id ? null : t.id)}
+                            >
+                              {expandedGroupId === t.id ? "▲" : "▼"}
+                            </button>
+                          </div>
+                          <div className="day-overview-timeline-meta">
+                            <span>{t.computed_start_time} – {t.computed_end_time}</span>
+                          </div>
+                          {expandedGroupId === t.id && (
+                            <div className="day-overview-sg-list">
+                              {t.tasks.map((smallTask) => (
+                                <div key={smallTask.id} className="day-overview-sg-task">
+                                  <span>{smallTask.title}</span>
+                                  <em>
+                                    {smallTask.computed_start_time}
+                                    {smallTask.duration_min ? ` – ${smallTask.computed_end_time}` : ""}
+                                  </em>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="day-overview-timeline-title">{t.title}</div>
+                          <div className="day-overview-timeline-meta">
+                            <span>
+                              {t.computed_start_time}
+                              {t.duration_min ? ` – ${t.computed_end_time}` : ""}
+                            </span>
+                            {t.duration_min ? <span>{formatDuration(t.duration_min)}</span> : null}
+                            {t.category ? <span>#{categoryTitle}</span> : null}
+                            {isImportant ? <span>важно</span> : null}
+                          </div>
                         </>
                       )}
                       {after.map(renderTimelineAttachedTask)}

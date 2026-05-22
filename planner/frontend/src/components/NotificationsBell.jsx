@@ -118,6 +118,30 @@ function sortNotifications(items) {
   });
 }
 
+const VIRTUAL_READ_STORAGE_KEY = "notifications-virtual-read-ids";
+
+function loadVirtualReadIds() {
+  try {
+    const raw = window.localStorage.getItem(VIRTUAL_READ_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveVirtualReadIds(ids) {
+  try {
+    window.localStorage.setItem(
+      VIRTUAL_READ_STORAGE_KEY,
+      JSON.stringify(Array.from(ids))
+    );
+  } catch {
+    // ignore quota / privacy errors
+  }
+}
+
 export default function NotificationsBell() {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
@@ -138,7 +162,11 @@ export default function NotificationsBell() {
         ? serverNotificationsData
         : [];
 
-      const goalItems = buildGoalNotifications(goals);
+      const virtualReadIds = loadVirtualReadIds();
+
+      const goalItems = buildGoalNotifications(goals).map((item) =>
+        virtualReadIds.has(item.id) ? { ...item, is_read: true } : item
+      );
       const backendItems = serverNotifications.map(normalizeServerNotification);
 
       const allItems = [...backendItems, ...goalItems];
@@ -158,17 +186,29 @@ export default function NotificationsBell() {
 
   React.useEffect(() => {
     if (!open) return;
-    const hasUnread = items.some((item) => !item.is_virtual && !item.is_read);
-    if (!hasUnread) return;
-    markAllNotificationsRead()
-      .then(() => {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.is_virtual ? item : { ...item, is_read: true }
-          )
-        );
-      })
-      .catch(() => {});
+
+    const hasUnreadServer = items.some(
+      (item) => !item.is_virtual && !item.is_read
+    );
+    const hasUnreadVirtual = items.some(
+      (item) => item.is_virtual && !item.is_read
+    );
+
+    if (hasUnreadServer) {
+      markAllNotificationsRead().catch(() => {});
+    }
+
+    if (hasUnreadVirtual) {
+      const stored = loadVirtualReadIds();
+      items.forEach((item) => {
+        if (item.is_virtual && !item.is_read) stored.add(item.id);
+      });
+      saveVirtualReadIds(stored);
+    }
+
+    if (hasUnreadServer || hasUnreadVirtual) {
+      setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
+    }
   }, [open]);
 
   React.useEffect(() => {

@@ -126,6 +126,16 @@ export async function applyDayTemplate(templateId, dayString) {
   return await handleResponse(res, "Failed to apply day template");
 }
 
+export async function updateDayTemplate(templateId, body) {
+  const res = await fetch(`${API_URL}/day-templates/${templateId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+
+  return await handleResponse(res, "Failed to update day template");
+}
+
 export async function deleteDayTemplate(templateId) {
   const res = await fetch(`${API_URL}/day-templates/${templateId}`, {
     method: "DELETE",

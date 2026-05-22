@@ -97,7 +97,7 @@ const Home = ({ user, onLogout }) => {
   });
 
   return (
-    <div className="app-wrapper">
+    <div className="app-wrapper app-wrapper--home">
       {menuOpen && (
         <div
           className="side-menu-backdrop"
@@ -234,7 +234,12 @@ const Home = ({ user, onLogout }) => {
           </section>
 
           <section className="card targets-card">
-            <h2>Цели</h2>
+            <div className="card-header-row">
+              <h2>Цели</h2>
+              <Link to="/goals" className="day-open-link">
+                Открыть
+              </Link>
+            </div>
             <Targets />
           </section>
         </main>
@@ -267,6 +272,15 @@ const App = () => {
   const [authChecked, setAuthChecked] = React.useState(false);
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
+    if (import.meta.env.DEV) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#e67e22"/><text x="16" y="23" font-size="20" font-weight="bold" text-anchor="middle" fill="white">D</text></svg>`;
+      const link = document.querySelector("link[rel~='icon']");
+      if (link) link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+      document.title = "[DEV] " + document.title;
+    }
+  }, []);
 
   React.useEffect(() => {
     // Apply whatever was last seen so the first paint isn't a flash of the wrong theme.

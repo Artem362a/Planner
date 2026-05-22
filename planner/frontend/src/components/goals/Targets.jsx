@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { fetchGoals } from "../../api/goals";
 
 function getGoalProgress(goal) {
@@ -42,18 +41,14 @@ export default function Targets() {
     fetchGoals().then(setGoals).catch(console.error);
   }, []);
 
-  const visibleGoals = goals
-    .filter((goal) => goal.status !== "done")
-    .slice(0, 4);
+  const activeGoals = goals.filter((goal) => goal.status !== "done");
+  const focusedGoals = activeGoals.filter((goal) => goal.is_focus);
+  const visibleGoals = focusedGoals.length > 0 ? focusedGoals : activeGoals.slice(0, 4);
 
   if (visibleGoals.length === 0) {
     return (
       <div className="targets-widget">
         <div className="day-task-empty">Нет активных целей</div>
-
-        <Link to="/goals" className="targets-open-link">
-          Открыть
-        </Link>
       </div>
     );
   }
@@ -85,10 +80,6 @@ export default function Targets() {
           </div>
         </div>
       ))}
-
-      <Link to="/goals" className="targets-open-link">
-        Открыть
-      </Link>
     </div>
   );
 }

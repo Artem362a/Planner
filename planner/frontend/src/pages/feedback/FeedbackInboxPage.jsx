@@ -9,7 +9,8 @@ import {
 function formatDateTime(value) {
   if (!value) return "";
 
-  const date = new Date(value);
+  const s = value.endsWith("Z") || value.includes("+") ? value : value + "Z";
+  const date = new Date(s);
 
   return date.toLocaleString("ru-RU", {
     day: "2-digit",

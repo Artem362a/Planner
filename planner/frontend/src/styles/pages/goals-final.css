@@ -1,5 +1,5 @@
 .goals-shell-card {
-  width: min(1100px, 100%);
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -11,17 +11,11 @@
 
 .goals-page-head {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 8px;
 }
 
-.goals-page-head-left {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 
 .goals-page-title {
   margin: 0;
@@ -93,12 +87,76 @@
   color: #d85b5b;
 }
 
+.goal-action-btn--focus {
+  background: #f3f0fb;
+  color: #b0a4d8;
+  font-size: 17px;
+}
+
+.goal-action-btn--focus.is-active {
+  background: #ede7ff;
+  color: #6b3ec4;
+}
+
 .goal-create-modal--soft {
   width: min(680px, calc(100vw - 24px));
   max-width: 680px;
   overflow: visible !important;
   max-height: none !important;
   min-height: 460px;
+  transition: width 0.2s ease, max-width 0.2s ease;
+}
+
+.goal-create-modal--expanded {
+  width: min(740px, calc(100vw - 24px)) !important;
+  max-width: 740px !important;
+}
+
+/* Two-column form layout for С этапами */
+.goal-form-cols {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.goal-form-col-main {
+  flex: none;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.goal-form-col-aside {
+  flex: 1;
+  min-width: 260px;
+}
+
+.goal-form-col-aside .subtasks-form-block,
+.goal-form-col-aside .subtasks-form-block--soft {
+  margin-top: 0;
+}
+
+.goal-stages-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Mobile: single column */
+@media (max-width: 700px) {
+  .goal-form-cols {
+    flex-direction: column;
+    gap: 0;
+  }
+  .goal-form-col-main,
+  .goal-form-col-aside {
+    width: 100%;
+  }
+  .goal-create-modal--expanded {
+    width: calc(100vw - 24px);
+    max-width: none;
+  }
 }
 
 /* Keep overlay scrollable and modal centered on all devices */
@@ -106,6 +164,13 @@
   align-items: center;
   padding: 20px 16px;
   overflow-y: auto;
+}
+
+/* On mobile, flex-start so tall modals scroll to the top (center clips the top) */
+@media (max-width: 700px) {
+  .modal-overlay:has(.goal-create-modal--soft) {
+    align-items: flex-start;
+  }
 }
 
 /* Category field sits above other content */
@@ -279,19 +344,9 @@
   box-shadow: 0 6px 16px rgba(111, 84, 219, 0.22);
 }
 
+/* FAB visible everywhere; on mobile switches to fixed */
 .goals-fab-mobile {
-  display: none;
-}
-
-@media (max-width: 900px) {
-  .goals-page-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .goals-create-btn {
-    width: 100%;
-  }
+  display: flex;
 }
 
 @media (max-width: 700px) {
@@ -300,10 +355,9 @@
   }
 
   .goals-fab-mobile {
-    display: flex;
     position: fixed !important;
-    right: 2px !important;
-    bottom: 28px !important;
+    right: 12px !important;
+    bottom: 24px !important;
     left: auto !important;
     top: auto !important;
     z-index: 100;
@@ -336,8 +390,8 @@
 }
 
 .goal-expand-icon {
-  font-size: 11px;
-  color: #9a8fce;
+  font-size: 15px;
+  color: #7b6cc0;
   flex-shrink: 0;
   line-height: 1;
 }
@@ -371,11 +425,10 @@
 
 /* Mobile: compact everything */
 @media (max-width: 700px) {
-  .goals-page-section { gap: 12px; }
-  .goals-page-head { margin-bottom: 4px; gap: 8px; }
+  .goals-page-section { gap: 12px; padding-bottom: 80px; }
+  .goals-page-head { margin-bottom: 4px; gap: 6px; }
   .goals-page-title { font-size: 20px; margin: 0; }
   .goals-page-subtitle { display: none; }
-  .goals-page-head-left { gap: 3px; }
 
   .goal-create-modal--soft { min-height: 0; }
 

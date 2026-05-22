@@ -68,6 +68,38 @@ def create_template(
     return _template_to_out(cast(DayTemplateRow, tmpl))
 
 
+@router.patch("/day-templates/{template_id}", response_model=DayTemplateOut)
+def patch_template(
+    template_id: int,
+    body: DayTemplatePatch,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    tmpl = (
+        db.query(DayTemplate)
+        .filter(
+            DayTemplate.id == template_id,
+            DayTemplate.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if not tmpl:
+        raise HTTPException(404, "Template not found")
+
+    if body.name is not None:
+        tmpl.name = body.name
+    if body.color is not None:
+        tmpl.color = body.color
+    if body.tasks is not None:
+        tmpl.tasks_json = [task.dict() for task in body.tasks]
+
+    db.commit()
+    db.refresh(tmpl)
+    return _template_to_out(cast(DayTemplateRow, tmpl))
+
+
 @router.delete("/day-templates/{template_id}")
 def delete_template(
     template_id: int,
@@ -116,6 +148,18 @@ def apply_template(
     )
     if not tmpl:
         raise HTTPException(404, "Template not found")
+
+    existing_total = (
+        db.query(func.coalesce(func.sum(DayTask.duration_min), 0))
+        .filter(DayTask.user_id == current_user_row.id, DayTask.day == d)
+        .scalar()
+    ) or 0
+
+    template_tasks = cast(list[dict[str, Any]], tmpl.tasks_json or [])
+    template_total = sum(int(t.get("duration_min") or 0) for t in template_tasks)
+
+    if existing_total + template_total > 1440:
+        raise HTTPException(400, "День не может превышать 24 часа.")
 
     created_tasks: list[DayTask] = []
 

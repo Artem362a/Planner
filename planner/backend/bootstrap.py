@@ -59,6 +59,10 @@ def ensure_goal_columns() -> None:
             conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN schedule_mode VARCHAR")
         if "category_key" not in cols:
             conn.exec_driver_sql("ALTER TABLE goals.goals ADD COLUMN category_key VARCHAR")
+        if "is_focus" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE goals.goals ADD COLUMN is_focus BOOLEAN NOT NULL DEFAULT FALSE"
+            )
         conn.commit()
 
 
@@ -88,6 +92,34 @@ def ensure_feedback_screenshots_column() -> None:
     if "screenshots" not in _columns("feedback", "feedback_messages"):
         with engine.connect() as conn:
             conn.exec_driver_sql("ALTER TABLE feedback.feedback_messages ADD COLUMN screenshots JSON")
+            conn.commit()
+
+
+def ensure_inbox_assigned_at_column() -> None:
+    if "assigned_at" not in _columns("planning", "inbox_tasks"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE planning.inbox_tasks ADD COLUMN assigned_at TIMESTAMP"
+            )
+            conn.commit()
+
+
+def ensure_inbox_completed_at_column() -> None:
+    if "completed_at" not in _columns("planning", "inbox_tasks"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE planning.inbox_tasks ADD COLUMN completed_at TIMESTAMP"
+            )
+            conn.commit()
+
+
+def ensure_day_task_source_inbox_column() -> None:
+    if "source_inbox_task_id" not in _columns("planning", "day_tasks"):
+        with engine.connect() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE planning.day_tasks ADD COLUMN source_inbox_task_id INTEGER"
+                " REFERENCES planning.inbox_tasks(id)"
+            )
             conn.commit()
 
 

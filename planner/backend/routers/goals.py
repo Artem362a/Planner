@@ -369,6 +369,28 @@ def create_goal(
     return _goal_to_out(row)
 
 
+@router.patch("/goals/{goal_id}/focus", response_model=GoalOut)
+def toggle_goal_focus(
+    goal_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    row = (
+        db.query(Goal)
+        .filter(Goal.id == goal_id, Goal.user_id == current_user_row.id)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    row.is_focus = not bool(getattr(row, "is_focus", False))
+    db.commit()
+    db.refresh(row)
+    return _goal_to_out(cast(Any, row))
+
+
 @router.patch("/goals/{goal_id}", response_model=GoalOut)
 def update_goal(
     goal_id: int,
@@ -446,6 +468,15 @@ def list_goals_for_day(
         .all()
     )
     checkins_by_goal_id = {cast(Any, row).goal_id: bool(cast(Any, row).done) for row in checkins}
+
+    # If any active goals are in focus — return only those
+    focus_goals = [cast(Any, g) for g in rows if bool(getattr(cast(Any, g), "is_focus", False))]
+    if focus_goals:
+        result: list[GoalOut] = []
+        for goal_row in focus_goals:
+            setattr(goal_row, "day_done", checkins_by_goal_id.get(goal_row.id, False))
+            result.append(_goal_to_out(goal_row))
+        return result
 
     result: list[GoalOut] = []
 

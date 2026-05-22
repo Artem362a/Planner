@@ -324,24 +324,34 @@
 }
 
 .feedback-tab-btn {
-  border: none;
+  border: 2px solid #d4c8f8;
   border-radius: 999px;
   padding: 10px 16px;
-  background: #ece7ff;
+  background: #fff;
   color: #6f5bd3;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
 }
 
 .feedback-tab-btn:hover {
-  background: #e2d9ff;
+  background: #f0ebff;
+  border-color: #b09ae0;
 }
 
 .feedback-tab-btn--active {
   background: linear-gradient(135deg, #8f73ff, #6f54db);
+  border-color: transparent;
   color: #ffffff;
   box-shadow: 0 8px 22px rgba(111, 84, 219, 0.22);
+}
+
+/* Prevent hover from sticking after tap on touch devices */
+@media (hover: none) {
+  .feedback-tab-btn:not(.feedback-tab-btn--active):hover {
+    background: #fff;
+    border-color: #d4c8f8;
+  }
 }
 
 .feedback-inbox-list {
@@ -466,25 +476,34 @@
 }
 
 .feedback-filter-chip {
-  border: none;
+  border: 2px solid #d4c8f8;
   border-radius: 999px;
   padding: 9px 14px;
-  background: #efeaff;
+  background: #fff;
   color: #6f59d9;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
 }
 
 .feedback-filter-chip:hover {
-  background: #e5ddff;
+  background: #f0ebff;
+  border-color: #b09ae0;
 }
 
 .feedback-filter-chip--active {
   background: linear-gradient(135deg, #8f73ff, #6f54db);
+  border-color: transparent;
   color: #ffffff;
   box-shadow: 0 8px 22px rgba(111, 84, 219, 0.22);
+}
+
+@media (hover: none) {
+  .feedback-filter-chip:not(.feedback-filter-chip--active):hover {
+    background: #fff;
+    border-color: #d4c8f8;
+  }
 }
 .feedback-page-topline {
   display: flex;

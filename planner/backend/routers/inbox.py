@@ -26,6 +26,8 @@ router = APIRouter()
 
 def _inbox_to_out(row: Any) -> InboxTaskOut:
     subtasks_raw = row.subtasks or []
+    assigned_at = getattr(row, "assigned_at", None)
+    completed_at = getattr(row, "completed_at", None)
     return InboxTaskOut(
         id=row.id,
         title=row.title,
@@ -33,7 +35,9 @@ def _inbox_to_out(row: Any) -> InboxTaskOut:
         priority=row.priority or "medium",
         category=row.category,
         subtasks=[SubTask(**s) if isinstance(s, dict) else s for s in subtasks_raw],
-        created_at=row.created_at.isoformat(),
+        created_at=row.created_at.isoformat() + "Z",
+        assigned_at=(assigned_at.isoformat() + "Z") if assigned_at else None,
+        completed_at=(completed_at.isoformat() + "Z") if completed_at else None,
     )
 
 
@@ -164,9 +168,10 @@ def assign_inbox_to_day(
         status=0,
         subtasks=list(t.subtasks) if t.subtasks else [],
         order_index=_get_next_day_order(db, user.id, body.day),
+        source_inbox_task_id=t.id,
     )
     db.add(new_task)
-    db.delete(inbox_row)
+    t.assigned_at = datetime.utcnow()
     db.commit()
     db.refresh(new_task)
 
@@ -242,7 +247,7 @@ def assign_inbox_to_week(
         ))
         d += timedelta(days=1)
 
-    db.delete(inbox_row)
+    t.assigned_at = datetime.utcnow()
     db.commit()
     db.refresh(new_week_task)
 

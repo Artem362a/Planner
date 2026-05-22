@@ -5,10 +5,11 @@
 @media (max-width: 1280px) {
   .app-main {
     grid-template-columns: 1.8fr 1.4fr;
+    grid-template-rows: minmax(0, 52vh) auto auto;
     grid-template-areas:
-      "day month"
-      "week week"
-      "targets targets";
+      "day     month"
+      "day     targets"
+      "week    week";
   }
 
   .day-page-floating-actions {
@@ -22,6 +23,18 @@
     padding: 12px;
   }
 
+  /* на планшетах/мобилках главная тоже может скроллиться */
+  .app-wrapper--home {
+    height: auto;
+    overflow: visible;
+  }
+
+  /* сбрасываем фиксированную высоту, которая задана только для десктопа */
+  .app-wrapper--home .app {
+    height: auto;
+    overflow: visible;
+  }
+
   .app {
     min-height: calc(100vh - 24px);
     border-radius: 20px;
@@ -30,12 +43,18 @@
   .app-main {
     padding: 18px;
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
     grid-template-areas:
       "day"
       "month"
       "week"
       "targets";
     overflow: visible;
+  }
+
+  .week-mini-scroll {
+    flex: none;
+    max-height: 260px;
   }
 
   .card {
@@ -57,6 +76,19 @@
 }
 
 @media (max-width: 700px) {
+  /* "Важное" — всегда показывает приличный кусок списка */
+  .day-overview-scroll {
+    flex: none;
+    min-height: 260px;
+    max-height: 420px;
+  }
+
+  /* "Таймлайн" — контентно большой, поэтому только ограничиваем сверху */
+  .day-overview-timeline-scroll {
+    flex: none;
+    max-height: 520px;
+  }
+
   .app-wrapper {
     padding: 0;
   }
@@ -66,12 +98,17 @@
     min-height: 100vh;
     border-radius: 0;
     box-shadow: none;
+    background: #ece7f6;
   }
 
   .app-header {
     min-height: 64px;
     padding: 10px 12px;
     gap: 8px;
+    border-radius: 0;
+    box-shadow: 0 2px 8px rgba(60, 40, 110, 0.12);
+    position: relative;
+    z-index: 1;
   }
 
   .app-header-left,
