@@ -291,6 +291,16 @@ class DayTask(Base):
     dismissed = Column(Boolean, default=False, nullable=False)
 
 
+class DayNote(Base):
+    __tablename__ = "day_notes"
+    __table_args__ = {"schema": "planning"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id"), nullable=False, index=True)
+    day = Column(Date, nullable=False, index=True)
+    text = Column(Text, nullable=False, default="")
+
+
 class DaySettings(Base):
     __tablename__ = "day_settings"
     __table_args__ = {"schema": "planning"}

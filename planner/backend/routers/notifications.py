@@ -295,6 +295,32 @@ def create_overdue_reminder(
     return {"created": True, "count": count}
 
 
+@router.delete("/notifications/{notification_id}", response_model=MessageOut)
+def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    row = (
+        db.query(NotificationRecipient)
+        .filter(
+            NotificationRecipient.notification_id == notification_id,
+            NotificationRecipient.user_id == current_user_row.id,
+        )
+        .first()
+    )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    db.delete(row)
+    db.commit()
+
+    return MessageOut(message="Notification deleted")
+
+
 @router.get("/notifications", response_model=list[NotificationOut])
 def list_my_notifications(
     db: Session = Depends(get_db),

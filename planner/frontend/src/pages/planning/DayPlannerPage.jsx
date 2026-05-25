@@ -3,7 +3,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import DayPlanFull from "../../components/planning/day/DayPlanFull";
 import OverdueModal from "../../components/planning/day/OverdueModal";
 import { fetchOverdueTasks } from "../../api/tasks";
-import { createOverdueReminder } from "../../api/notifications";
 
 function parseLocalDate(dateStr) {
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -37,9 +36,6 @@ function DayPlannerPage() {
     fetchOverdueTasks()
       .then((tasks) => {
         setOverdueCount(tasks.length);
-        if (tasks.length > 0) {
-          createOverdueReminder().catch(() => {});
-        }
       })
       .catch(() => {});
   }, []);
@@ -57,9 +53,6 @@ function DayPlannerPage() {
     fetchOverdueTasks()
       .then((tasks) => {
         setOverdueCount(tasks.length);
-        if (tasks.length > 0) {
-          createOverdueReminder().catch(() => {});
-        }
       })
       .catch(() => {});
   }

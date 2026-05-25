@@ -1,3 +1,5 @@
+import { handleResponse } from "./client";
+
 const API_URL = "/api";
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -7,15 +9,6 @@ function getAuthHeaders(extraHeaders = {}) {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-}
-
-async function handleResponse(res, errorText) {
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || errorText);
-  }
-
-  return await res.json();
 }
 
 export async function fetchMyNotifications() {
@@ -59,6 +52,14 @@ export async function markAllNotificationsRead() {
     headers: getAuthHeaders(),
   });
   return await handleResponse(res, "Failed to mark all notifications as read");
+}
+
+export async function deleteNotification(notificationId) {
+  const res = await fetch(`${API_URL}/notifications/${notificationId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to delete notification");
 }
 
 export async function createOverdueReminder() {

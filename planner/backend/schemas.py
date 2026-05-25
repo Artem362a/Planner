@@ -169,6 +169,15 @@ class DayTaskReorderIn(BaseModel):
     ordered_ids: list[int]
 
 
+class DayNoteOut(BaseModel):
+    day: date
+    text: str
+
+
+class DayNoteIn(BaseModel):
+    text: str
+
+
 class DaySettingsIn(BaseModel):
     start_time: str
 

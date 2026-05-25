@@ -15,6 +15,8 @@ import {
   fetchWeekImportCandidates,
   importWeekTasksToDay,
   updateDayTemplate,
+  fetchDayNote,
+  saveDayNote,
 } from "../../../api/tasks";
 import PrioritySelect from "../../forms/PrioritySelect";
 import CategorySelect from "../../forms/CategorySelect";
@@ -200,7 +202,7 @@ export default function DayPlanFull({ selectedDate }) {
   const [timeMode, setTimeMode] = useState("duration");
 
   const dayString = formatLocalDate(selectedDate);
-  const notesStorageKey = `day-notes-${dayString}`;
+  const notesSaveTimerRef = useRef(null);
 
   const taskItemRefs = useRef(new Map());
   const previousTaskRectsRef = useRef(new Map());
@@ -289,8 +291,10 @@ export default function DayPlanFull({ selectedDate }) {
   }, [dayString]);
 
   useEffect(() => {
-    setDayNotes(localStorage.getItem(notesStorageKey) || "");
-  }, [notesStorageKey]);
+    fetchDayNote(dayString)
+      .then((data) => setDayNotes(data.text || ""))
+      .catch(() => setDayNotes(""));
+  }, [dayString]);
 
   const upcomingImportCandidates = useMemo(
   () => weekImportCandidates.filter((item) => !item.is_overdue),
@@ -332,10 +336,12 @@ const overdueImportCandidates = useMemo(
   }, [tasks, dayStartTime]);
 
   const timelineHours = useMemo(() => {
-    const start = Math.floor(timeStringToMinutes(dayStartTime) / 60) * 60;
+    const dayStartMinutes = timeStringToMinutes(dayStartTime);
+    // Start hour labels at the first full hour at or after dayStart — no empty pre-day space
+    const start = Math.ceil(dayStartMinutes / 60) * 60;
     const lastEnd = tasksWithComputedTime.reduce(
-      (max, task) => Math.max(max, task.timeline_end_min || start),
-      start
+      (max, task) => Math.max(max, task.timeline_end_min || dayStartMinutes),
+      dayStartMinutes
     );
     const end = Math.max(23 * 60, Math.ceil(lastEnd / 60) * 60);
     const hours = [];
@@ -347,7 +353,7 @@ const overdueImportCandidates = useMemo(
     return hours;
   }, [dayStartTime, tasksWithComputedTime]);
 
-  const timelineStartMinute = timelineHours[0] || timeStringToMinutes(dayStartTime);
+  const timelineStartMinute = timeStringToMinutes(dayStartTime);
   const timelineEndMinute =
     timelineHours[timelineHours.length - 1] || timelineStartMinute + 60;
   const timelineHourHeight = 88;
@@ -358,6 +364,7 @@ const overdueImportCandidates = useMemo(
   const timelineSmallGroupRowHeight = 26;
   const timelineSmallGroupExpandedPadding = 30;
   const timelineSmallGroupMaxListHeight = 260;
+  const timelineMaxAttachGapMin = 30;
   const getSmallGroupId = (run) => `small-${run[0].id}-${run[run.length - 1].id}`;
   const getSmallGroupHeight = (run) => {
     const id = getSmallGroupId(run);
@@ -563,7 +570,10 @@ const overdueImportCandidates = useMemo(
       const previousLayout = result[result.length - 1];
 
       if (run.length === 1) {
-        if (nextTask && !isSmallTask(nextTask)) {
+        const gapToNext = nextTask
+          ? nextTask.timeline_start_min - task.timeline_end_min
+          : Infinity;
+        if (nextTask && !isSmallTask(nextTask) && gapToNext <= timelineMaxAttachGapMin) {
           pendingBefore.set(nextTask.id, [
             ...(pendingBefore.get(nextTask.id) || []),
             task,
@@ -601,7 +611,8 @@ const overdueImportCandidates = useMemo(
             startTime: group.computed_start_time,
             endTime: group.computed_end_time,
           });
-        } else if (nextTask && !isSmallTask(nextTask)) {
+        } else if (nextTask && !isSmallTask(nextTask) &&
+          nextTask.timeline_start_min - group.timeline_end_min <= timelineMaxAttachGapMin) {
           pendingBefore.set(nextTask.id, [
             ...(pendingBefore.get(nextTask.id) || []),
             group,
@@ -644,7 +655,10 @@ const overdueImportCandidates = useMemo(
 
   const saveDayNotes = (value) => {
     setDayNotes(value);
-    localStorage.setItem(notesStorageKey, value);
+    if (notesSaveTimerRef.current) clearTimeout(notesSaveTimerRef.current);
+    notesSaveTimerRef.current = setTimeout(() => {
+      saveDayNote(dayString, value).catch(console.error);
+    }, 800);
   };
 
   const buildTemplateFromTasks = () =>
@@ -1744,15 +1758,6 @@ const overdueImportCandidates = useMemo(
                           <CategoryIcon name="checklist" />
                         </div>
 
-                        <div className="day-timeline-task-content">
-                          <div className="day-timeline-title">
-                            Небольшие задачи
-                          </div>
-                          <div className="day-timeline-time">
-                            {item.tasks.length} задачи · {item.startTime} – {item.endTime}
-                          </div>
-                        </div>
-
                         <button
                           type="button"
                           className="day-timeline-group-toggle"
@@ -1765,6 +1770,15 @@ const overdueImportCandidates = useMemo(
                         >
                           {isExpanded ? "▲" : "▼"}
                         </button>
+
+                        <div className="day-timeline-task-content">
+                          <div className="day-timeline-title">
+                            Небольшие задачи
+                          </div>
+                          <div className="day-timeline-time">
+                            {item.tasks.length} задачи · {item.startTime} – {item.endTime}
+                          </div>
+                        </div>
 
                         <div className="day-timeline-group-list">
                             {item.tasks.map((smallTask) => (

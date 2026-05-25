@@ -11,7 +11,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from auth import create_access_token, hash_password, verify_password
+from auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, hash_password, verify_password
 from bootstrap import DOCS_DIR, ensure_default_categories_for_user
 from db import (
     DaySettings,
@@ -323,6 +323,14 @@ def list_sessions(
 ):
     user_row = cast(Any, current_user)
     current_jti = _current_jti(request)
+
+    # Purge sessions whose JWT has expired (older than token lifetime)
+    cutoff = datetime.utcnow() - timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    db.query(UserSession).filter(
+        UserSession.user_id == user_row.id,
+        UserSession.created_at < cutoff,
+    ).delete(synchronize_session=False)
+    db.commit()
 
     rows = (
         db.query(UserSession)

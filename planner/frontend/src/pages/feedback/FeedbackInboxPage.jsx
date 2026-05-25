@@ -9,8 +9,13 @@ import {
 function formatDateTime(value) {
   if (!value) return "";
 
-  const s = value.endsWith("Z") || value.includes("+") ? value : value + "Z";
+  let s = value;
+  if (!s.endsWith("Z") && !s.includes("+")) s += "Z";
+  // Trim microseconds to milliseconds so all browsers parse correctly
+  s = s.replace(/(\.\d{3})\d+/, "$1");
+
   const date = new Date(s);
+  if (isNaN(date.getTime())) return value;
 
   return date.toLocaleString("ru-RU", {
     day: "2-digit",

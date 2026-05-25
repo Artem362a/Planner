@@ -1,14 +1,7 @@
+import { handleResponse } from "./client";
+
 //const API_URL = "http://127.0.0.1:8000";
 const API_URL = "/api";
-
-async function handleResponse(res, errorText) {
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || errorText);
-  }
-
-  return await res.json();
-}
 
 function getAuthHeaders(extraHeaders = {}) {
   const token = getToken();

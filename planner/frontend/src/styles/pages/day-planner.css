@@ -381,6 +381,7 @@
 .day-timeline-task--small-group {
   z-index: 6;
   align-items: center;
+  grid-template-columns: 42px 28px minmax(0, 1fr);
   grid-template-rows: auto auto;
   min-height: 56px;
 }

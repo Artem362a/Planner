@@ -1,3 +1,5 @@
+import { handleResponse } from "./client";
+
 //const API_URL = "http://127.0.0.1:8000";
 const API_URL = "/api";
 function getAuthHeaders(extraHeaders = {}) {
@@ -7,15 +9,6 @@ function getAuthHeaders(extraHeaders = {}) {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-}
-
-async function handleResponse(res, errorText) {
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || errorText);
-  }
-
-  return await res.json();
 }
 
 function notifyDayTasksChanged(dayString) {
@@ -318,4 +311,20 @@ export async function rescheduleTask(taskId, newDate) {
     body: JSON.stringify({ new_date: newDate }),
   });
   return await handleResponse(res, "Failed to reschedule task");
+}
+
+export async function fetchDayNote(day) {
+  const res = await fetch(`${API_URL}/day-notes/${day}`, {
+    headers: getAuthHeaders(),
+  });
+  return await handleResponse(res, "Failed to fetch day note");
+}
+
+export async function saveDayNote(day, text) {
+  const res = await fetch(`${API_URL}/day-notes/${day}`, {
+    method: "PUT",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ text }),
+  });
+  return await handleResponse(res, "Failed to save day note");
 }

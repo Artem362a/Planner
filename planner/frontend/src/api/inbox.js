@@ -1,3 +1,5 @@
+import { handleResponse } from "./client";
+
 const API_URL = "/api";
 
 function getAuthHeaders(extra = {}) {
@@ -6,14 +8,6 @@ function getAuthHeaders(extra = {}) {
     ...extra,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-}
-
-async function handleResponse(res, errorText) {
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || errorText);
-  }
-  return res.json();
 }
 
 export async function fetchInboxTasks() {

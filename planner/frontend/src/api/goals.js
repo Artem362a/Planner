@@ -1,3 +1,5 @@
+import { handleResponse } from "./client";
+
 const API_URL = "/api";
 
 function getAuthHeaders(extraHeaders = {}) {
@@ -7,15 +9,6 @@ function getAuthHeaders(extraHeaders = {}) {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-}
-
-async function handleResponse(res, errorText) {
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || errorText);
-  }
-
-  return await res.json();
 }
 
 function normalizeGoalPayload(body = {}) {

@@ -1,9 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { fetchGoals } from "../api/goals";
+import { fetchOverdueTasks } from "../api/tasks";
 import {
   fetchMyNotifications,
   markAllNotificationsRead,
+  deleteNotification,
 } from "../api/notifications";
 
 function parseLocalDate(dateStr) {
@@ -110,6 +112,32 @@ function normalizeServerNotification(item) {
   };
 }
 
+function buildOverdueNotification(tasks) {
+  if (!tasks || tasks.length === 0) return null;
+  const count = tasks.length;
+  const today = new Date().toISOString().slice(0, 10);
+
+  function pluralize(n) {
+    if (n >= 11 && n <= 19) return "задач";
+    const r = n % 10;
+    if (r === 1) return "задача";
+    if (r >= 2 && r <= 4) return "задачи";
+    return "задач";
+  }
+
+  return {
+    id: `overdue-tasks-${today}`,
+    type: "danger",
+    source: "system",
+    title: "Просроченные задачи",
+    text: `У вас ${count} просроченных ${pluralize(count)}. Откройте план на день, чтобы перенести или игнорировать их.`,
+    link: "/day-plan",
+    created_at: new Date().toISOString(),
+    is_read: false,
+    is_virtual: true,
+  };
+}
+
 function sortNotifications(items) {
   return [...items].sort((a, b) => {
     const aTime = new Date(a.created_at || 0).getTime();
@@ -119,6 +147,7 @@ function sortNotifications(items) {
 }
 
 const VIRTUAL_READ_STORAGE_KEY = "notifications-virtual-read-ids";
+const VIRTUAL_DELETED_STORAGE_KEY = "notifications-virtual-deleted-ids";
 
 function loadVirtualReadIds() {
   try {
@@ -137,9 +166,27 @@ function saveVirtualReadIds(ids) {
       VIRTUAL_READ_STORAGE_KEY,
       JSON.stringify(Array.from(ids))
     );
+  } catch {}
+}
+
+function loadVirtualDeletedIds() {
+  try {
+    const raw = window.localStorage.getItem(VIRTUAL_DELETED_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
   } catch {
-    // ignore quota / privacy errors
+    return new Set();
   }
+}
+
+function saveVirtualDeletedIds(ids) {
+  try {
+    window.localStorage.setItem(
+      VIRTUAL_DELETED_STORAGE_KEY,
+      JSON.stringify(Array.from(ids))
+    );
+  } catch {}
 }
 
 export default function NotificationsBell() {
@@ -152,24 +199,39 @@ export default function NotificationsBell() {
     try {
       setLoading(true);
 
-      const [goalsData, serverNotificationsData] = await Promise.all([
+      const [goalsData, serverNotificationsData, overdueData] = await Promise.all([
         fetchGoals().catch(() => []),
         fetchMyNotifications().catch(() => []),
+        fetchOverdueTasks().catch(() => []),
       ]);
 
       const goals = Array.isArray(goalsData) ? goalsData : [];
       const serverNotifications = Array.isArray(serverNotificationsData)
         ? serverNotificationsData
         : [];
+      const overdueTasks = Array.isArray(overdueData) ? overdueData : [];
 
       const virtualReadIds = loadVirtualReadIds();
+      const virtualDeletedIds = loadVirtualDeletedIds();
 
-      const goalItems = buildGoalNotifications(goals).map((item) =>
-        virtualReadIds.has(item.id) ? { ...item, is_read: true } : item
-      );
-      const backendItems = serverNotifications.map(normalizeServerNotification);
+      const goalItems = buildGoalNotifications(goals)
+        .filter((item) => !virtualDeletedIds.has(item.id))
+        .map((item) =>
+          virtualReadIds.has(item.id) ? { ...item, is_read: true } : item
+        );
 
-      const allItems = [...backendItems, ...goalItems];
+      const overdueNotif = buildOverdueNotification(overdueTasks);
+      const overdueItems =
+        overdueNotif && !virtualDeletedIds.has(overdueNotif.id)
+          ? [virtualReadIds.has(overdueNotif.id) ? { ...overdueNotif, is_read: true } : overdueNotif]
+          : [];
+
+      // Skip server-side overdue reminders — replaced by the virtual one above
+      const backendItems = serverNotifications
+        .filter((item) => item.title !== "Просроченные задачи")
+        .map(normalizeServerNotification);
+
+      const allItems = [...backendItems, ...goalItems, ...overdueItems];
 
       setItems(sortNotifications(allItems).slice(0, 20));
     } catch (error) {
@@ -229,6 +291,19 @@ export default function NotificationsBell() {
     setOpen(false);
   }
 
+  function handleDelete(item, e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setItems((prev) => prev.filter((n) => n.id !== item.id));
+    if (item.is_virtual) {
+      const deleted = loadVirtualDeletedIds();
+      deleted.add(item.id);
+      saveVirtualDeletedIds(deleted);
+    } else {
+      deleteNotification(item.id).catch(() => {});
+    }
+  }
+
   const unreadCount = items.filter((item) => !item.is_read).length;
 
   return (
@@ -286,15 +361,25 @@ export default function NotificationsBell() {
                   <div className="notification-item-top">
                     <div className="notification-item-title">{item.title}</div>
 
-                    {item.source && (
-                      <span className="notification-item-source">
-                        {item.source === "goal"
-                          ? "Цель"
-                          : item.source === "system"
-                          ? "Система"
-                          : item.source}
-                      </span>
-                    )}
+                    <div className="notification-item-top-right">
+                      {item.source && (
+                        <span className="notification-item-source">
+                          {item.source === "goal"
+                            ? "Цель"
+                            : item.source === "system"
+                            ? "Система"
+                            : item.source}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className="notification-delete-btn"
+                        onClick={(e) => handleDelete(item, e)}
+                        aria-label="Удалить уведомление"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
 
                   <div className="notification-item-text">{item.text}</div>

@@ -21,7 +21,7 @@ from bootstrap import (
     ensure_user_theme_column,
 )
 from db import Base, engine
-from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notifications, statistics, templates, week
+from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notes, notifications, statistics, templates, week
 
 load_dotenv()
 
@@ -60,6 +60,7 @@ app.include_router(feedback.router)
 app.include_router(categories.router)
 app.include_router(legal.router)
 app.include_router(day.router)
+app.include_router(notes.router)
 app.include_router(inbox.router)
 app.include_router(templates.router)
 app.include_router(week.router)

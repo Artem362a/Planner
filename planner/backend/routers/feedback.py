@@ -31,13 +31,13 @@ def _serialize(row: Any) -> FeedbackOut:
         name=row.name,
         contact=row.contact,
         message=row.message,
-        created_at=row.created_at.isoformat(),
+        created_at=row.created_at.strftime("%Y-%m-%dT%H:%M:%S"),
         status=row.status,
         developer_reply=row.developer_reply,
         developer_replied_at=(
-            row.developer_replied_at.isoformat()
-            if hasattr(row.developer_replied_at, "isoformat")
-            else row.developer_replied_at
+            row.developer_replied_at.strftime("%Y-%m-%dT%H:%M:%S")
+            if hasattr(row.developer_replied_at, "strftime")
+            else None
         ) if row.developer_replied_at else None,
         screenshots=row.screenshots,
     )

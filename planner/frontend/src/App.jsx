@@ -26,6 +26,7 @@ import NotificationsBell from "./components/NotificationsBell";
 import AccountPage from "./pages/account/AccountPage";
 import StatisticsPage from "./pages/statistics/StatisticsPage";
 import InboxPage from "./pages/inbox/InboxPage";
+import LandingPage from "./pages/landing/LandingPage";
 
 function applyTheme(theme) {
   // 'system' was removed from the UI; legacy localStorage values fall back to light.
@@ -320,7 +321,7 @@ const App = () => {
     removeToken();
     setIsAuthenticated(false);
     setUser(null);
-    window.location.href = "/login";
+    window.location.href = "/";
   }
 
   if (!authChecked) {
@@ -356,9 +357,11 @@ const App = () => {
         <Route
           path="/"
           element={
-            <ProtectedRoute isAuthenticated={isAuthenticated}>
+            isAuthenticated ? (
               <Home user={user} onLogout={handleLogout} />
-            </ProtectedRoute>
+            ) : (
+              <LandingPage />
+            )
           }
         />
 
