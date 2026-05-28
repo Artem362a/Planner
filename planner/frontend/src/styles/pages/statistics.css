@@ -79,11 +79,51 @@
   gap: 12px;
 }
 
+.stats-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .stats-section-title {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   color: #32285f;
+}
+
+.stats-view-toggle {
+  display: flex;
+  background: #ede8f8;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.stats-view-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #9a92b6;
+  font-size: 17px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s;
+  outline: none;
+}
+
+.stats-view-btn:hover {
+  color: #7d68c9;
+}
+
+.stats-view-btn--active {
+  background: #7d68c9;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(125, 104, 201, 0.3);
 }
 
 /* ── Bar chart wrapper ───────────────────────────────────────────────────── */
@@ -97,7 +137,11 @@
 .stats-chart-wrap .recharts-wrapper,
 .stats-chart-wrap .recharts-surface,
 .stats-chart-wrap svg,
-.stats-chart-wrap svg * {
+.stats-chart-wrap svg *,
+.stats-section .recharts-wrapper,
+.stats-section .recharts-surface,
+.stats-section svg,
+.stats-section svg * {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }

@@ -472,10 +472,54 @@
 }
 
 .day-timeline-time {
-  margin-top: 3px;
   color: #5f587d;
   font-size: 13px;
   font-weight: 500;
+}
+
+.day-timeline-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.day-timeline-subtask-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #9a92b6;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.day-timeline-subtask-badge::before {
+  content: "·";
+  margin-right: 5px;
+  color: #c4bede;
+}
+
+.day-timeline-subtask-badge:hover {
+  color: #7d68c9;
+}
+
+.day-overview-timeline-time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.day-overview-timeline-meta-time {
+  font-size: 11px;
+  color: #9a92b6;
 }
 
 .day-timeline-menu {

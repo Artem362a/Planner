@@ -65,6 +65,7 @@ function ImportantToday({ selectedDay }) {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedGroupId, setExpandedGroupId] = useState(null);
   const [viewMode, setViewMode] = useState("timeline");
+  const [subtaskTaskId, setSubtaskTaskId] = useState(null);
   const [dayStartTime, setDayStartTime] = useState("06:00");
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
@@ -389,6 +390,24 @@ function ImportantToday({ selectedDay }) {
     }
   };
 
+  const toggleSubtask = async (task, subtask) => {
+    const updatedSub = { ...subtask, done: !subtask.done };
+    const updatedTask = {
+      ...task,
+      subtasks: (task.subtasks || []).map((s) => s.id === subtask.id ? updatedSub : s),
+    };
+    const allDone = updatedTask.subtasks.length > 0 && updatedTask.subtasks.every((s) => s.done);
+    if (allDone) updatedTask.status = 1;
+    if (updatedTask.subtasks.some((s) => !s.done)) updatedTask.status = 0;
+
+    try {
+      const saved = await updateDayTask(dayString, task.id, updatedTask);
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const renderSwitcher = () => (
     <div className="day-overview-mode">
       <button
@@ -484,6 +503,8 @@ function ImportantToday({ selectedDay }) {
                 const attachedCount = before.length + after.length;
                 const isSmallGroup = t.type === "small-group";
 
+                const bgColor = isDone ? "#aaaaaa" : categoryColor;
+
                 return (
                   <article
                     key={t.id}
@@ -496,15 +517,17 @@ function ImportantToday({ selectedDay }) {
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
-                      borderLeftColor: categoryColor,
-                      backgroundColor: `${categoryColor}16`,
+                      borderLeftColor: isDone ? "#aaaaaa" : categoryColor,
+                      backgroundColor: isDone ? "#aaaaaa16" : `${categoryColor}16`,
+                      cursor: isSmallGroup ? "default" : "pointer",
                     }}
+                    onClick={isSmallGroup ? undefined : () => toggleStatus(t)}
                   >
                     <div
                       className="day-overview-timeline-icon"
                       style={{
-                        color: categoryColor,
-                        backgroundColor: `${categoryColor}22`,
+                        color: isDone ? "#aaaaaa" : categoryColor,
+                        backgroundColor: `${bgColor}22`,
                       }}
                     >
                       <CategoryIcon name={categories[t.category]?.icon || "tag"} />
@@ -521,7 +544,7 @@ function ImportantToday({ selectedDay }) {
                             <button
                               type="button"
                               className="day-overview-sg-toggle"
-                              onClick={() => setExpandedGroupId((prev) => prev === t.id ? null : t.id)}
+                              onClick={(e) => { e.stopPropagation(); setExpandedGroupId((prev) => prev === t.id ? null : t.id); }}
                             >
                               {expandedGroupId === t.id ? "▲" : "▼"}
                             </button>
@@ -546,14 +569,23 @@ function ImportantToday({ selectedDay }) {
                       ) : (
                         <>
                           <div className="day-overview-timeline-title">{t.title}</div>
-                          <div className="day-overview-timeline-meta">
-                            <span>
+                          <div className="day-overview-timeline-time-row">
+                            <span className="day-overview-timeline-meta-time">
                               {t.computed_start_time}
                               {t.duration_min ? ` – ${t.computed_end_time}` : ""}
                             </span>
-                            {t.duration_min ? <span>{formatDuration(t.duration_min)}</span> : null}
-                            {t.category ? <span>#{categoryTitle}</span> : null}
-                            {isImportant ? <span>важно</span> : null}
+                            {t.subtasks?.length > 0 && (
+                              <button
+                                type="button"
+                                className="day-timeline-subtask-badge"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSubtaskTaskId(t.id);
+                                }}
+                              >
+                                {t.subtasks.filter((s) => s.done).length}/{t.subtasks.length} подзадач
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
@@ -566,6 +598,42 @@ function ImportantToday({ selectedDay }) {
             </div>
           </div>
         )}
+
+        {subtaskTaskId && (() => {
+          const stTask = tasksWithComputedTime.find((t) => t.id === subtaskTaskId);
+          if (!stTask) return null;
+          return (
+            <div className="task-modal-backdrop" onClick={() => setSubtaskTaskId(null)}>
+              <div className="task-modal task-modal--subtasks" onClick={(e) => e.stopPropagation()}>
+                <h3>{stTask.title}</h3>
+                <ul className="subtasks-list">
+                  {stTask.subtasks.map((s) => (
+                    <li key={s.id} className="subtask-item">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={!!s.done}
+                          onChange={() => toggleSubtask(stTask, s)}
+                        />
+                        <span style={s.done ? { textDecoration: "line-through", color: "#aaa" } : {}}>
+                          {s.title}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  style={{ marginTop: 12 }}
+                  onClick={() => setSubtaskTaskId(null)}
+                >
+                  Закрыть
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }

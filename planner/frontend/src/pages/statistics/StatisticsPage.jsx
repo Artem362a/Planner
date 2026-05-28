@@ -7,6 +7,10 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
 } from "recharts";
 import { fetchStatistics } from "../../api/statistics";
 import "../../styles/pages/statistics.css";
@@ -28,6 +32,7 @@ export default function StatisticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [catView, setCatView] = useState("bars");
 
   useEffect(() => {
     setLoading(true);
@@ -55,7 +60,7 @@ export default function StatisticsPage() {
     prioritySum > 0 ? Math.round((highTotal / prioritySum) * 100) : 0;
 
   const categories = Array.isArray(data?.tasks?.by_category)
-    ? [...data.tasks.by_category].sort((a, b) => b.total - a.total).slice(0, 8)
+    ? [...data.tasks.by_category].sort((a, b) => b.total - a.total)
     : [];
   const catMax = categories[0]?.total || 1;
 
@@ -205,50 +210,99 @@ export default function StatisticsPage() {
                 {/* Categories */}
                 {categories.length > 0 && (
                   <div className="stats-section">
-                    <h3 className="stats-section-title">По категориям</h3>
-                    <div className="stats-category-list">
-                      {categories.map((cat) => {
-                        const volPct = Math.round((cat.total / catMax) * 100);
-                        const donePct =
-                          cat.total > 0
-                            ? Math.round((cat.completed / cat.total) * 100)
-                            : 0;
-                        return (
-                          <div key={cat.key} className="stats-cat-row">
-                            <div className="stats-cat-label">
-                              <span
-                                className="stats-cat-dot"
-                                style={{ background: cat.color || "#bbb" }}
-                              />
-                              <span className="stats-cat-title">
-                                {cat.title}
-                              </span>
-                              <span className="stats-cat-count">
-                                {cat.completed}/{cat.total}
-                              </span>
-                            </div>
-                            <div className="stats-cat-track">
-                              <div
-                                className="stats-cat-vol"
-                                style={{
-                                  width: `${volPct}%`,
-                                  background: cat.color || "#bbb",
-                                }}
-                              />
-                              <div
-                                className="stats-cat-done"
-                                style={{
-                                  width: `${Math.round(
-                                    (volPct * donePct) / 100
-                                  )}%`,
-                                  background: cat.color || "#bbb",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="stats-section-header">
+                      <h3 className="stats-section-title">По категориям</h3>
+                      {categories.length >= 3 && (
+                        <div className="stats-view-toggle">
+                          <button
+                            type="button"
+                            className={`stats-view-btn${catView === "bars" ? " stats-view-btn--active" : ""}`}
+                            onClick={() => setCatView("bars")}
+                          >
+                            ≡
+                          </button>
+                          <button
+                            type="button"
+                            className={`stats-view-btn${catView === "radar" ? " stats-view-btn--active" : ""}`}
+                            onClick={() => setCatView("radar")}
+                          >
+                            ◎
+                          </button>
+                        </div>
+                      )}
                     </div>
+
+                    {catView === "radar" && categories.length >= 3 ? (
+                      <ResponsiveContainer width="100%" height={320}>
+                        <RadarChart
+                          data={categories.map((cat) => ({
+                            subject: cat.title,
+                            value: cat.completed,
+                          }))}
+                          margin={{ top: 16, right: 40, bottom: 16, left: 40 }}
+                        >
+                          <PolarGrid stroke="#3a2f5e" />
+                          <PolarAngleAxis
+                            dataKey="subject"
+                            tick={{ fontSize: 12, fill: "#9a92b6" }}
+                          />
+                          <Radar
+                            dataKey="value"
+                            stroke="#7d68c9"
+                            fill="#7d68c9"
+                            fillOpacity={0.35}
+                          />
+                          <Tooltip
+                            formatter={(v) => [v, "Выполнено"]}
+                            contentStyle={{
+                              borderRadius: 12,
+                              border: "1px solid #ece6ff",
+                              fontSize: 13,
+                            }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="stats-category-list">
+                        {categories.map((cat) => {
+                          const volPct = Math.round((cat.total / catMax) * 100);
+                          const donePct =
+                            cat.total > 0
+                              ? Math.round((cat.completed / cat.total) * 100)
+                              : 0;
+                          return (
+                            <div key={cat.key} className="stats-cat-row">
+                              <div className="stats-cat-label">
+                                <span
+                                  className="stats-cat-dot"
+                                  style={{ background: cat.color || "#bbb" }}
+                                />
+                                <span className="stats-cat-title">{cat.title}</span>
+                                <span className="stats-cat-count">
+                                  {cat.completed}/{cat.total}
+                                </span>
+                              </div>
+                              <div className="stats-cat-track">
+                                <div
+                                  className="stats-cat-vol"
+                                  style={{
+                                    width: `${volPct}%`,
+                                    background: cat.color || "#bbb",
+                                  }}
+                                />
+                                <div
+                                  className="stats-cat-done"
+                                  style={{
+                                    width: `${Math.round((volPct * donePct) / 100)}%`,
+                                    background: cat.color || "#bbb",
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 

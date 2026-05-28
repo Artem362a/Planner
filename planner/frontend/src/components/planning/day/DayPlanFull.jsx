@@ -196,6 +196,7 @@ export default function DayPlanFull({ selectedDate }) {
   const [weekImportCandidates, setWeekImportCandidates] = useState([]);
   const [selectedImportItems, setSelectedImportItems] = useState([]);
   const [importLoading, setImportLoading] = useState(false);
+  const [timelineSubtaskTaskId, setTimelineSubtaskTaskId] = useState(null);
 
   const [conflictState, setConflictState] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -1802,6 +1803,8 @@ const overdueImportCandidates = useMemo(
 
                   const { task, top, height, before, after } = item;
                   const color = categories[task.category]?.color || "#BBBBBB";
+                  const isDone = task.status === 1;
+                  const bgColor = isDone ? "#aaaaaa" : color;
                   const attachedTasks = [...before, ...after];
                   const isCompact =
                     attachedTasks.length === 0 && (task.duration_min || 0) <= 30;
@@ -1811,7 +1814,7 @@ const overdueImportCandidates = useMemo(
                       key={task.id}
                       className={
                         "day-timeline-task" +
-                        (task.status === 1 ? " day-timeline-task--done" : "") +
+                        (isDone ? " day-timeline-task--done" : "") +
                         (attachedTasks.length > 0
                           ? " day-timeline-task--with-attached"
                           : "") +
@@ -1820,16 +1823,15 @@ const overdueImportCandidates = useMemo(
                       style={{
                         top: `${Math.max(0, top)}px`,
                         height: `${height}px`,
-                        background: `linear-gradient(90deg, ${hexToRgba(
-                          color,
-                          0.2
-                        )} 0%, ${hexToRgba(color, 0.1)} 100%)`,
-                        borderLeftColor: color,
+                        background: `linear-gradient(90deg, ${hexToRgba(bgColor, isDone ? 0.14 : 0.2)} 0%, ${hexToRgba(bgColor, isDone ? 0.07 : 0.1)} 100%)`,
+                        borderLeftColor: isDone ? "#aaaaaa" : color,
+                        cursor: "pointer",
                       }}
+                      onClick={() => cycleStatus(task)}
                     >
                       <div
                         className="day-timeline-icon"
-                        style={{ color, backgroundColor: hexToRgba(color, 0.14) }}
+                        style={{ color: isDone ? "#aaaaaa" : color, backgroundColor: hexToRgba(bgColor, 0.14) }}
                       >
                         <CategoryIcon name={categories[task.category]?.icon || "tag"} />
                       </div>
@@ -1838,9 +1840,23 @@ const overdueImportCandidates = useMemo(
                         {before.map(renderTimelineAttachedItem)}
 
                         <div className="day-timeline-title">{task.title}</div>
-                        <div className="day-timeline-time">
-                          {task.computed_start_time}
-                          {task.duration_min ? ` – ${task.computed_end_time}` : ""}
+                        <div className="day-timeline-time-row">
+                          <span className="day-timeline-time">
+                            {task.computed_start_time}
+                            {task.duration_min ? ` – ${task.computed_end_time}` : ""}
+                          </span>
+                          {task.subtasks?.length > 0 && (
+                            <button
+                              type="button"
+                              className="day-timeline-subtask-badge"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTimelineSubtaskTaskId(task.id);
+                              }}
+                            >
+                              {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} подзадач
+                            </button>
+                          )}
                         </div>
 
                         {after.map(renderTimelineAttachedItem)}
@@ -1873,6 +1889,42 @@ const overdueImportCandidates = useMemo(
           </div>
         )}
       </div>
+
+      {timelineSubtaskTaskId && (() => {
+        const stTask = tasksWithComputedTime.find(t => t.id === timelineSubtaskTaskId);
+        if (!stTask) return null;
+        return (
+          <div className="task-modal-backdrop" onClick={() => setTimelineSubtaskTaskId(null)}>
+            <div className="task-modal task-modal--subtasks" onClick={(e) => e.stopPropagation()}>
+              <h3>{stTask.title}</h3>
+              <ul className="subtasks-list">
+                {stTask.subtasks.map((s) => (
+                  <li key={s.id} className="subtask-item">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={!!s.done}
+                        onChange={() => toggleSubtask(stTask, s)}
+                      />
+                      <span style={s.done ? { textDecoration: "line-through", color: "#aaa" } : {}}>
+                        {s.title}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="secondary-btn"
+                style={{ marginTop: 12 }}
+                onClick={() => setTimelineSubtaskTaskId(null)}
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {isModalOpen && (
         <div className="task-modal-backdrop">

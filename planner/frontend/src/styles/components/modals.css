@@ -550,10 +550,10 @@
 .category-manager-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
   margin-top: 14px;
   margin-bottom: 18px;
-  max-height: 360px;
+  max-height: min(540px, 62vh);
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
@@ -562,10 +562,10 @@
 .category-manager-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border: 1px solid #ece6f7;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
 }
 
@@ -807,7 +807,7 @@
   }
 
   .category-manager-item {
-    padding: 10px 12px;
+    padding: 7px 10px;
   }
 
   .category-manager-item--editing {
