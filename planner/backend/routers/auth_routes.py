@@ -109,6 +109,8 @@ def register(
         raise HTTPException(status_code=400, detail="Username is required")
     if not password:
         raise HTTPException(status_code=400, detail="Password is required")
+    if len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password is too short")
 
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:

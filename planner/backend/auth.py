@@ -1,10 +1,21 @@
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-SECRET_KEY = "change-this-to-a-long-random-secret-key"
+load_dotenv()
+
+# JWT signing key. Must be a long random secret kept out of source control —
+# anyone who knows it can forge tokens for any user. Fail fast if it's missing.
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY is not set. Add a long random value to your .env "
+        "(see .env.example)."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
