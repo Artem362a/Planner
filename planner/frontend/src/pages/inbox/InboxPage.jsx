@@ -46,6 +46,7 @@ function parseUtc(isoStr) {
 
 function formatCreatedAt(isoStr) {
   const d = parseUtc(isoStr);
+  if (!d || isNaN(d.getTime())) return "";
   return d.toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "short",
