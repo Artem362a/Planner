@@ -278,3 +278,93 @@ class TestAccountDelete:
             json={"password": "wrong"},
         )
         assert r.status_code == 400
+
+
+class TestAvatarUpload:
+    def test_upload_valid_image(self, client, auth_headers):
+        from routers.auth_routes import AVATAR_UPLOAD_DIR
+        from pathlib import Path
+
+        r = client.post(
+            "/auth/avatar",
+            headers=auth_headers,
+            files={"file": ("avatar.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+        )
+        assert r.status_code == 200
+        avatar = r.json()["avatar"]
+        assert avatar.startswith("/uploads/avatars/")
+
+        # The upload writes a real file to disk (outside the DB rollback), so
+        # clean it up to keep the uploads dir tidy between test runs.
+        (AVATAR_UPLOAD_DIR / Path(avatar).name).unlink(missing_ok=True)
+
+    def test_upload_rejects_non_image(self, client, auth_headers):
+        r = client.post(
+            "/auth/avatar",
+            headers=auth_headers,
+            files={"file": ("notes.txt", b"plain text", "text/plain")},
+        )
+        assert r.status_code == 400
+
+    def test_upload_rejects_too_large(self, client, auth_headers):
+        oversized = b"\x00" * (2 * 1024 * 1024 + 1)  # just over the 2 MB limit
+        r = client.post(
+            "/auth/avatar",
+            headers=auth_headers,
+            files={"file": ("big.png", oversized, "image/png")},
+        )
+        assert r.status_code == 400
+
+
+class TestExport:
+    def test_export_includes_own_data(self, client, db, user, auth_headers):
+        from db import DayTask
+        from datetime import date
+
+        db.add(DayTask(user_id=user.id, day=date.today(), title="exported task", priority="medium", status=0, order_index=0))
+        db.commit()
+
+        r = client.get("/auth/export", headers=auth_headers)
+        assert r.status_code == 200
+        payload = r.json()
+        assert payload["user"]["email"] == user.email
+        assert "day_tasks" in payload
+        assert any(t["title"] == "exported task" for t in payload["day_tasks"])
+
+    def test_export_excludes_other_users_data(self, client, db, other_user, auth_headers):
+        from db import DayTask
+        from datetime import date
+
+        db.add(DayTask(user_id=other_user.id, day=date.today(), title="secret", priority="medium", status=0, order_index=0))
+        db.commit()
+
+        payload = client.get("/auth/export", headers=auth_headers).json()
+        assert all(t["title"] != "secret" for t in payload["day_tasks"])
+
+    def test_export_requires_auth(self, client):
+        assert client.get("/auth/export").status_code in (401, 403)
+
+
+class TestRevokeSingleSession:
+    def test_revoke_session_by_id(self, client, db, user, auth_headers):
+        from db import UserSession
+
+        extra = UserSession(user_id=user.id, jti="other-device-jti")
+        db.add(extra)
+        db.commit()
+        db.refresh(extra)
+
+        r = client.delete(f"/auth/sessions/{extra.id}", headers=auth_headers)
+        assert r.status_code == 200
+        assert db.query(UserSession).filter(UserSession.id == extra.id).first() is None
+
+    def test_revoke_session_404_for_other_user(self, client, db, other_user, auth_headers):
+        from db import UserSession
+
+        row = UserSession(user_id=other_user.id, jti="their-jti")
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.delete(f"/auth/sessions/{row.id}", headers=auth_headers)
+        assert r.status_code == 404
