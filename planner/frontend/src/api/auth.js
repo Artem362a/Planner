@@ -29,7 +29,7 @@ export async function loginUser(body) {
     body: JSON.stringify(body),
   });
 
-  return await handleResponse(res, "Failed to login");
+  return await handleResponse(res, "Failed to login", { skipAuthRedirect: true });
 }
 
 export async function fetchMe(token) {
@@ -59,7 +59,7 @@ export async function updatePassword(body) {
     body: JSON.stringify(body),
   });
 
-  return await handleResponse(res, "Failed to update password");
+  return await handleResponse(res, "Failed to update password", { skipAuthRedirect: true });
 }
 
 export async function uploadAvatar(file) {
@@ -153,7 +153,7 @@ export async function deleteAccount(password) {
     body: JSON.stringify({ password }),
   });
 
-  return await handleResponse(res, "Failed to delete account");
+  return await handleResponse(res, "Failed to delete account", { skipAuthRedirect: true });
 }
 
 export async function importSchedule() {
