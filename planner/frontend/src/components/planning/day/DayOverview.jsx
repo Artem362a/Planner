@@ -6,15 +6,7 @@ import {
   updateDayTask,
 } from "../../../api/tasks";
 import { CategoryIcon } from "../../icons";
-
-function addMinutesToTime(timeStr, minutesToAdd) {
-  const [hh, mm] = timeStr.split(":").map(Number);
-  const base = hh * 60 + mm + (minutesToAdd || 0);
-  const total = Math.max(base, 0);
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-}
+import { addMinutesToTime, timeStringToMinutes } from "../../../utils/time";
 
 function formatLocalDate(date) {
   const year = date.getFullYear();
@@ -49,12 +41,6 @@ function formatDuration(durationMin) {
   const hh = Math.floor(minutes / 60);
   const mm = minutes % 60;
   return `${hh}:${String(mm).padStart(2, "0")}`;
-}
-
-function timeStringToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  const [hh, mm] = timeStr.split(":").map(Number);
-  return (hh || 0) * 60 + (mm || 0);
 }
 
 function ImportantToday({ selectedDay }) {
