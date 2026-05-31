@@ -176,3 +176,90 @@ class TestAssignToWeek:
             DayTask.day >= date(2025, 6, 2),
             DayTask.day <= date(2025, 6, 8),
         ).count() == 7
+
+    def test_completing_week_day_task_marks_inbox_completed(
+        self, client, db, user, auth_headers
+    ):
+        """Inbox task assigned to a week keeps its link: completing one of the
+        generated day tasks stamps the inbox row's completed_at."""
+        from db import DayTask, InboxTask
+
+        created = client.post(
+            "/inbox", headers=auth_headers, json={"title": "weekly thing"}
+        ).json()
+
+        today = date.today()
+        client.post(
+            f"/inbox/{created['id']}/assign-week",
+            headers=auth_headers,
+            json={"week_start": today.isoformat()},
+        )
+
+        day_task = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.day == today)
+            .first()
+        )
+        assert day_task is not None
+        assert day_task.source_inbox_task_id == created["id"]
+
+        r = client.patch(
+            f"/day/{today.isoformat()}/tasks/{day_task.id}",
+            headers=auth_headers,
+            json={"title": day_task.title, "status": 1},
+        )
+        assert r.status_code == 200
+
+        db.expire_all()
+        inbox_row = db.query(InboxTask).filter(InboxTask.id == created["id"]).first()
+        assert inbox_row.completed_at is not None
+
+
+class TestRescheduleKeepsInboxLink:
+    def test_reschedule_preserves_source_inbox_and_marks_completed(
+        self, client, db, user, auth_headers
+    ):
+        """Rescheduling an inbox-sourced day task carries source_inbox_task_id
+        over, so completing the rescheduled task still stamps the inbox row."""
+        from db import DayTask, InboxTask
+
+        created = client.post(
+            "/inbox", headers=auth_headers, json={"title": "deferred"}
+        ).json()
+
+        yesterday = date.today() - timedelta(days=1)
+        client.post(
+            f"/inbox/{created['id']}/assign-day",
+            headers=auth_headers,
+            json={"day": yesterday.isoformat()},
+        )
+        old_task = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.day == yesterday)
+            .first()
+        )
+
+        tomorrow = date.today() + timedelta(days=1)
+        r = client.post(
+            f"/day-tasks/{old_task.id}/reschedule",
+            headers=auth_headers,
+            json={"new_date": tomorrow.isoformat()},
+        )
+        assert r.status_code == 200
+
+        new_task = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.day == tomorrow)
+            .first()
+        )
+        assert new_task is not None
+        assert new_task.source_inbox_task_id == created["id"]
+
+        client.patch(
+            f"/day/{tomorrow.isoformat()}/tasks/{new_task.id}",
+            headers=auth_headers,
+            json={"title": new_task.title, "status": 1},
+        )
+        db.expire_all()
+        inbox_row = db.query(InboxTask).filter(InboxTask.id == created["id"]).first()
+        assert inbox_row.completed_at is not None

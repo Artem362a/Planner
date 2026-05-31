@@ -362,8 +362,8 @@ const overdueImportCandidates = useMemo(
   const timelineSmallTaskMinutes = 20;
   const timelineStandaloneSmallGroupSize = 3;
   const timelineSmallGroupBaseHeight = 60;
-  const timelineSmallGroupRowHeight = 26;
-  const timelineSmallGroupExpandedPadding = 30;
+  const timelineSmallGroupRowHeight = 30;
+  const timelineSmallGroupExpandedPadding = 34;
   const timelineSmallGroupMaxListHeight = 260;
   const timelineMaxAttachGapMin = 30;
   const getSmallGroupId = (run) => `small-${run[0].id}-${run[run.length - 1].id}`;
@@ -1334,6 +1334,37 @@ const overdueImportCandidates = useMemo(
     setExpandedTaskId((prev) => (prev === taskId ? null : taskId));
   };
 
+  const renderSmallTaskRow = (task) => {
+    const isDone = task.status === 1;
+
+    return (
+      <div
+        key={task.id}
+        className={
+          "day-timeline-attached-task day-timeline-attached-task--checkable" +
+          (isDone ? " is-done" : "")
+        }
+      >
+        <label
+          className="day-timeline-small-check"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={isDone}
+            onChange={() => cycleStatus(task)}
+          />
+          <span />
+        </label>
+        <span className="day-timeline-small-title">{task.title}</span>
+        <em>
+          {task.computed_start_time}
+          {task.duration_min ? ` – ${task.computed_end_time}` : ""}
+        </em>
+      </div>
+    );
+  };
+
   const renderTimelineAttachedItem = (item) => {
     if (item.type === "attached-group") {
       const isExpanded = expandedTimelineGroupId === item.id;
@@ -1343,11 +1374,12 @@ const overdueImportCandidates = useMemo(
           <button
             type="button"
             className="day-timeline-attached-task day-timeline-attached-task--button"
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               setExpandedTimelineGroupId((prev) =>
                 prev === item.id ? null : item.id
-              )
-            }
+              );
+            }}
           >
             <span>{item.title}</span>
             <em>
@@ -1358,30 +1390,14 @@ const overdueImportCandidates = useMemo(
 
           {isExpanded && (
             <div className="day-timeline-attached-list">
-              {item.tasks.map((task) => (
-                <div key={task.id} className="day-timeline-attached-task">
-                  <span>{task.title}</span>
-                  <em>
-                    {task.computed_start_time}
-                    {task.duration_min ? ` – ${task.computed_end_time}` : ""}
-                  </em>
-                </div>
-              ))}
+              {item.tasks.map(renderSmallTaskRow)}
             </div>
           )}
         </div>
       );
     }
 
-    return (
-      <div key={item.id} className="day-timeline-attached-task">
-        <span>{item.title}</span>
-        <em>
-          {item.computed_start_time}
-          {item.duration_min ? ` – ${item.computed_end_time}` : ""}
-        </em>
-      </div>
-    );
+    return renderSmallTaskRow(item);
   };
 
   const sidePanel = (
@@ -1782,20 +1798,7 @@ const overdueImportCandidates = useMemo(
                         </div>
 
                         <div className="day-timeline-group-list">
-                            {item.tasks.map((smallTask) => (
-                              <div
-                                key={smallTask.id}
-                                className="day-timeline-attached-task"
-                              >
-                                <span>{smallTask.title}</span>
-                                <em>
-                                  {smallTask.computed_start_time}
-                                  {smallTask.duration_min
-                                    ? ` – ${smallTask.computed_end_time}`
-                                    : ""}
-                                </em>
-                              </div>
-                            ))}
+                            {item.tasks.map(renderSmallTaskRow)}
                         </div>
                       </article>
                     );

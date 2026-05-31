@@ -343,6 +343,67 @@
   cursor: pointer;
 }
 
+/* Чекбокс для отметки небольших задач прямо в таймлайне */
+.day-timeline-attached-task--checkable::before {
+  display: none;
+}
+
+.day-timeline-small-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.day-timeline-small-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.day-timeline-small-check span {
+  display: block;
+  box-sizing: border-box;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 2px solid #cfc5ec;
+  background: #ffffff;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.day-timeline-small-check input:checked + span {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.day-timeline-small-check input:checked + span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 3px;
+  height: 7px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.day-timeline-small-title {
+  flex: 1;
+}
+
+.day-timeline-attached-task.is-done .day-timeline-small-title {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
 .day-timeline-attached-wrap {
   min-width: 0;
 }
@@ -412,7 +473,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 100%;
+  width: auto;
+  margin-right: 6px;
+  box-sizing: border-box;
   max-height: 0;
   margin-top: 0;
   padding: 0 10px;
@@ -481,13 +544,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 3px;
-  flex-wrap: wrap;
+  margin-top: 2px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.day-timeline-time-row .day-timeline-time {
+  flex-shrink: 0;
 }
 
 .day-timeline-subtask-badge {
   display: inline-flex;
   align-items: center;
+  min-width: 0;
   padding: 0;
   border: none;
   background: none;
@@ -497,6 +566,9 @@
   cursor: pointer;
   outline: none;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.15s;
 }
 

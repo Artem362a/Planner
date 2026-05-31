@@ -243,6 +243,7 @@ def assign_inbox_to_week(
             status=0,
             subtasks=list(nwt.subtasks) if nwt.subtasks else [],
             source_week_task_id=nwt.id,
+            source_inbox_task_id=t.id,
             order_index=_get_next_day_order(db, user.id, d),
         ))
         d += timedelta(days=1)

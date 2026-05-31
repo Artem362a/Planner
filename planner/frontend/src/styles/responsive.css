@@ -18,6 +18,63 @@
   }
 }
 
+/* =========================
+   КОМПАКТНЫЙ ДАШБОРД (низкий экран / Windows-масштаб 125%+)
+   Главная вписана в экран без скролла, поэтому при нехватке высоты
+   (например, 1080p при системном масштабе 125% даёт ~691px CSS-высоты)
+   низ обрезался. Поджимаем вертикальные отступы и высоты — только на
+   десктопе (min-width: 1025px); телефоны (max-width: 1024px) не затрагиваем.
+   ========================= */
+@media (min-width: 1025px) and (max-height: 820px) {
+  .app-wrapper--home {
+    padding: 10px;
+  }
+
+  .app-wrapper--home .app {
+    height: calc(100vh - 20px);
+  }
+
+  .app-wrapper--home .app-header {
+    min-height: 56px;
+    padding: 8px 20px;
+  }
+
+  .app-wrapper--home .app-header-center {
+    font-size: clamp(0.95rem, 1.3vw, 1.3rem);
+  }
+
+  .app-wrapper--home .app-main {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .app-wrapper--home .card {
+    padding: 12px 14px;
+  }
+
+  .app-wrapper--home .card-header-row {
+    margin-bottom: 10px;
+  }
+
+  .app-wrapper--home .card h2 {
+    font-size: clamp(1rem, 1.1vw, 1.3rem);
+  }
+}
+
+/* Верхний ряд (день/месяц/цели) чуть ниже, чтобы низу (неделя) хватило места.
+   Раскладка рядов разная для двух- и трёхколоночной сетки, поэтому два правила. */
+@media (min-width: 1281px) and (max-height: 820px) {
+  .app-wrapper--home .app-main {
+    grid-template-rows: minmax(0, 46vh) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1280px) and (max-height: 820px) {
+  .app-wrapper--home .app-main {
+    grid-template-rows: minmax(0, 46vh) auto auto;
+  }
+}
+
 @media (max-width: 1024px) {
   .app-wrapper {
     padding: 12px;

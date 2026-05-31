@@ -260,9 +260,9 @@ def toggle_goal_day_item(
         stage_row = cast(Any, stage)
         stage_row.done = not bool(stage_row.done)
 
-        db.flush()
-        db.refresh(goal_row)
-        _sync_goal_status(goal_row)
+        # Этап ≠ цель: отметка этапа в дне переключает только сам этап и НЕ
+        # завершает цель целиком, даже если это последний/единственный этап.
+        # Завершение цели — отдельное явное действие (галочка цели или /goals).
         db.commit()
         db.refresh(goal_row)
 

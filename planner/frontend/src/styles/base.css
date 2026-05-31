@@ -24,7 +24,7 @@
   --accent-soft: #efe7ff;
   --danger: #d36b6b;
   --success: #7ecf8a;
-  --shadow-main: 0 18px 40px rgba(0, 0, 0, 0.18);
+  --shadow-main: none;
   --shadow-card: 0 8px 18px rgba(93, 84, 132, 0.14);
   --shadow-soft: 0 10px 24px rgba(93, 84, 132, 0.1);
   --radius-xl: 24px;

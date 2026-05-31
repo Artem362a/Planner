@@ -630,6 +630,10 @@ def reschedule_task(
         status=0,
         subtasks=list(t.subtasks) if t.subtasks else [],
         order_index=(max_order[0] + 1) if max_order else 0,
+        # Сохраняем связь с источником при переносе: иначе выполнение
+        # перенесённой задачи не отметило бы исходное входящее/недельную задачу.
+        source_inbox_task_id=getattr(t, "source_inbox_task_id", None),
+        source_week_task_id=t.source_week_task_id,
     )
 
     db.add(new_task)

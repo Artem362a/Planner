@@ -18,7 +18,7 @@
   .day-big-card {
     width: 100%;
     max-width: 100%;
-    padding: 12px 4px 16px;
+    padding: 12px 2px 16px;
     border-radius: 18px;
     box-sizing: border-box;
     overflow-x: clip;
@@ -74,7 +74,7 @@
   }
 
   .day-timeline-board {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 38px minmax(0, 1fr);
   }
 
   .day-timeline-track {
@@ -82,10 +82,17 @@
   }
 
   .day-timeline-task {
-    left: 14px;
+    left: 4px;
     grid-template-columns: 34px minmax(0, 1fr) 28px;
     gap: 8px;
     padding: 8px 8px 8px 10px;
+  }
+
+  /* Группа «Небольшие задачи» использует свою сетку (иконка, кнопка, контент);
+     без этого мобильный override .day-timeline-task ломает её и заголовок
+     переносится по буквам. */
+  .day-timeline-task--small-group {
+    grid-template-columns: 34px 28px minmax(0, 1fr);
   }
 
   .day-timeline-icon {
