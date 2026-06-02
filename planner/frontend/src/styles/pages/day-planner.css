@@ -2,6 +2,58 @@
    PAGE LAYOUTS
    ========================= */
 
+/* ---- Режим редактирования шаблона ---- */
+.template-edit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #7b5ecf 0%, #6f5ca7 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(93, 84, 132, 0.22);
+}
+
+.template-edit-banner-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.template-edit-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Доп. поля баннера в режиме шаблона недели (название + палитра) */
+.template-edit-banner-name {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  color: #2d2545;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.template-edit-banner-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 320px;
+}
+
+/* Выключенные (видимые, но неинтерактивные) блоки в режиме шаблона */
+.is-template-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+}
+
 .day-page-main {
   padding: 24px;
   width: 100%;
@@ -254,6 +306,19 @@
 
 .day-timeline-task--done {
   opacity: 0.68;
+}
+
+/* Наложение по времени: задача стартует раньше, чем закончилась предыдущая. */
+.day-timeline-task--conflict {
+  border-color: #f0b9c0;
+  border-left-color: #d96b7c !important;
+  box-shadow: 0 0 0 1px rgba(217, 107, 124, 0.28) inset, 0 6px 14px rgba(87, 68, 146, 0.06);
+}
+
+.day-timeline-conflict-mark {
+  margin-right: 5px;
+  color: #d05a6c;
+  font-size: 0.9em;
 }
 
 .day-timeline-task--done .day-timeline-title {
@@ -982,6 +1047,26 @@
 
 .day-task-item.done {
   opacity: 0.72;
+}
+
+/* Наложение по времени — тонкая красная полоска слева + тег в мете,
+   без заливки всей карточки. */
+.day-task-item--conflict {
+  box-shadow:
+    inset 3px 0 0 0 #e08594,
+    0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.day-task-conflict-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #c15467;
+  background: #ffe2e6;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .day-task-item.done .day-task-title {

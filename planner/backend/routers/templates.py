@@ -240,6 +240,38 @@ def create_week_template(
     return _week_template_to_out(cast(WeekTemplateRow, tmpl))
 
 
+@router.patch("/week-templates/{template_id}", response_model=WeekTemplateOut)
+def patch_week_template(
+    template_id: int,
+    body: WeekTemplatePatch,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    tmpl = (
+        db.query(WeekTemplate)
+        .filter(
+            WeekTemplate.id == template_id,
+            WeekTemplate.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if not tmpl:
+        raise HTTPException(404, "Week template not found")
+
+    if body.name is not None:
+        tmpl.name = body.name
+    if body.color is not None:
+        tmpl.color = body.color
+    if body.tasks is not None:
+        tmpl.tasks_json = [task.dict() for task in body.tasks]
+
+    db.commit()
+    db.refresh(tmpl)
+    return _week_template_to_out(cast(WeekTemplateRow, tmpl))
+
+
 @router.delete("/week-templates/{template_id}")
 def delete_week_template(
     template_id: int,

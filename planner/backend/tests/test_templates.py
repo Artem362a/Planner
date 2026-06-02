@@ -152,6 +152,70 @@ class TestWeekTemplates:
         r = client.delete(f"/week-templates/{t.id}", headers=auth_headers)
         assert r.status_code == 200
 
+    def test_patch_updates_name_and_color(self, client, auth_headers):
+        body = {
+            "name": "Old name",
+            "color": "#abc123",
+            "tasks": [{"name": "task A", "start_offset": 0, "end_offset": 6}],
+        }
+        tpl = client.post("/week-templates", headers=auth_headers, json=body).json()
+
+        r = client.patch(
+            f"/week-templates/{tpl['id']}",
+            headers=auth_headers,
+            json={"name": "New name", "color": "#ff0000"},
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["name"] == "New name"
+        assert data["color"] == "#ff0000"
+        # tasks не трогали — остаются на месте
+        assert len(data["tasks"]) == 1
+
+    def test_patch_replaces_tasks(self, client, auth_headers):
+        body = {
+            "name": "Tpl",
+            "color": "#abc123",
+            "tasks": [{"name": "task A", "start_offset": 0, "end_offset": 0}],
+        }
+        tpl = client.post("/week-templates", headers=auth_headers, json=body).json()
+
+        r = client.patch(
+            f"/week-templates/{tpl['id']}",
+            headers=auth_headers,
+            json={
+                "tasks": [
+                    {"name": "B", "start_offset": 1, "end_offset": 2},
+                    {"name": "C", "start_offset": 3, "end_offset": 3},
+                ]
+            },
+        )
+        assert r.status_code == 200
+        data = r.json()
+        assert data["name"] == "Tpl"  # без изменений
+        assert [t["name"] for t in data["tasks"]] == ["B", "C"]
+
+    def test_patch_404_for_unknown(self, client, auth_headers):
+        r = client.patch(
+            "/week-templates/99999", headers=auth_headers, json={"name": "x"}
+        )
+        assert r.status_code == 404
+
+    def test_patch_other_users_template_404(
+        self, client, db, other_user, auth_headers
+    ):
+        from db import WeekTemplate
+
+        t = WeekTemplate(user_id=other_user.id, name="x", color="#fff", tasks_json=[])
+        db.add(t)
+        db.commit()
+        db.refresh(t)
+
+        r = client.patch(
+            f"/week-templates/{t.id}", headers=auth_headers, json={"name": "hacked"}
+        )
+        assert r.status_code == 404
+
 
 class TestApplyWeekTemplate:
     def test_apply_with_offsets(self, client, db, user, auth_headers):

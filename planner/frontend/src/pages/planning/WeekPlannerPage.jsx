@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
@@ -9,6 +9,7 @@ import {
   createWeekTemplate,
   fetchWeekTemplates,
   applyWeekTemplate,
+  updateWeekTemplate,
   deleteWeekTemplate,
   fetchWeekTasks,
   createWeekTask,
@@ -59,6 +60,14 @@ function getDefaultCategoryKey(categories) {
 }
 
 const WEEK_DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+// Та же палитра, что у шаблонов дня (DayPlanFull).
+const TEMPLATE_COLORS = [
+  "#9B7BE8", "#7C67D8", "#7EA7F2", "#6F8EDB", "#67C5D8",
+  "#5FD6C0", "#72C99F", "#8BCB6F", "#B9C86A", "#D5C65F",
+  "#F0B36A", "#E99A6D", "#F1848E", "#E36F9E", "#D985C7",
+  "#B97AD6", "#A6A2D8", "#95A0BF",
+];
 
 function groupConsecutiveDays(days) {
   if (!Array.isArray(days) || days.length === 0) return [];
@@ -146,8 +155,15 @@ function WeekPlannerPage() {
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
   const [isWeekGoalsOpen, setIsWeekGoalsOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
-  const [templateColor, setTemplateColor] = useState("#f0e7ff");
+  const [templateColor, setTemplateColor] = useState(TEMPLATE_COLORS[0]);
   const [templates, setTemplates] = useState([]);
+  // Редактирование шаблона недели прямо в интерфейсе плана недели.
+  const [editingTpl, setEditingTpl] = useState(null);
+  const [editTplName, setEditTplName] = useState("");
+  const [editTplColor, setEditTplColor] = useState(TEMPLATE_COLORS[0]);
+  const isTemplateMode = !!editingTpl;
+  // Синтетические id для локальных задач шаблона (отрицательные).
+  const weekTplTaskIdRef = useRef(-1);
 
   async function loadCategories() {
     try {
@@ -200,8 +216,9 @@ function WeekPlannerPage() {
   }, []);
 
   useEffect(() => {
+    if (isTemplateMode) return; // в режиме шаблона задачи засеяны локально
     loadTasks(weekStart);
-  }, [weekStart]);
+  }, [weekStart, isTemplateMode]);
 
   function goPrevWeek() {
     const d = new Date(weekStart);
@@ -308,7 +325,7 @@ function WeekPlannerPage() {
 
   function openSaveTemplateModal() {
     setTemplateName("");
-    setTemplateColor("#f0e7ff");
+    setTemplateColor(TEMPLATE_COLORS[0]);
     setIsSaveTemplateOpen(true);
   }
 
@@ -339,6 +356,113 @@ function WeekPlannerPage() {
     }
   }
 
+  // offset (0–6) → дата в опорной (текущей) неделе и обратно
+  const offsetToDateStr = (offset) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + (Number(offset) || 0));
+    return formatLocalDate(d);
+  };
+
+  const mapTemplateTaskToWeek = (t, i) => {
+    const startOffset = Number(t.start_offset) || 0;
+    let endOffset = Number(t.end_offset);
+    if (Number.isNaN(endOffset) || endOffset < startOffset) endOffset = startOffset;
+    return {
+      id: weekTplTaskIdRef.current--,
+      name: t.name || "",
+      category: t.category ?? null,
+      important: !!t.important,
+      status: 0,
+      task_type: t.task_type || "normal",
+      repeat_days: Array.isArray(t.repeat_days) ? t.repeat_days : [],
+      volume_value: t.volume_value ?? null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+      start_date: offsetToDateStr(startOffset),
+      end_date: offsetToDateStr(endOffset),
+      order_index: i,
+    };
+  };
+
+  function enterTemplateEdit(template) {
+    weekTplTaskIdRef.current = -1;
+    setEditingTpl(template);
+    setEditTplName(template.name);
+    setEditTplColor(template.color || TEMPLATE_COLORS[0]);
+    setTasks((template.tasks || []).map(mapTemplateTaskToWeek));
+    setIsApplyTemplateOpen(false);
+    setExpandedTaskId(null);
+  }
+
+  function exitTemplateEdit() {
+    setEditingTpl(null); // эффект перезагрузит реальную неделю
+  }
+
+  async function saveTemplateEdit() {
+    if (!editingTpl) return;
+    const cleaned = tasks.map((task) => {
+      const start = parseLocalDate(task.start_date);
+      const end = parseLocalDate(task.end_date);
+      const startOffset = Math.round(
+        (start.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      let endOffset = Math.round(
+        (end.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (endOffset < startOffset) endOffset = startOffset;
+      return {
+        name: task.name,
+        category: task.category,
+        important: !!task.important,
+        status: 0,
+        task_type: task.task_type || "normal",
+        repeat_days: Array.isArray(task.repeat_days) ? task.repeat_days : [],
+        volume_value: task.volume_value ?? null,
+        start_offset: Math.max(0, Math.min(6, startOffset)),
+        end_offset: Math.max(0, Math.min(6, endOffset)),
+        subtasks: task.subtasks || [],
+      };
+    });
+
+    try {
+      const updated = await updateWeekTemplate(editingTpl.id, {
+        name: editTplName.trim() || editingTpl.name,
+        color: editTplColor,
+        tasks: cleaned,
+      });
+      setTemplates((prev) =>
+        prev.map((t) => (t.id === updated.id ? updated : t))
+      );
+      exitTemplateEdit();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // CRUD, ветвящиеся по режиму: в шаблоне работаем с локальным массивом.
+  const persistCreate = async (body) => {
+    if (!isTemplateMode) return await createWeekTask(body);
+    return {
+      id: weekTplTaskIdRef.current--,
+      order_index: tasks.length,
+      status: 0,
+      subtasks: [],
+      ...body,
+    };
+  };
+  const persistUpdate = async (id, body) => {
+    if (!isTemplateMode) return await updateWeekTask(id, body);
+    const existing = tasks.find((t) => t.id === id) || {};
+    return { ...existing, ...body, id };
+  };
+  const persistDelete = async (id) => {
+    if (!isTemplateMode) return await deleteWeekTask(id);
+    return { ok: true };
+  };
+  const persistReorder = async (ids) => {
+    if (!isTemplateMode) return await reorderWeekTasks(ids);
+    return { ok: true };
+  };
+
   async function deleteWeekTemplateHandler(template) {
     const ok = window.confirm(`Удалить шаблон "${template.name}"?`);
     if (!ok) return;
@@ -356,7 +480,7 @@ function WeekPlannerPage() {
     const updated = { ...task, status: nextStatus };
 
     try {
-      const saved = await updateWeekTask(task.id, updated);
+      const saved = await persistUpdate(task.id, updated);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -523,10 +647,10 @@ function WeekPlannerPage() {
 
     try {
       if (!editingTask) {
-        const created = await createWeekTask(baseBody);
+        const created = await persistCreate(baseBody);
         setTasks((prev) => [...prev, created]);
       } else {
-        const updated = await updateWeekTask(editingTask.id, {
+        const updated = await persistUpdate(editingTask.id, {
           ...editingTask,
           ...baseBody,
         });
@@ -543,7 +667,7 @@ function WeekPlannerPage() {
 
   async function handleDelete(task) {
     try {
-      await deleteWeekTask(task.id);
+      await persistDelete(task.id);
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
     } catch (e) {
       console.error(e);
@@ -579,7 +703,7 @@ function WeekPlannerPage() {
     };
 
     try {
-      const saved = await updateWeekTask(task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -593,7 +717,7 @@ function WeekPlannerPage() {
     };
 
     try {
-      const saved = await updateWeekTask(task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -610,7 +734,7 @@ function WeekPlannerPage() {
     };
 
     try {
-      const saved = await updateWeekTask(task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -979,7 +1103,7 @@ async function handleDragEnd() {
       })
       .map((t) => t.id);
 
-    await reorderWeekTasks(orderedIds);
+    await persistReorder(orderedIds);
   } catch (e) {
     console.error(e);
   }
@@ -996,7 +1120,9 @@ async function handleDragEnd() {
           </div>
 
           <div className="app-header-center">
-            ПЛАН НА НЕДЕЛЮ {formatLocalDate(weekStart)}
+            {isTemplateMode
+              ? `РЕДАКТИРОВАНИЕ ШАБЛОНА: ${editingTpl.name}`
+              : `ПЛАН НА НЕДЕЛЮ ${formatLocalDate(weekStart)}`}
           </div>
 
           <div className="app-header-right" />
@@ -1006,11 +1132,62 @@ async function handleDragEnd() {
           <div className="day-big-card">
             <section className="day-tasks-page">
               <div className="page-tasks-wrapper">
-                <div className="week-period-switcher">
+                {isTemplateMode && (
+                  <div className="template-edit-banner">
+                    <input
+                      type="text"
+                      className="template-edit-banner-name"
+                      value={editTplName}
+                      onChange={(e) => setEditTplName(e.target.value)}
+                      placeholder="Название шаблона"
+                    />
+                    <div className="template-edit-banner-palette">
+                      {TEMPLATE_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={
+                            "category-color-swatch" +
+                            (editTplColor === color
+                              ? " category-color-swatch--active"
+                              : "")
+                          }
+                          style={{ "--swatch-color": color }}
+                          onClick={() => setEditTplColor(color)}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                    <div className="template-edit-banner-actions">
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        onClick={saveTemplateEdit}
+                      >
+                        Сохранить шаблон
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-btn"
+                        onClick={exitTemplateEdit}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className={
+                    "week-period-switcher" +
+                    (isTemplateMode ? " is-template-disabled" : "")
+                  }
+                >
                   <button
                     type="button"
                     className="week-nav-btn"
                     onClick={goPrevWeek}
+                    disabled={isTemplateMode}
                     aria-label="Предыдущая неделя"
                   >
                     ←
@@ -1022,16 +1199,23 @@ async function handleDragEnd() {
                     type="button"
                     className="week-nav-btn"
                     onClick={goNextWeek}
+                    disabled={isTemplateMode}
                     aria-label="Следующая неделя"
                   >
                     →
                   </button>
                 </div>
 
-                <div className="day-templates-buttons">
+                <div
+                  className={
+                    "day-templates-buttons" +
+                    (isTemplateMode ? " is-template-disabled" : "")
+                  }
+                >
                   <button
                     type="button"
                     className="secondary-btn"
+                    disabled={isTemplateMode}
                     onClick={openSaveTemplateModal}
                   >
                     Сохранить как шаблон
@@ -1040,6 +1224,7 @@ async function handleDragEnd() {
                   <button
                     type="button"
                     className="secondary-btn"
+                    disabled={isTemplateMode}
                     onClick={async () => {
                       await loadWeekTemplates();
                       setIsApplyTemplateOpen(true);
@@ -1051,6 +1236,7 @@ async function handleDragEnd() {
                   <button
                     type="button"
                     className="secondary-btn"
+                    disabled={isTemplateMode}
                     onClick={() => setIsWeekGoalsOpen(true)}
                   >
                     Цели
@@ -1089,7 +1275,7 @@ async function handleDragEnd() {
                       const safeStart = startIndex === -1 ? 0 : startIndex;
                       const safeEnd = endIndex === -1 ? 6 : endIndex;
                       const color = categories[t.category]?.color || "#dcdcff";
-                      const overdue = isTaskOverdue(t);
+                      const overdue = !isTemplateMode && isTaskOverdue(t);
 
                       return (
                         <div
@@ -1645,14 +1831,26 @@ async function handleDragEnd() {
                     />
                   </div>
 
-                  <label>
-                    Цвет
-                    <input
-                      type="color"
-                      value={templateColor}
-                      onChange={(e) => setTemplateColor(e.target.value)}
-                    />
-                  </label>
+                  <div className="save-template-field">
+                    <span className="template-name-label">Цвет:</span>
+                    <div className="category-color-palette week-tpl-edit-palette">
+                      {TEMPLATE_COLORS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={
+                            "category-color-swatch" +
+                            (templateColor === color
+                              ? " category-color-swatch--active"
+                              : "")
+                          }
+                          style={{ "--swatch-color": color }}
+                          onClick={() => setTemplateColor(color)}
+                          title={color}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
                   <div className="modal-buttons">
                     <button
@@ -1678,7 +1876,9 @@ async function handleDragEnd() {
             {isApplyTemplateOpen && (
               <div
                 className="modal-overlay"
-                onClick={() => setIsApplyTemplateOpen(false)}
+                onClick={() => {
+                  setIsApplyTemplateOpen(false);
+                }}
               >
                 <div className="modal" onClick={(e) => e.stopPropagation()}>
                   <h3>Выбери шаблон недели</h3>
@@ -1699,6 +1899,15 @@ async function handleDragEnd() {
                             onClick={() => applyWeekTemplateHandler(tpl.id)}
                           >
                             Импорт
+                          </button>
+
+                          <button
+                            type="button"
+                            className="template-edit-btn"
+                            title="Редактировать шаблон в режиме плана"
+                            onClick={() => enterTemplateEdit(tpl)}
+                          >
+                            ✎
                           </button>
 
                           <button

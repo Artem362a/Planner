@@ -279,6 +279,12 @@ class WeekTemplateIn(BaseModel):
     tasks: list[WeekTemplateTaskIn]
 
 
+class WeekTemplatePatch(BaseModel):
+    name: str | None = None
+    color: str | None = None
+    tasks: list[WeekTemplateTaskIn] | None = None
+
+
 class WeekTemplateOut(BaseModel):
     id: int
     name: str

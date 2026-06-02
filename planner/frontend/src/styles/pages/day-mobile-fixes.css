@@ -74,7 +74,11 @@
   }
 
   .day-timeline-board {
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .day-timeline-hours {
+    font-size: 11px;
   }
 
   .day-timeline-track {
@@ -82,10 +86,23 @@
   }
 
   .day-timeline-task {
-    left: 4px;
-    grid-template-columns: 34px minmax(0, 1fr) 28px;
-    gap: 8px;
-    padding: 8px 8px 8px 10px;
+    left: 2px;
+    grid-template-columns: 30px minmax(0, 1fr) 22px;
+    gap: 7px;
+    padding: 8px 6px 8px 8px;
+  }
+
+  /* На узком экране строка времени переносится, чтобы бейдж
+     «N/M подзадач» уходил на свою строку, а не обрезался в «подзад». */
+  .day-timeline-time-row {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .day-timeline-subtask-badge {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   /* Группа «Небольшие задачи» использует свою сетку (иконка, кнопка, контент);
@@ -93,6 +110,27 @@
      переносится по буквам. */
   .day-timeline-task--small-group {
     grid-template-columns: 34px 28px minmax(0, 1fr);
+  }
+
+  /* Привязанные мелкие задачи: на телефоне названия не режем в «Сме…»,
+     а разрешаем перенос в 2 строки. Время уезжает к верху строки. */
+  .day-timeline-attached-task--checkable {
+    align-items: flex-start;
+  }
+
+  .day-timeline-attached-task--checkable .day-timeline-small-title {
+    white-space: normal;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+
+  .day-timeline-attached-task--checkable em {
+    align-self: flex-start;
+    margin-top: 1px;
   }
 
   .day-timeline-icon {

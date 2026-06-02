@@ -26,6 +26,8 @@ function DayPlannerPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [overdueCount, setOverdueCount] = useState(0);
   const [showOverdueModal, setShowOverdueModal] = useState(false);
+  // Активный шаблон, когда DayPlanFull в режиме редактирования шаблона.
+  const [templateMode, setTemplateMode] = useState(null);
 
   const selectedDay = searchParams.get("date") || formatLocalDate(new Date());
   const selectedDate = parseLocalDate(selectedDay);
@@ -73,6 +75,7 @@ function DayPlannerPage() {
                 type="button"
                 className="day-header-nav-btn day-header-nav-btn--prev"
                 onClick={() => changeDay(previousDay)}
+                disabled={!!templateMode}
                 aria-label={`Предыдущий день, ${previousDay}`}
                 title={`Предыдущий день: ${previousDay}`}
               >
@@ -80,14 +83,28 @@ function DayPlannerPage() {
               </button>
 
               <span className="day-header-title">
-                <span className="day-header-title-prefix">ПЛАН НА ДЕНЬ </span>
-                {selectedDay}
+                {templateMode ? (
+                  <>
+                    <span className="day-header-title-prefix">
+                      РЕДАКТИРОВАНИЕ ШАБЛОНА:{" "}
+                    </span>
+                    {templateMode.name}
+                  </>
+                ) : (
+                  <>
+                    <span className="day-header-title-prefix">
+                      ПЛАН НА ДЕНЬ{" "}
+                    </span>
+                    {selectedDay}
+                  </>
+                )}
               </span>
 
               <button
                 type="button"
                 className="day-header-nav-btn day-header-nav-btn--next"
                 onClick={() => changeDay(nextDay)}
+                disabled={!!templateMode}
                 aria-label={`Следующий день, ${nextDay}`}
                 title={`Следующий день: ${nextDay}`}
               >
@@ -114,7 +131,10 @@ function DayPlannerPage() {
         <main className="day-page-main">
           <div className="day-page-layout">
             <div className="day-big-card">
-              <DayPlanFull selectedDate={selectedDate} />
+              <DayPlanFull
+                selectedDate={selectedDate}
+                onTemplateModeChange={setTemplateMode}
+              />
             </div>
 
             <div className="day-page-floating-actions">

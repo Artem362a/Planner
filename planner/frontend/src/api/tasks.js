@@ -203,6 +203,16 @@ export async function applyWeekTemplate(templateId, weekStart) {
   return await handleResponse(res, "Failed to apply week template");
 }
 
+export async function updateWeekTemplate(templateId, body) {
+  const res = await fetch(`${API_URL}/week-templates/${templateId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+
+  return await handleResponse(res, "Failed to update week template");
+}
+
 export async function deleteWeekTemplate(templateId) {
   const res = await fetch(`${API_URL}/week-templates/${templateId}`, {
     method: "DELETE",

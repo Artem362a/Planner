@@ -144,7 +144,7 @@ function categoriesArrayToMap(items) {
   return result;
 }
 
-export default function DayPlanFull({ selectedDate }) {
+export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
   const [tasks, setTasks] = useState([]);
   const [viewMode, setViewMode] = useState("timeline");
   const [dayNotes, setDayNotes] = useState("");
@@ -185,9 +185,16 @@ export default function DayPlanFull({ selectedDate }) {
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [editingTemplateName, setEditingTemplateName] = useState("");
   const [editingTemplateColor, setEditingTemplateColor] = useState("#9B7BE8");
-  const [editingTasksTpl, setEditingTasksTpl] = useState(null);
-  const [editingTasksList, setEditingTasksList] = useState([]);
   const [applyTemplateError, setApplyTemplateError] = useState("");
+  // Подтверждение, когда применение шаблона уводит расписание за полночь.
+  const [templateOverflowConfirm, setTemplateOverflowConfirm] = useState(null);
+
+  // Режим редактирования шаблона прямо в интерфейсе плана дня.
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const isTemplateMode = !!editingTemplate;
+  // Счётчик синтетических id для локальных задач шаблона (отрицательные, чтобы
+  // не пересекаться с серверными).
+  const templateTaskIdRef = useRef(-1);
 
   const [hoveredTaskId, setHoveredTaskId] = useState(null);
   const [hoverInsertSide, setHoverInsertSide] = useState(null);
@@ -226,10 +233,11 @@ export default function DayPlanFull({ selectedDate }) {
   }, []);
 
   useEffect(() => {
+    if (isTemplateMode) return; // в режиме шаблона задачи засеяны локально
     previousTaskRectsRef.current = new Map();
     previousTaskOrderRef.current = [];
     fetchDayTasks(dayString).then(setTasks).catch(console.error);
-  }, [dayString]);
+  }, [dayString, isTemplateMode]);
 
   useLayoutEffect(() => {
     const currentOrder = tasks.map((t) => t.id);
@@ -277,6 +285,7 @@ export default function DayPlanFull({ selectedDate }) {
   }, [tasks, dragIndex]);
 
   useEffect(() => {
+    if (isTemplateMode) return;
     fetchDaySettings(dayString)
       .then((data) => {
         if (data?.start_time) {
@@ -292,10 +301,92 @@ export default function DayPlanFull({ selectedDate }) {
   }, [dayString]);
 
   useEffect(() => {
+    if (isTemplateMode) return;
     fetchDayNote(dayString)
       .then((data) => setDayNotes(data.text || ""))
       .catch(() => setDayNotes(""));
-  }, [dayString]);
+  }, [dayString, isTemplateMode]);
+
+  // ===== Режим редактирования шаблона: вход/выход/сохранение + локальные CRUD =====
+  const mapTemplateTaskToDay = (t, i) => ({
+    id: templateTaskIdRef.current--,
+    title: t.title || "",
+    start_time: t.start_time || null,
+    duration_min: t.duration_min ?? null,
+    priority: t.priority || "medium",
+    category: t.category ?? null,
+    subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    status: 0,
+    order_index: i,
+  });
+
+  const enterTemplateEdit = (tpl) => {
+    templateTaskIdRef.current = -1;
+    setEditingTemplate(tpl);
+    setTasks((tpl.tasks || []).map(mapTemplateTaskToDay));
+    setViewMode("list");
+    setIsApplyTemplateOpen(false);
+    setExpandedTaskId(null);
+    setDayStartTime("06:00");
+    onTemplateModeChange?.(tpl);
+  };
+
+  const exitTemplateEdit = () => {
+    setEditingTemplate(null);
+    onTemplateModeChange?.(null);
+    // вернуть реальный день
+    fetchDayTasks(dayString).then(setTasks).catch(console.error);
+    fetchDaySettings(dayString)
+      .then((data) => setDayStartTime(data?.start_time || "06:00"))
+      .catch(() => setDayStartTime("06:00"));
+    fetchDayNote(dayString)
+      .then((d) => setDayNotes(d.text || ""))
+      .catch(() => setDayNotes(""));
+  };
+
+  const saveTemplateEdit = async () => {
+    if (!editingTemplate) return;
+    const cleaned = tasks.map((t) => ({
+      title: t.title || "",
+      start_time: t.start_time ? t.start_time.slice(0, 5) : null,
+      duration_min: t.duration_min ?? null,
+      priority: t.priority || "medium",
+      category: t.category ?? null,
+      subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+    }));
+    try {
+      const updated = await updateDayTemplate(editingTemplate.id, { tasks: cleaned });
+      setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      exitTemplateEdit();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // CRUD, ветвящиеся по режиму: в шаблоне работаем с локальным массивом.
+  const persistCreate = async (body) => {
+    if (!isTemplateMode) return await createDayTask(dayString, body);
+    return {
+      id: templateTaskIdRef.current--,
+      status: 0,
+      order_index: tasks.length,
+      subtasks: [],
+      ...body,
+    };
+  };
+  const persistUpdate = async (id, body) => {
+    if (!isTemplateMode) return await updateDayTask(dayString, id, body);
+    const existing = tasks.find((t) => t.id === id) || {};
+    return { ...existing, ...body, id };
+  };
+  const persistDelete = async (id) => {
+    if (!isTemplateMode) return await deleteDayTask(dayString, id);
+    return { ok: true };
+  };
+  const persistReorder = async (ids) => {
+    if (!isTemplateMode) return await reorderDayTasks(dayString, ids);
+    return { ok: true };
+  };
 
   const upcomingImportCandidates = useMemo(
   () => weekImportCandidates.filter((item) => !item.is_overdue),
@@ -309,6 +400,9 @@ const overdueImportCandidates = useMemo(
 
   const tasksWithComputedTime = useMemo(() => {
     let offset = 0;
+    // Максимальный конец среди всех предыдущих задач — по нему ловим наложения,
+    // когда задача с фиксированным временем стартует раньше, чем что-то уже идёт.
+    let maxPrevEndMin = null;
     const dayStartMinutes = timeStringToMinutes(dayStartTime);
 
     return tasks.map((t) => {
@@ -323,15 +417,26 @@ const overdueImportCandidates = useMemo(
       const timelineStart = dayStartMinutes + offset;
       const timelineEnd = timelineStart + duration;
 
+      // Конфликт: фиксированная задача начинается раньше, чем закончилась
+      // предыдущая (например, после смены начала дня якорь «уехал» внутрь
+      // соседней задачи). Время не трогаем — только помечаем.
+      const hasTimeConflict =
+        !!t.start_time &&
+        maxPrevEndMin !== null &&
+        timelineStart < maxPrevEndMin;
+
       const result = {
         ...t,
         computed_start_time: start,
         computed_end_time: end,
         timeline_start_min: timelineStart,
         timeline_end_min: timelineEnd,
+        has_time_conflict: hasTimeConflict,
       };
 
       offset += duration;
+      maxPrevEndMin =
+        maxPrevEndMin === null ? timelineEnd : Math.max(maxPrevEndMin, timelineEnd);
       return result;
     });
   }, [tasks, dayStartTime]);
@@ -682,6 +787,7 @@ const overdueImportCandidates = useMemo(
   };
 
   const openImportWeekModal = async () => {
+    if (isTemplateMode) return; // импорт из недели недоступен при редактировании шаблона
     try {
       setImportLoading(true);
       const items = await fetchWeekImportCandidates(dayString, 2, 7);
@@ -846,12 +952,12 @@ const overdueImportCandidates = useMemo(
         const sorted = sortTasksByTime(tasks);
         const changed = sorted.some((t, i) => t.id !== tasks[i].id);
         if (changed) {
-          await reorderDayTasks(dayString, sorted.map((t) => t.id));
+          await persistReorder(sorted.map((t) => t.id));
           setTasks(sorted);
           return;
         }
       }
-      await reorderDayTasks(dayString, tasks.map((t) => t.id));
+      await persistReorder(tasks.map((t) => t.id));
     } catch (err) {
       console.error(err);
     }
@@ -1064,7 +1170,7 @@ const overdueImportCandidates = useMemo(
       let newTasks;
 
       if (editingTaskId === null) {
-        const created = await createDayTask(dayString, body);
+        const created = await persistCreate(body);
 
         if (insertBeforeId == null) {
           newTasks = [...tasks, created];
@@ -1076,14 +1182,14 @@ const overdueImportCandidates = useMemo(
         }
 
         if (conflictTask && newFixedStart) {
-          const updatedConflict = await updateDayTask(dayString, conflictTask.id, {
+          const updatedConflict = await persistUpdate(conflictTask.id, {
             ...conflictTask,
             start_time: newFixedStart,
           });
           newTasks = newTasks.map((t) => (t.id === conflictTask.id ? updatedConflict : t));
         }
       } else {
-        const updated = await updateDayTask(dayString, editingTaskId, body);
+        const updated = await persistUpdate(editingTaskId, body);
         newTasks = tasks.map((t) => (t.id === editingTaskId ? updated : t));
       }
 
@@ -1091,7 +1197,7 @@ const overdueImportCandidates = useMemo(
         const sorted = sortTasksByTime(newTasks);
         const changed = sorted.some((t, i) => t.id !== newTasks[i].id);
         if (changed) {
-          await reorderDayTasks(dayString, sorted.map((t) => t.id));
+          await persistReorder(sorted.map((t) => t.id));
           newTasks = sorted;
         }
       }
@@ -1108,6 +1214,65 @@ const overdueImportCandidates = useMemo(
     const { body, conflictTask, newFixedStart } = conflictState;
     setConflictState(null);
     doCreateOrUpdate(body, conflictTask, newFixedStart);
+  };
+
+  // Применение шаблона. Если расписание (с учётом начала дня и уже
+  // существующих задач) выходит за полночь — сначала предупреждаем и спрашиваем.
+  const applyTemplateWithCheck = async (tpl, force = false) => {
+    const dayStartMin = timeStringToMinutes(dayStartTime);
+    const tplDuration = (tpl.tasks || []).reduce(
+      (sum, t) => sum + (t.duration_min || 0),
+      0
+    );
+    const existingDuration = tasks.reduce(
+      (sum, t) => sum + (t.duration_min || 0),
+      0
+    );
+
+    // Бэк жёстко запрещает, когда суммарная длительность задач > 24ч —
+    // такое в сутки не влезает в принципе. Показываем запрет сразу, без
+    // бессмысленного «Применить».
+    if (existingDuration + tplDuration > 1440) {
+      setApplyTemplateError(
+        "Суммарная длительность задач превышает 24 часа — шаблон не помещается в день."
+      );
+      setTemplateOverflowConfirm(null);
+      return;
+    }
+
+    // По длительности влезает, но из-за позднего начала дня расписание
+    // заходит за полночь — это бэк разрешает, поэтому спрашиваем подтверждение.
+    const currentEndMin = tasksWithComputedTime.reduce(
+      (max, t) => Math.max(max, t.timeline_end_min || dayStartMin),
+      dayStartMin
+    );
+    const projectedEndMin = currentEndMin + tplDuration;
+
+    if (!force && projectedEndMin > 1440) {
+      setTemplateOverflowConfirm({
+        tpl,
+        endTime: addMinutesToTime("00:00", projectedEndMin % 1440),
+      });
+      return;
+    }
+
+    try {
+      setApplyTemplateError("");
+      await applyDayTemplate(tpl.id, dayString);
+      const updated = await fetchDayTasks(dayString);
+      setTasks(updated);
+      setIsApplyTemplateOpen(false);
+      setEditingTemplateId(null);
+      setTemplateOverflowConfirm(null);
+    } catch (e) {
+      const msg = e?.message || "";
+      setApplyTemplateError(
+        msg.includes("24")
+          ? "Суммарная длительность задач превышает 24 часа — шаблон не помещается в день."
+          : "Не удалось применить шаблон."
+      );
+      setTemplateOverflowConfirm(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -1215,7 +1380,7 @@ const overdueImportCandidates = useMemo(
     const nextStatus = task.status === 1 ? 0 : 1;
 
     try {
-      const updated = await updateDayTask(dayString, task.id, {
+      const updated = await persistUpdate(task.id, {
         ...task,
         status: nextStatus,
       });
@@ -1227,7 +1392,7 @@ const overdueImportCandidates = useMemo(
 
   const removeTask = async (task) => {
     try {
-      await deleteDayTask(dayString, task.id);
+      await persistDelete(task.id);
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
     } catch (err) {
       console.error(err);
@@ -1278,7 +1443,7 @@ const overdueImportCandidates = useMemo(
     };
 
     try {
-      const saved = await updateDayTask(dayString, task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -1292,7 +1457,7 @@ const overdueImportCandidates = useMemo(
     };
 
     try {
-      const saved = await updateDayTask(dayString, task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -1323,7 +1488,7 @@ const overdueImportCandidates = useMemo(
     }
 
     try {
-      const saved = await updateDayTask(dayString, task.id, updatedTask);
+      const saved = await persistUpdate(task.id, updatedTask);
       setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
     } catch (e) {
       console.error(e);
@@ -1401,7 +1566,11 @@ const overdueImportCandidates = useMemo(
   };
 
   const sidePanel = (
-    <aside className="day-side-panel">
+    <aside
+      className={
+        "day-side-panel" + (isTemplateMode ? " is-template-disabled" : "")
+      }
+    >
       <section className="day-side-section">
         <div className="day-side-title-row">
           <h3>Заметки дня</h3>
@@ -1409,6 +1578,7 @@ const overdueImportCandidates = useMemo(
 
         <textarea
           value={dayNotes}
+          disabled={isTemplateMode}
           onChange={(e) => saveDayNotes(e.target.value)}
           placeholder="Мысли, итоги, важные детали..."
         />
@@ -1421,11 +1591,41 @@ const overdueImportCandidates = useMemo(
   return (
     <div className="day-tasks-page">
       <div className="day-tasks-wrapper">
+        {isTemplateMode && (
+          <div className="template-edit-banner">
+            <span className="template-edit-banner-label">
+              ✎ Режим редактирования шаблона «{editingTemplate.name}»
+            </span>
+            <div className="template-edit-banner-actions">
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={saveTemplateEdit}
+              >
+                Сохранить шаблон
+              </button>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={exitTemplateEdit}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="day-plan-toolbar">
-          <div className="day-templates-buttons">
+          <div
+            className={
+              "day-templates-buttons" +
+              (isTemplateMode ? " is-template-disabled" : "")
+            }
+          >
             <button
               type="button"
               className="secondary-btn"
+              disabled={isTemplateMode}
               onClick={() => setIsSaveTemplateOpen(true)}
             >
               Сохранить как шаблон
@@ -1434,6 +1634,7 @@ const overdueImportCandidates = useMemo(
             <button
               type="button"
               className="secondary-btn"
+              disabled={isTemplateMode}
               onClick={async () => {
                 try {
                   const list = await fetchDayTemplates();
@@ -1467,11 +1668,16 @@ const overdueImportCandidates = useMemo(
           </div>
         </div>
 
-        <div className="day-start-bar">
+        <div
+          className={
+            "day-start-bar" + (isTemplateMode ? " is-template-disabled" : "")
+          }
+        >
           <span>Начало дня:</span>
           <input
             type="time"
             value={dayStartTime}
+            disabled={isTemplateMode}
             onChange={async (e) => {
               const value = e.target.value;
               setDayStartTime(value);
@@ -1514,6 +1720,7 @@ const overdueImportCandidates = useMemo(
                   className={
                     "day-task-item" +
                     (t.status === 1 ? " done" : "") +
+                    (t.has_time_conflict ? " day-task-item--conflict" : "") +
                     (isHovered ? " day-task-item--hovered" : "") +
                     (index === dragIndex ? " day-task-item--dragging" : "")
                   }
@@ -1558,6 +1765,15 @@ const overdueImportCandidates = useMemo(
                     <div className="day-task-title">{t.title}</div>
 
                     <div className="day-task-meta">
+                      {t.has_time_conflict && (
+                        <span
+                          className="day-task-conflict-tag"
+                          title="Время задачи пересекается с предыдущей. Сдвиньте начало или измените время вручную."
+                        >
+                          ⚠ наложение
+                        </span>
+                      )}
+
                       {t.duration_min != null && (
                         <span>{minutesToDurationString(t.duration_min)}</span>
                       )}
@@ -1818,6 +2034,7 @@ const overdueImportCandidates = useMemo(
                       className={
                         "day-timeline-task" +
                         (isDone ? " day-timeline-task--done" : "") +
+                        (task.has_time_conflict ? " day-timeline-task--conflict" : "") +
                         (attachedTasks.length > 0
                           ? " day-timeline-task--with-attached"
                           : "") +
@@ -1842,7 +2059,17 @@ const overdueImportCandidates = useMemo(
                       <div className="day-timeline-task-content">
                         {before.map(renderTimelineAttachedItem)}
 
-                        <div className="day-timeline-title">{task.title}</div>
+                        <div className="day-timeline-title">
+                          {task.has_time_conflict && (
+                            <span
+                              className="day-timeline-conflict-mark"
+                              title="Время задачи пересекается с предыдущей. Сдвиньте начало или измените время вручную."
+                            >
+                              ⚠
+                            </span>
+                          )}
+                          {task.title}
+                        </div>
                         <div className="day-timeline-time-row">
                           <span className="day-timeline-time">
                             {task.computed_start_time}
@@ -2272,21 +2499,7 @@ const overdueImportCandidates = useMemo(
                           <button
                             type="button"
                             className="primary-btn"
-                            onClick={async () => {
-                              try {
-                                setApplyTemplateError("");
-                                await applyDayTemplate(tpl.id, dayString);
-                                const updated = await fetchDayTasks(dayString);
-                                setTasks(updated);
-                                setIsApplyTemplateOpen(false);
-                                setEditingTemplateId(null);
-                              } catch (e) {
-                                const msg = e?.message || "";
-                                setApplyTemplateError(
-                                  msg.includes("24") ? "День не может превышать 24 часа." : "Не удалось применить шаблон."
-                                );
-                              }
-                            }}
+                            onClick={() => applyTemplateWithCheck(tpl)}
                           >
                             Импорт
                           </button>
@@ -2307,13 +2520,8 @@ const overdueImportCandidates = useMemo(
                           <button
                             type="button"
                             className="template-edit-btn"
-                            title="Редактировать задачи"
-                            onClick={() => {
-                              setEditingTasksTpl(tpl);
-                              setEditingTasksList(
-                                (tpl.tasks || []).map((t, i) => ({ ...t, _id: i }))
-                              );
-                            }}
+                            title="Редактировать задачи в режиме плана"
+                            onClick={() => enterTemplateEdit(tpl)}
                           >
                             ☰
                           </button>
@@ -2356,196 +2564,33 @@ const overdueImportCandidates = useMemo(
         </div>
       )}
 
-      {editingTasksTpl && (
+      {templateOverflowConfirm && (
         <div
           className="task-modal-backdrop"
-          onClick={() => setEditingTasksTpl(null)}
+          onClick={() => setTemplateOverflowConfirm(null)}
         >
-          <div
-            className="task-modal tpl-tasks-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="save-template-title">
-              Задачи шаблона: {editingTasksTpl.name}
-            </h3>
-
-            <div className="tpl-task-header">
-              <span />
-              <span>Название</span>
-              <span>Время</span>
-              <span>Длит.</span>
-              <span>Приоритет</span>
-              <span />
-            </div>
-
-            <div className="tpl-tasks-list">
-              {editingTasksList.map((task, idx) => (
-                <div key={task._id} className="tpl-task-card">
-                  <div className="tpl-task-row">
-                    <button
-                      type="button"
-                      className={"tpl-task-expand" + (task._expanded ? " is-open" : "")}
-                      title="Подзадачи"
-                      onClick={() =>
-                        setEditingTasksList((prev) =>
-                          prev.map((t, i) => i === idx ? { ...t, _expanded: !t._expanded } : t)
-                        )
-                      }
-                    >
-                      {task._expanded ? "▾" : "▸"}
-                    </button>
-                    <input
-                      className="tpl-task-title"
-                      type="text"
-                      placeholder="Название"
-                      value={task.title}
-                      onChange={(e) =>
-                        setEditingTasksList((prev) =>
-                          prev.map((t, i) => i === idx ? { ...t, title: e.target.value } : t)
-                        )
-                      }
-                    />
-                    <input
-                      className="tpl-task-time"
-                      type="text"
-                      placeholder="ЧЧ:ММ"
-                      value={task.start_time || ""}
-                      onChange={(e) =>
-                        setEditingTasksList((prev) =>
-                          prev.map((t, i) => i === idx ? { ...t, start_time: e.target.value || null } : t)
-                        )
-                      }
-                    />
-                    <input
-                      className="tpl-task-dur"
-                      type="number"
-                      placeholder="мин"
-                      min="1"
-                      value={task.duration_min || ""}
-                      onChange={(e) =>
-                        setEditingTasksList((prev) =>
-                          prev.map((t, i) =>
-                            i === idx ? { ...t, duration_min: e.target.value ? parseInt(e.target.value) : null } : t
-                          )
-                        )
-                      }
-                    />
-                    <select
-                      className="tpl-task-priority"
-                      value={task.priority || "medium"}
-                      onChange={(e) =>
-                        setEditingTasksList((prev) =>
-                          prev.map((t, i) => i === idx ? { ...t, priority: e.target.value } : t)
-                        )
-                      }
-                    >
-                      <option value="medium">Обычный</option>
-                      <option value="high">Важный</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="tpl-task-delete"
-                      onClick={() =>
-                        setEditingTasksList((prev) => prev.filter((_, i) => i !== idx))
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  {task._expanded && (
-                    <div className="tpl-task-subtasks">
-                      {(task.subtasks || []).map((st, si) => (
-                        <div key={si} className="tpl-subtask-row">
-                          <span className="tpl-subtask-dot">·</span>
-                          <input
-                            className="tpl-subtask-title"
-                            type="text"
-                            placeholder="Подзадача"
-                            value={st.title}
-                            onChange={(e) =>
-                              setEditingTasksList((prev) =>
-                                prev.map((t, i) => {
-                                  if (i !== idx) return t;
-                                  const subs = [...(t.subtasks || [])];
-                                  subs[si] = { ...subs[si], title: e.target.value };
-                                  return { ...t, subtasks: subs };
-                                })
-                              )
-                            }
-                          />
-                          <button
-                            type="button"
-                            className="tpl-task-delete"
-                            onClick={() =>
-                              setEditingTasksList((prev) =>
-                                prev.map((t, i) => {
-                                  if (i !== idx) return t;
-                                  return { ...t, subtasks: (t.subtasks || []).filter((_, j) => j !== si) };
-                                })
-                              )
-                            }
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        className="tpl-subtask-add"
-                        onClick={() =>
-                          setEditingTasksList((prev) =>
-                            prev.map((t, i) => {
-                              if (i !== idx) return t;
-                              return { ...t, subtasks: [...(t.subtasks || []), { id: null, title: "", done: false }] };
-                            })
-                          )
-                        }
-                      >
-                        + Подзадача
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className="tpl-tasks-add"
-              onClick={() =>
-                setEditingTasksList((prev) => [
-                  ...prev,
-                  { _id: Date.now(), title: "", start_time: null, duration_min: null, priority: "medium", category: null, subtasks: [], _expanded: false },
-                ])
-              }
-            >
-              + Добавить задачу
-            </button>
-
+          <div className="task-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Расписание выйдет за полночь</h3>
+            <p className="conflict-modal-text">
+              После применения шаблона{" "}
+              <strong>«{templateOverflowConfirm.tpl.name}»</strong> расписание
+              закончится в <strong>{templateOverflowConfirm.endTime}</strong>{" "}
+              следующего дня — это уже после 24:00. Всё равно применить?
+            </p>
             <div className="task-modal-buttons">
               <button
                 type="button"
                 className="primary-btn"
-                onClick={async () => {
-                  const cleaned = editingTasksList.map(({ _id, _expanded, ...rest }) => rest);
-                  try {
-                    const updated = await updateDayTemplate(editingTasksTpl.id, { tasks: cleaned });
-                    setTemplates((prev) =>
-                      prev.map((t) => (t.id === updated.id ? updated : t))
-                    );
-                    setEditingTasksTpl(null);
-                  } catch (e) {
-                    console.error(e);
-                  }
-                }}
+                onClick={() =>
+                  applyTemplateWithCheck(templateOverflowConfirm.tpl, true)
+                }
               >
-                Сохранить
+                Применить
               </button>
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={() => setEditingTasksTpl(null)}
+                onClick={() => setTemplateOverflowConfirm(null)}
               >
                 Отмена
               </button>
