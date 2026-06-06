@@ -619,32 +619,25 @@
 }
 
 .day-timeline-subtask-badge {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  min-width: 0;
-  padding: 0;
+  padding: 1px 7px;
   border: none;
-  background: none;
-  color: #9a92b6;
-  font-size: 12px;
-  font-weight: 500;
+  border-radius: 999px;
+  background: rgba(127, 93, 255, 0.1);
+  color: #7d68c9;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
-  line-height: 1;
+  line-height: 1.4;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.15s;
-}
-
-.day-timeline-subtask-badge::before {
-  content: "·";
-  margin-right: 5px;
-  color: #c4bede;
+  transition: background 0.15s, color 0.15s;
 }
 
 .day-timeline-subtask-badge:hover {
-  color: #7d68c9;
+  background: rgba(127, 93, 255, 0.18);
 }
 
 .day-overview-timeline-time-row {

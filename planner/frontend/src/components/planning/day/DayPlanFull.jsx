@@ -2079,12 +2079,13 @@ const overdueImportCandidates = useMemo(
                             <button
                               type="button"
                               className="day-timeline-subtask-badge"
+                              title="Подзадачи"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setTimelineSubtaskTaskId(task.id);
                               }}
                             >
-                              {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length} подзадач
+                              {task.subtasks.filter((s) => s.done).length}/{task.subtasks.length}
                             </button>
                           )}
                         </div>
