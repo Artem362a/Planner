@@ -255,6 +255,32 @@ class TestApplyWeekTemplate:
             WeekTask.start_date == MONDAY,
         ).count() == 2
 
+    def test_apply_auto_creates_day_tasks(self, client, db, user, auth_headers):
+        """Применение недельного шаблона должно сразу заводить задачи в днях."""
+        from db import DayTask
+
+        body = {
+            "name": "tpl",
+            "color": "#abc",
+            "tasks": [{"name": "mon only", "start_offset": 0, "end_offset": 0}],
+        }
+        tpl = client.post("/week-templates", headers=auth_headers, json=body).json()
+
+        r = client.post(
+            f"/week-templates/{tpl['id']}/apply",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat()},
+        )
+        assert r.status_code == 200
+
+        day_tasks = db.query(DayTask).filter(
+            DayTask.user_id == user.id,
+            DayTask.day == MONDAY,
+            DayTask.title == "mon only",
+        ).all()
+        assert len(day_tasks) == 1
+        assert day_tasks[0].source_week_task_id is not None
+
     def test_apply_clamps_negative_end_offset(self, client, auth_headers):
         """If end_offset < start_offset, the route clamps end to start so
         the WeekTask range is always valid."""

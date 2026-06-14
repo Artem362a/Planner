@@ -355,6 +355,16 @@ def apply_week_template(
         db.add(row)
         created_tasks.append(row)
 
+    # Нужны id созданных задач до синка задач дня.
+    db.flush()
+
+    # Как и при обычном создании недельной задачи — заводим соответствующие
+    # DayTask на дни диапазона, иначе шаблон не «доезжает» в план дня.
+    from routers.week import _sync_day_tasks_for_week_task
+
+    for row in created_tasks:
+        _sync_day_tasks_for_week_task(db, row, current_user_row.id)
+
     db.commit()
 
     for row in created_tasks:

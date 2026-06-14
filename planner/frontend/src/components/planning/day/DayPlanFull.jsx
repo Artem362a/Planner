@@ -1961,8 +1961,12 @@ const overdueImportCandidates = useMemo(
 
                 {timelineTaskLayouts.map((item) => {
                   if (item.type === "group") {
-                    const color =
-                      categories[item.tasks[0]?.category]?.color || "#A6A2D8";
+                    const groupAllDone =
+                      item.tasks.length > 0 &&
+                      item.tasks.every((t) => t.status === 1);
+                    const color = groupAllDone
+                      ? "#aaaaaa"
+                      : categories[item.tasks[0]?.category]?.color || "#A6A2D8";
                     const isExpanded = expandedTimelineGroupId === item.id;
 
                     return (
@@ -1970,7 +1974,7 @@ const overdueImportCandidates = useMemo(
                         key={item.id}
                         className={`day-timeline-task day-timeline-task--small-group${
                           isExpanded ? " day-timeline-task--expanded" : ""
-                        }`}
+                        }${groupAllDone ? " day-timeline-task--done" : ""}`}
                         style={{
                           top: `${Math.max(0, item.top)}px`,
                           height: `${item.height}px`,
