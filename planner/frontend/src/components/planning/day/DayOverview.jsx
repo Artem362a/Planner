@@ -257,8 +257,9 @@ function ImportantToday({ selectedDay }) {
         (total, smallTask) => total + (smallTask.duration_min || 0),
         0
       );
-      const shouldAttachRun =
-        run.length === 1 || runDuration <= maxAttachedSmallGroupMinutes;
+      // Группа из 2+ мелких задач — отдельный раскрываемый блок (как на
+      // странице таймлайна). Одиночная мелкая задача остаётся превью-строкой.
+      const shouldAttachRun = run.length === 1;
       const attachedRun = shouldAttachRun ? normalizeSmallRun(run) : [];
 
       if (!shouldAttachRun) {
@@ -422,8 +423,25 @@ function ImportantToday({ selectedDay }) {
         </em>
       </div>
     ) : (
-      <div key={task.id} className="day-overview-timeline-attached">
-        <span>{task.title}</span>
+      <div
+        key={task.id}
+        className={
+          "day-overview-timeline-attached" +
+          (Number(task.status) === 1 ? " is-done" : "")
+        }
+      >
+        <label
+          className="day-timeline-small-check"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            type="checkbox"
+            checked={Number(task.status) === 1}
+            onChange={() => toggleStatus(task)}
+          />
+          <span />
+        </label>
+        <span className="day-overview-attached-title">{task.title}</span>
         <em>
           {task.computed_start_time}
           {task.duration_min ? ` - ${task.computed_end_time}` : ""}
@@ -540,15 +558,37 @@ function ImportantToday({ selectedDay }) {
                           </div>
                           {expandedGroupId === t.id && (
                             <div className="day-overview-sg-list">
-                              {t.tasks.map((smallTask) => (
-                                <div key={smallTask.id} className="day-overview-sg-task">
-                                  <span>{smallTask.title}</span>
-                                  <em>
-                                    {smallTask.computed_start_time}
-                                    {smallTask.duration_min ? ` – ${smallTask.computed_end_time}` : ""}
-                                  </em>
-                                </div>
-                              ))}
+                              {t.tasks.map((smallTask) => {
+                                const stDone = Number(smallTask.status) === 1;
+                                return (
+                                  <div
+                                    key={smallTask.id}
+                                    className={
+                                      "day-overview-sg-task" +
+                                      (stDone ? " is-done" : "")
+                                    }
+                                  >
+                                    <label
+                                      className="day-timeline-small-check"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={stDone}
+                                        onChange={() => toggleStatus(smallTask)}
+                                      />
+                                      <span />
+                                    </label>
+                                    <span className="day-overview-sg-task-title">
+                                      {smallTask.title}
+                                    </span>
+                                    <em>
+                                      {smallTask.computed_start_time}
+                                      {smallTask.duration_min ? ` – ${smallTask.computed_end_time}` : ""}
+                                    </em>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </>
@@ -564,12 +604,13 @@ function ImportantToday({ selectedDay }) {
                               <button
                                 type="button"
                                 className="day-timeline-subtask-badge"
+                                title="Подзадачи"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSubtaskTaskId(t.id);
                                 }}
                               >
-                                {t.subtasks.filter((s) => s.done).length}/{t.subtasks.length} подзадач
+                                {t.subtasks.filter((s) => s.done).length}/{t.subtasks.length}
                               </button>
                             )}
                           </div>

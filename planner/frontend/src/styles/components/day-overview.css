@@ -309,7 +309,7 @@
 .day-overview-timeline-title {
   color: #2f2850;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -335,13 +335,25 @@
 
 .day-overview-timeline-attached {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 6px;
   min-width: 0;
   color: #82799f;
   font-size: 10px;
   line-height: 1.2;
+}
+
+.day-overview-attached-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-overview-timeline-attached.is-done .day-overview-attached-title {
+  text-decoration: line-through;
+  opacity: 0.55;
 }
 
 .day-overview-timeline-attached-group {
@@ -428,19 +440,24 @@
 
 .day-overview-sg-task {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   color: #4a4170;
   min-width: 0;
 }
 
-.day-overview-sg-task span {
+.day-overview-sg-task-title {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.day-overview-sg-task.is-done .day-overview-sg-task-title {
+  text-decoration: line-through;
+  opacity: 0.55;
 }
 
 .day-overview-sg-task em {

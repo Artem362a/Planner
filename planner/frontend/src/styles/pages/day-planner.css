@@ -417,46 +417,45 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
   flex-shrink: 0;
   cursor: pointer;
-  position: relative;
+}
+
+/* Скрытый кастомный span — рисуем сам нативный input. */
+.day-timeline-small-check span {
+  display: none;
 }
 
 .day-timeline-small-check input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.day-timeline-small-check span {
-  display: block;
+  appearance: none;
+  -webkit-appearance: none;
   box-sizing: border-box;
   width: 15px;
   height: 15px;
-  border-radius: 4px;
-  border: 2px solid #cfc5ec;
+  margin: 0;
+  flex-shrink: 0;
+  border: 1.5px solid #cabfe8;
+  border-radius: 5px;
   background: #ffffff;
   position: relative;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.day-timeline-small-check input:checked + span {
+.day-timeline-small-check input:checked {
   background: var(--accent-2);
   border-color: var(--accent-2);
 }
 
-.day-timeline-small-check input:checked + span::after {
+.day-timeline-small-check input:checked::after {
   content: "";
   position: absolute;
   left: 50%;
-  top: 45%;
+  top: 46%;
   width: 3px;
-  height: 7px;
+  height: 6px;
   border: solid #ffffff;
-  border-width: 0 2px 2px 0;
+  border-width: 0 1.5px 1.5px 0;
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
