@@ -203,6 +203,27 @@ class UserSession(Base):
     last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class TelegramLink(Base):
+    """Связь пользователя с Telegram-чатом + одноразовый код привязки."""
+
+    __tablename__ = "telegram_links"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer, ForeignKey("auth.users.id"), nullable=False, unique=True, index=True
+    )
+    # Telegram chat id. Заполняется после успешной привязки.
+    chat_id = Column(String, unique=True, nullable=True, index=True)
+
+    # Одноразовый код привязки (показывается в вебе, вводится в боте).
+    link_code = Column(String, nullable=True, index=True)
+    link_code_expires = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    linked_at = Column(DateTime, nullable=True)
+
+
 class FeedbackMessage(Base):
     __tablename__ = "feedback_messages"
     __table_args__ = {"schema": "feedback"}

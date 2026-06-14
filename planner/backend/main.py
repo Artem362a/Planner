@@ -21,7 +21,7 @@ from bootstrap import (
     ensure_user_theme_column,
 )
 from db import Base, engine
-from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notes, notifications, statistics, templates, week
+from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notes, notifications, statistics, telegram, templates, week
 
 load_dotenv()
 
@@ -65,4 +65,5 @@ app.include_router(inbox.router)
 app.include_router(templates.router)
 app.include_router(week.router)
 app.include_router(statistics.router)
+app.include_router(telegram.router)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")

@@ -164,3 +164,29 @@ export async function importSchedule() {
 
   return await handleResponse(res, "Failed to import schedule");
 }
+
+export async function fetchTelegramStatus() {
+  const res = await fetch(`${API_URL}/telegram/status`, {
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to fetch telegram status");
+}
+
+export async function requestTelegramLinkCode() {
+  const res = await fetch(`${API_URL}/telegram/link-code`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to get telegram link code");
+}
+
+export async function unlinkTelegram() {
+  const res = await fetch(`${API_URL}/telegram/link`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  return await handleResponse(res, "Failed to unlink telegram");
+}

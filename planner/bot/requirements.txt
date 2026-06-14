@@ -1,0 +1,4 @@
+pyTelegramBotAPI
+python-dotenv
+SQLAlchemy
+psycopg2-binary

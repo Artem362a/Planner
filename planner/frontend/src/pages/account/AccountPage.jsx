@@ -13,6 +13,9 @@ import {
   updateProfile,
   updateTheme,
   uploadAvatar,
+  fetchTelegramStatus,
+  requestTelegramLinkCode,
+  unlinkTelegram,
 } from "../../api/auth";
 import { fetchCategories } from "../../api/tasks";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
@@ -136,6 +139,13 @@ function AccountPage({ user, onUserUpdate }) {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsStatus, setSessionsStatus] = useState("");
 
+  const [tgLinked, setTgLinked] = useState(false);
+  const [tgBotUsername, setTgBotUsername] = useState("");
+  const [tgCode, setTgCode] = useState("");
+  const [tgDeepLink, setTgDeepLink] = useState("");
+  const [tgStatus, setTgStatus] = useState("");
+  const [tgLoading, setTgLoading] = useState(false);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteStatus, setDeleteStatus] = useState("");
@@ -174,6 +184,50 @@ function AccountPage({ user, onUserUpdate }) {
   useEffect(() => {
     loadSessions();
   }, []);
+
+  useEffect(() => {
+    loadTelegramStatus();
+  }, []);
+
+  function loadTelegramStatus() {
+    fetchTelegramStatus()
+      .then((data) => {
+        setTgLinked(!!data?.linked);
+        setTgBotUsername(data?.bot_username || "");
+      })
+      .catch(() => {});
+  }
+
+  async function handleTelegramConnect() {
+    setTgLoading(true);
+    setTgStatus("");
+    try {
+      const data = await requestTelegramLinkCode();
+      setTgCode(data?.code || "");
+      setTgDeepLink(data?.deep_link || "");
+      setTgBotUsername(data?.bot_username || tgBotUsername);
+    } catch (err) {
+      setTgStatus(err.message || "Не удалось получить код");
+    } finally {
+      setTgLoading(false);
+    }
+  }
+
+  async function handleTelegramUnlink() {
+    setTgLoading(true);
+    setTgStatus("");
+    try {
+      await unlinkTelegram();
+      setTgLinked(false);
+      setTgCode("");
+      setTgDeepLink("");
+      setTgStatus("Telegram отвязан");
+    } catch (err) {
+      setTgStatus(err.message || "Не удалось отвязать");
+    } finally {
+      setTgLoading(false);
+    }
+  }
 
   function loadSessions() {
     setSessionsLoading(true);
@@ -508,6 +562,70 @@ function AccountPage({ user, onUserUpdate }) {
                   >
                     Открыть управление категориями
                   </button>
+                </div>
+              </div>
+
+              <div className="account-section">
+                <div className="account-section-info">
+                  <h2>Telegram-бот</h2>
+                  <p>
+                    Быстрый захват во «Входящие», план на день и уведомления
+                    прямо в Telegram.
+                  </p>
+                </div>
+
+                <div className="account-section-controls">
+                  {tgLinked ? (
+                    <>
+                      <div className="account-status">✅ Telegram подключён</div>
+                      <button
+                        type="button"
+                        className="account-primary-btn account-primary-btn--secondary"
+                        onClick={handleTelegramUnlink}
+                        disabled={tgLoading}
+                      >
+                        Отвязать Telegram
+                      </button>
+                    </>
+                  ) : tgCode ? (
+                    <>
+                      <p className="account-status">
+                        Открой бота и привяжи аккаунт. Код действует 15 минут.
+                      </p>
+                      {tgDeepLink && (
+                        <a
+                          className="account-primary-btn"
+                          href={tgDeepLink}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Открыть бота и привязать
+                        </a>
+                      )}
+                      <div className="account-status">
+                        Код для команды <code>/start {tgCode}</code>:{" "}
+                        <strong>{tgCode}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        className="account-primary-btn account-primary-btn--secondary"
+                        onClick={loadTelegramStatus}
+                        disabled={tgLoading}
+                      >
+                        Я привязал — проверить
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="account-primary-btn"
+                      onClick={handleTelegramConnect}
+                      disabled={tgLoading}
+                    >
+                      Подключить Telegram
+                    </button>
+                  )}
+                  {tgStatus && <div className="account-status">{tgStatus}</div>}
                 </div>
               </div>
 

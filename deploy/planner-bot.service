@@ -1,0 +1,19 @@
+[Unit]
+Description=Day Plan — Telegram bot (long polling)
+After=network.target postgresql.service planner.service
+
+[Service]
+Type=simple
+User=user
+Group=user
+WorkingDirectory=/home/user/Planner/planner/bot
+# Шарит .env бэкенда (DATABASE_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME)
+EnvironmentFile=/home/user/Planner/planner/backend/.env
+ExecStart=/home/user/Planner/planner/backend/.venv/bin/python /home/user/Planner/planner/bot/bot.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
