@@ -22,7 +22,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import telebot
-from telebot import types
+from telebot import apihelper, types
 from dotenv import load_dotenv
 
 # Бот шарит модели и БД с бэкендом.
@@ -37,6 +37,12 @@ from db import DayTask, InboxTask, SessionLocal, TelegramLink  # noqa: E402
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 DIGEST_HOUR = int(os.getenv("TELEGRAM_DIGEST_HOUR", "8"))
+
+# Прокси для доступа к api.telegram.org (если провайдер блокирует Telegram).
+# Пример: TELEGRAM_PROXY=socks5h://127.0.0.1:10808  или  http://127.0.0.1:8080
+TELEGRAM_PROXY = os.getenv("TELEGRAM_PROXY", "").strip()
+if TELEGRAM_PROXY:
+    apihelper.proxy = {"https": TELEGRAM_PROXY, "http": TELEGRAM_PROXY}
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
