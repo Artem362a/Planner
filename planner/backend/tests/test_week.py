@@ -247,6 +247,53 @@ class TestUpdateWeekTask:
         }
         assert titles == {"new"}
 
+    def test_adding_subtasks_later_propagates_to_day_tasks(
+        self, client, db, user, auth_headers
+    ):
+        """Подзадачи, добавленные в недельную задачу после создания, должны
+        дотянуться в уже авто-созданные дневные задачи (баг: импорт в день без
+        подзадач)."""
+        from db import DayTask
+
+        r = _create_week_task(client, auth_headers, name="wt")  # без подзадач
+        wt_id = r.json()["id"]
+
+        # День уже создан без подзадач.
+        day_task = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.source_week_task_id == wt_id)
+            .first()
+        )
+        assert not day_task.subtasks
+
+        client.patch(
+            f"/week-tasks/{wt_id}",
+            headers=auth_headers,
+            json={
+                "name": "wt",
+                "start_date": MONDAY.isoformat(),
+                "end_date": SUNDAY.isoformat(),
+                "important": False,
+                "status": 0,
+                "task_type": "normal",
+                "repeat_days": [],
+                "subtasks": [
+                    {"id": 1, "title": "sub A", "done": False},
+                    {"id": 2, "title": "sub B", "done": False},
+                ],
+            },
+        )
+
+        db.expire_all()
+        day_tasks = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.source_week_task_id == wt_id)
+            .all()
+        )
+        assert day_tasks
+        for dt in day_tasks:
+            assert [s["title"] for s in dt.subtasks] == ["sub A", "sub B"]
+
     def test_rename_does_not_overwrite_completed_day_tasks(
         self, client, db, user, auth_headers
     ):

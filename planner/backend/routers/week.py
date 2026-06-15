@@ -348,6 +348,26 @@ def api_update_week_task(
 
     # Создаём дневные задачи для новых дней диапазона
     _sync_day_tasks_for_week_task(db, cast(Any, db_row), current_user_row.id)
+
+    # Подтягиваем подзадачи в уже существующие дневные задачи, у которых их нет
+    # (например, подзадачи добавили в недельную задачу уже после её создания —
+    # тогда авто-созданная дневная задача осталась без них). Не трогаем те, где
+    # подзадачи уже есть, чтобы не сбросить отмеченный прогресс.
+    week_subtasks = [s.dict() for s in body.subtasks]
+    if week_subtasks:
+        existing_day_tasks = (
+            db.query(DayTask)
+            .filter(
+                DayTask.user_id == current_user_row.id,
+                DayTask.source_week_task_id == task_id,
+                DayTask.status == 0,
+            )
+            .all()
+        )
+        for dt in existing_day_tasks:
+            if not cast(Any, dt).subtasks:
+                cast(Any, dt).subtasks = list(week_subtasks)
+
     db.commit()
 
     return _week_task_model_to_out(db_row)
