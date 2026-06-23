@@ -552,6 +552,7 @@ def _send_daily_digest() -> None:
         )
         targets = [(link.chat_id, link.user_id) for link in links]
 
+    print(f"sending daily digest to {len(targets)} chat(s)", flush=True)
     for chat_id, user_id in targets:
         try:
             bot.send_message(int(chat_id), _format_plan(user_id, today))
@@ -560,13 +561,21 @@ def _send_daily_digest() -> None:
 
 
 def _digest_loop() -> None:
-    """Раз в сутки в DIGEST_HOUR шлём дайджест всем привязанным."""
+    """Раз в сутки в DIGEST_HOUR шлём дайджест всем привязанным.
+
+    Тело обёрнуто в try/except: разовая ошибка (БД/сеть) не должна убивать
+    поток — иначе дайджест молча перестаёт приходить, хотя бот «работает».
+    """
+    print(f"digest loop started (hour={DIGEST_HOUR}, tz local)", flush=True)
     sent_for: date | None = None
     while True:
-        now = datetime.now()
-        if now.hour == DIGEST_HOUR and sent_for != now.date():
-            _send_daily_digest()
-            sent_for = now.date()
+        try:
+            now = datetime.now()
+            if now.hour == DIGEST_HOUR and sent_for != now.date():
+                _send_daily_digest()
+                sent_for = now.date()
+        except Exception as e:  # noqa: BLE001
+            print(f"digest loop error: {e}", flush=True)
         _time.sleep(60)
 
 
