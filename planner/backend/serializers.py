@@ -163,6 +163,7 @@ def _template_to_out(tmpl: DayTemplateRow) -> DayTemplateOut:
         name=tmpl.name,
         color=tmpl.color,
         tasks=[TemplateTask(**task) for task in tasks_raw],
+        day_start=getattr(tmpl, "day_start", None),
     )
 
 

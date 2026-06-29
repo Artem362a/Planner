@@ -61,6 +61,7 @@ def create_template(
         name=body.name,
         color=body.color,
         tasks_json=[task.dict() for task in body.tasks],
+        day_start=body.day_start,
     )
     db.add(tmpl)
     db.commit()
@@ -94,6 +95,9 @@ def patch_template(
         tmpl.color = body.color
     if body.tasks is not None:
         tmpl.tasks_json = [task.dict() for task in body.tasks]
+    if body.day_start is not None:
+        # Пустая строка очищает значение.
+        tmpl.day_start = body.day_start or None
 
     db.commit()
     db.refresh(tmpl)
@@ -196,6 +200,32 @@ def apply_template(
         )
         db.add(task)
         created_tasks.append(task)
+
+    # Если в шаблоне задано начало дня — применяем его к настройкам этого дня.
+    tmpl_day_start = getattr(tmpl, "day_start", None)
+    if tmpl_day_start:
+        try:
+            parts = str(tmpl_day_start).split(":")
+            parsed_start = _time(hour=int(parts[0]), minute=int(parts[1]))
+        except (ValueError, IndexError):
+            parsed_start = None
+        if parsed_start is not None:
+            settings = (
+                db.query(DaySettings)
+                .filter(
+                    DaySettings.user_id == current_user_row.id,
+                    DaySettings.day == d,
+                )
+                .first()
+            )
+            if settings is None:
+                db.add(DaySettings(
+                    user_id=current_user_row.id,
+                    day=d,
+                    start_time=parsed_start,
+                ))
+            else:
+                cast(Any, settings).start_time = parsed_start
 
     db.commit()
     for task in created_tasks:

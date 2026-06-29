@@ -269,6 +269,8 @@ class DayTemplate(Base):
     name = Column(String, nullable=False)
     color = Column(String, nullable=False, default="#f0e7ff")
     tasks_json = Column(JSON, nullable=False)
+    # Время начала дня, которое применится при импорте шаблона ("HH:MM"|null).
+    day_start = Column(String, nullable=True)
 
 
 class WeekTemplate(Base):

@@ -335,7 +335,7 @@
 
 .day-overview-timeline-attached {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   min-width: 0;
   color: #82799f;
@@ -343,12 +343,21 @@
   line-height: 1.2;
 }
 
-.day-overview-attached-title {
+.day-overview-timeline-attached .day-overview-attached-title {
   flex: 1;
   min-width: 0;
+  /* Перенос на 2 строки вместо жёсткого обрезания в одну. */
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.18;
+}
+
+.day-overview-timeline-attached em {
+  padding-top: 1px;
 }
 
 .day-overview-timeline-attached.is-done .day-overview-attached-title {
@@ -440,7 +449,7 @@
 
 .day-overview-sg-task {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 10px;
   color: #4a4170;
@@ -450,9 +459,17 @@
 .day-overview-sg-task-title {
   flex: 1;
   min-width: 0;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.18;
+}
+
+.day-overview-sg-task em {
+  padding-top: 1px;
 }
 
 .day-overview-sg-task.is-done .day-overview-sg-task-title {

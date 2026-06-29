@@ -191,6 +191,15 @@ function ImportantToday({ selectedDay }) {
     const isSmallTask = (task) =>
       (task.duration_min || 0) <= smallTaskMinutes;
 
+    // Названия мелких задач переносятся максимум на 2 строки (см. CSS
+    // .day-overview-attached-title / .day-overview-sg-task-title). Грубо
+    // оцениваем, занимает ли название 2 строки, чтобы заложить высоту блока
+    // и не обрезать содержимое. Ширина строки узкая (рядом ещё время).
+    const charsPerLine = 16;
+    const titleLines = (title) =>
+      Math.min(2, Math.max(1, Math.ceil((title || "").length / charsPerLine)));
+    const extraLineHeight = 12;
+
     const getStart = (item) => item.timeline_start_min;
     const getEnd = (item) => item.timeline_end_min;
 
@@ -220,10 +229,19 @@ function ImportantToday({ selectedDay }) {
       const end = attached.length > 0
         ? Math.max(task.timeline_end_min, ...attached.map(getEnd))
         : task.timeline_end_min;
-      const attachedHeight = attached.length * attachedRowHeight;
+      const attachedHeight = attached.reduce(
+        (sum, t) =>
+          sum + attachedRowHeight + (titleLines(t.title) - 1) * extraLineHeight,
+        0
+      );
       const isExpandedGroup = task.type === "small-group" && attached.length === 0 && expandedGroupId === task.id;
+      const expandedListHeight = (task.tasks || []).reduce(
+        (sum, t) =>
+          sum + expandedGroupRowHeight + (titleLines(t.title) - 1) * extraLineHeight,
+        0
+      );
       const height = isExpandedGroup
-        ? minTaskHeight + task.tasks.length * expandedGroupRowHeight
+        ? minTaskHeight + expandedListHeight
         : Math.max(minTaskHeight + attachedHeight, (end - start) * pxPerMinute - 3);
 
       return { type: "task", task, before, after, start, end, height, top: 0 };

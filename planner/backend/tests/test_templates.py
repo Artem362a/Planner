@@ -109,6 +109,40 @@ class TestApplyDayTemplate:
         titles = [t["title"] for t in client.get(f"/day/{TODAY}", headers=auth_headers).json()]
         assert titles == ["existing", "from-tpl"]
 
+    def test_apply_sets_day_start_when_template_has_one(self, client, auth_headers):
+        tpl = client.post(
+            "/day-templates",
+            headers=auth_headers,
+            json={
+                "name": "tpl",
+                "color": "#abc",
+                "tasks": [{"title": "A"}],
+                "day_start": "07:30",
+            },
+        ).json()
+        assert tpl["day_start"] == "07:30"
+
+        client.post(f"/day-templates/{tpl['id']}/apply/{TODAY}", headers=auth_headers)
+
+        settings = client.get(f"/day/{TODAY}/settings", headers=auth_headers).json()
+        assert settings["start_time"] == "07:30"
+
+    def test_apply_without_day_start_keeps_settings(self, client, auth_headers):
+        client.put(
+            f"/day/{TODAY}/settings", headers=auth_headers, json={"start_time": "05:00"}
+        )
+        tpl = client.post(
+            "/day-templates",
+            headers=auth_headers,
+            json={"name": "tpl", "color": "#abc", "tasks": [{"title": "A"}]},
+        ).json()
+        assert tpl["day_start"] is None
+
+        client.post(f"/day-templates/{tpl['id']}/apply/{TODAY}", headers=auth_headers)
+
+        settings = client.get(f"/day/{TODAY}/settings", headers=auth_headers).json()
+        assert settings["start_time"] == "05:00"
+
     def test_apply_404_for_unknown_template(self, client, auth_headers):
         r = client.post(f"/day-templates/99999/apply/{TODAY}", headers=auth_headers)
         assert r.status_code == 404

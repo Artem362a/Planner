@@ -245,12 +245,14 @@ class DayTemplateIn(BaseModel):
     name: str
     color: str = "#f0e7ff"
     tasks: list[TemplateTask]
+    day_start: str | None = None
 
 
 class DayTemplatePatch(BaseModel):
     name: str | None = None
     color: str | None = None
     tasks: list[TemplateTask] | None = None
+    day_start: str | None = None
 
 
 class DayTemplateOut(BaseModel):
@@ -258,6 +260,7 @@ class DayTemplateOut(BaseModel):
     name: str
     color: str
     tasks: list[TemplateTask]
+    day_start: str | None = None
 
 
 class WeekTemplateTaskIn(BaseModel):
@@ -402,6 +405,7 @@ class DayTemplateRow(Protocol):
     name: str
     color: str
     tasks_json: Any
+    day_start: str | None
 
 
 class DayTaskRow(Protocol):

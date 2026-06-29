@@ -27,6 +27,15 @@
   gap: 8px;
 }
 
+.template-edit-banner-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
 /* Доп. поля баннера в режиме шаблона недели (название + палитра) */
 .template-edit-banner-name {
   flex: 1 1 180px;
@@ -413,6 +422,20 @@
   display: none;
 }
 
+/* Когда название переносится на 2 строки — ровняем чекбокс/время по верху. */
+.day-timeline-attached-task--checkable {
+  align-items: flex-start;
+}
+
+.day-timeline-attached-task--checkable em {
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.day-timeline-attached-task--checkable .day-timeline-small-check {
+  margin-top: -1px;
+}
+
 .day-timeline-small-check {
   display: inline-flex;
   align-items: center;
@@ -461,6 +484,16 @@
 
 .day-timeline-small-title {
   flex: 1;
+  min-width: 0;
+  /* Не режем в одну строку (как делает общее правило для span выше) —
+     даём названию перенестись максимум на 2 строки. */
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.18;
 }
 
 .day-timeline-attached-task.is-done .day-timeline-small-title {

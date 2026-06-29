@@ -323,11 +323,13 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
   const enterTemplateEdit = (tpl) => {
     templateTaskIdRef.current = -1;
     setEditingTemplate(tpl);
+    setEditingTemplateName(tpl.name || "");
+    setEditingTemplateColor(tpl.color || TEMPLATE_COLORS[0]);
     setTasks((tpl.tasks || []).map(mapTemplateTaskToDay));
     setViewMode("list");
     setIsApplyTemplateOpen(false);
     setExpandedTaskId(null);
-    setDayStartTime("06:00");
+    setDayStartTime(tpl.day_start || "06:00");
     onTemplateModeChange?.(tpl);
   };
 
@@ -354,8 +356,15 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
       category: t.category ?? null,
       subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
     }));
+    const name = editingTemplateName.trim();
+    if (!name) return;
     try {
-      const updated = await updateDayTemplate(editingTemplate.id, { tasks: cleaned });
+      const updated = await updateDayTemplate(editingTemplate.id, {
+        name,
+        color: editingTemplateColor,
+        tasks: cleaned,
+        day_start: dayStartTime ? dayStartTime.slice(0, 5) : "",
+      });
       setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       exitTemplateEdit();
     } catch (e) {
@@ -1261,6 +1270,12 @@ const overdueImportCandidates = useMemo(
       await applyDayTemplate(tpl.id, dayString);
       const updated = await fetchDayTasks(dayString);
       setTasks(updated);
+      // Шаблон мог задать начало дня — подтянем актуальные настройки.
+      if (tpl.day_start) {
+        fetchDaySettings(dayString)
+          .then((data) => setDayStartTime(data?.start_time || "06:00"))
+          .catch(() => {});
+      }
       setIsApplyTemplateOpen(false);
       setEditingTemplateId(null);
       setTemplateOverflowConfirm(null);
@@ -1593,13 +1608,38 @@ const overdueImportCandidates = useMemo(
       <div className="day-tasks-wrapper">
         {isTemplateMode && (
           <div className="template-edit-banner">
-            <span className="template-edit-banner-label">
-              ✎ Режим редактирования шаблона «{editingTemplate.name}»
-            </span>
+            <div className="template-edit-banner-main">
+              <span className="template-edit-banner-label">✎ Шаблон:</span>
+              <input
+                className="template-edit-banner-name"
+                type="text"
+                value={editingTemplateName}
+                onChange={(e) => setEditingTemplateName(e.target.value)}
+                placeholder="Название шаблона"
+              />
+              <div className="template-edit-banner-palette">
+                {TEMPLATE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={
+                      "category-color-swatch" +
+                      (editingTemplateColor === color
+                        ? " category-color-swatch--active"
+                        : "")
+                    }
+                    style={{ "--swatch-color": color }}
+                    onClick={() => setEditingTemplateColor(color)}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="template-edit-banner-actions">
               <button
                 type="button"
                 className="primary-btn"
+                disabled={!editingTemplateName.trim()}
                 onClick={saveTemplateEdit}
               >
                 Сохранить шаблон
@@ -1668,19 +1708,18 @@ const overdueImportCandidates = useMemo(
           </div>
         </div>
 
-        <div
-          className={
-            "day-start-bar" + (isTemplateMode ? " is-template-disabled" : "")
-          }
-        >
+        <div className="day-start-bar">
           <span>Начало дня:</span>
           <input
             type="time"
             value={dayStartTime}
-            disabled={isTemplateMode}
             onChange={async (e) => {
               const value = e.target.value;
               setDayStartTime(value);
+
+              // В режиме шаблона начало дня сохраняется вместе с шаблоном
+              // (кнопка «Сохранить шаблон»), а не в настройки реального дня.
+              if (isTemplateMode) return;
 
               try {
                 await saveDaySettings(dayString, value);
@@ -2432,132 +2471,56 @@ const overdueImportCandidates = useMemo(
             )}
 
             <ul className="templates-list">
-              {templates.map((tpl) => {
-                const isEditing = editingTemplateId === tpl.id;
-                return (
-                  <li key={tpl.id} className={"template-item" + (isEditing ? " template-item--editing" : "")}>
-                    {isEditing ? (
-                      <div className="template-edit-form">
-                        <div className="template-edit-row">
-                          <span
-                            className="template-color-dot"
-                            style={{ backgroundColor: editingTemplateColor }}
-                          />
-                          <input
-                            className="template-edit-name-input"
-                            type="text"
-                            value={editingTemplateName}
-                            onChange={(e) => setEditingTemplateName(e.target.value)}
-                            autoFocus
-                          />
-                          <button
-                            type="button"
-                            className="primary-btn template-edit-save"
-                            disabled={!editingTemplateName.trim()}
-                            onClick={async () => {
-                              try {
-                                const updated = await updateDayTemplate(tpl.id, {
-                                  name: editingTemplateName.trim(),
-                                  color: editingTemplateColor,
-                                });
-                                setTemplates((prev) =>
-                                  prev.map((t) => (t.id === updated.id ? updated : t))
-                                );
-                                setEditingTemplateId(null);
-                              } catch (e) {
-                                console.error(e);
-                              }
-                            }}
-                          >
-                            Сохранить
-                          </button>
-                          <button
-                            type="button"
-                            className="secondary-btn"
-                            onClick={() => setEditingTemplateId(null)}
-                          >
-                            Отмена
-                          </button>
-                        </div>
-                        <div className="category-color-palette template-edit-palette">
-                          {TEMPLATE_COLORS.map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              className={"category-color-swatch" + (editingTemplateColor === color ? " category-color-swatch--active" : "")}
-                              style={{ "--swatch-color": color }}
-                              onClick={() => setEditingTemplateColor(color)}
-                              title={color}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <span
-                          className="template-color-dot"
-                          style={{ backgroundColor: tpl.color }}
-                        />
-                        <span className="template-name">{tpl.name}</span>
+              {templates.map((tpl) => (
+                <li key={tpl.id} className="template-item">
+                  <span
+                    className="template-color-dot"
+                    style={{ backgroundColor: tpl.color }}
+                  />
+                  <span className="template-name">{tpl.name}</span>
 
-                        <div className="template-actions">
-                          <button
-                            type="button"
-                            className="primary-btn"
-                            onClick={() => applyTemplateWithCheck(tpl)}
-                          >
-                            Импорт
-                          </button>
+                  <div className="template-actions">
+                    <button
+                      type="button"
+                      className="primary-btn"
+                      onClick={() => applyTemplateWithCheck(tpl)}
+                    >
+                      Импорт
+                    </button>
 
-                          <button
-                            type="button"
-                            className="template-edit-btn"
-                            title="Переименовать / цвет"
-                            onClick={() => {
-                              setEditingTemplateId(tpl.id);
-                              setEditingTemplateName(tpl.name);
-                              setEditingTemplateColor(tpl.color);
-                            }}
-                          >
-                            ✎
-                          </button>
+                    <button
+                      type="button"
+                      className="template-edit-btn"
+                      title="Редактировать шаблон (задачи, название, цвет, начало дня)"
+                      onClick={() => enterTemplateEdit(tpl)}
+                    >
+                      ✎
+                    </button>
 
-                          <button
-                            type="button"
-                            className="template-edit-btn"
-                            title="Редактировать задачи в режиме плана"
-                            onClick={() => enterTemplateEdit(tpl)}
-                          >
-                            ☰
-                          </button>
+                    <button
+                      type="button"
+                      className="template-delete-btn"
+                      onClick={async () => {
+                        const ok = window.confirm(
+                          `Удалить шаблон "${tpl.name}"?`
+                        );
+                        if (!ok) return;
 
-                          <button
-                            type="button"
-                            className="template-delete-btn"
-                            onClick={async () => {
-                              const ok = window.confirm(
-                                `Удалить шаблон "${tpl.name}"?`
-                              );
-                              if (!ok) return;
-
-                              try {
-                                await deleteDayTemplate(tpl.id);
-                                setTemplates((prev) =>
-                                  prev.filter((item) => item.id !== tpl.id)
-                                );
-                              } catch (e) {
-                                console.error(e);
-                              }
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
+                        try {
+                          await deleteDayTemplate(tpl.id);
+                          setTemplates((prev) =>
+                            prev.filter((item) => item.id !== tpl.id)
+                          );
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
             </ul>
 
             {templates.length === 0 && (
