@@ -33,7 +33,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 load_dotenv(BACKEND_DIR / ".env")
 load_dotenv()  # на случай локального .env рядом с ботом
 
-from db import DayTask, InboxTask, SessionLocal, TelegramLink  # noqa: E402
+from db import DayTask, InboxTask, SessionLocal, TelegramLink, WeekTask  # noqa: E402
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 DIGEST_HOUR = int(os.getenv("TELEGRAM_DIGEST_HOUR", "8"))
@@ -152,16 +152,40 @@ def _today_tasks(user_id: int, day: date) -> list[DayTask]:
 
 
 def _overdue_count(user_id: int, day: date) -> int:
+    """Та же логика, что в приложении (GET /day-tasks/overdue):
+    прошедшие невыполненные неотклонённые задачи; задачи из недельной
+    дедуплицируются и не считаются, пока недельная ещё активна."""
     with SessionLocal() as db:
-        return (
+        pending = (
             db.query(DayTask)
             .filter(
                 DayTask.user_id == user_id,
                 DayTask.day < day,
                 DayTask.status == 0,
+                DayTask.dismissed.isnot(True),
             )
-            .count()
+            .all()
         )
+
+        count = 0
+        seen_week_task_ids: set[int] = set()
+        for t in pending:
+            swid = getattr(t, "source_week_task_id", None)
+            if swid is not None:
+                if swid in seen_week_task_ids:
+                    continue
+                wt = (
+                    db.query(WeekTask)
+                    .filter(WeekTask.id == swid, WeekTask.user_id == user_id)
+                    .first()
+                )
+                if wt is None:
+                    continue
+                if wt.end_date >= day:  # недельная ещё активна — не просрочка
+                    continue
+                seen_week_task_ids.add(swid)
+            count += 1
+        return count
 
 
 def _toggle_day_task(user_id: int, task_id: int) -> bool:
