@@ -125,6 +125,58 @@ def _add_day_task(user_id: int, title: str, day: date) -> None:
         db.commit()
 
 
+def _add_week_task(user_id: int, title: str, day: date) -> None:
+    """Создаёт недельную задачу на один день (start=end=day) и, как в
+    приложении, зеркалит её в план дня (DayTask с source_week_task_id)."""
+    title = title.strip()[:500]
+    with SessionLocal() as db:
+        max_wo = (
+            db.query(WeekTask.order_index)
+            .filter(WeekTask.user_id == user_id)
+            .order_by(WeekTask.order_index.desc())
+            .first()
+        )
+        wt = WeekTask(
+            user_id=user_id,
+            name=title,
+            start_date=day,
+            end_date=day,
+            category=None,
+            important=False,
+            status=0,
+            task_type="normal",
+            repeat_days=[],
+            volume_value=None,
+            subtasks=[],
+            order_index=(max_wo[0] + 1) if max_wo else 0,
+        )
+        db.add(wt)
+        db.flush()
+
+        max_do = (
+            db.query(DayTask.order_index)
+            .filter(DayTask.user_id == user_id, DayTask.day == day)
+            .order_by(DayTask.order_index.desc())
+            .first()
+        )
+        db.add(
+            DayTask(
+                user_id=user_id,
+                day=day,
+                title=title,
+                start_time=None,
+                duration_min=None,
+                priority="medium",
+                category=None,
+                status=0,
+                subtasks=[],
+                source_week_task_id=wt.id,
+                order_index=(max_do[0] + 1) if max_do else 0,
+            )
+        )
+        db.commit()
+
+
 def _add_inbox(user_id: int, text: str) -> None:
     with SessionLocal() as db:
         db.add(
@@ -268,16 +320,48 @@ def _menu_keyboard() -> types.InlineKeyboardMarkup:
 
 # Постоянная нижняя панель (как «нативное» меню приложения).
 BTN_TODAY = "🗓 Сегодня"
-BTN_ADD = "➕ В план"
 BTN_INBOX = "📥 Входящие"
+BTN_DAY = "➕ В день"
+BTN_WEEK = "📅 В неделю"
 BTN_HELP = "❓ Помощь"
-MAIN_LABELS = {BTN_TODAY, BTN_ADD, BTN_INBOX, BTN_HELP}
+MAIN_LABELS = {BTN_TODAY, BTN_INBOX, BTN_DAY, BTN_WEEK, BTN_HELP}
 
 
 def _main_reply_kb() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.row(BTN_TODAY, BTN_ADD)
-    kb.row(BTN_INBOX, BTN_HELP)
+    kb.row(BTN_TODAY, BTN_INBOX)
+    kb.row(BTN_DAY, BTN_WEEK)
+    kb.row(BTN_HELP)
+    return kb
+
+
+# Незавершённые добавления: chat_id -> {"user_id", "dest" (day|week), "text"}.
+# Шаг 1 — пользователь прислал текст; шаг 2 — выбирает день кнопкой.
+_pending_add: dict[int, dict] = {}
+
+_RU_WD = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+
+def _day_picker_kb() -> types.InlineKeyboardMarkup:
+    """Инлайн-выбор дня: ближайшие 7 дней."""
+    kb = types.InlineKeyboardMarkup()
+    today = date.today()
+    row = []
+    for offset in range(7):
+        d = today + timedelta(days=offset)
+        if offset == 0:
+            label = "Сегодня"
+        elif offset == 1:
+            label = "Завтра"
+        else:
+            label = f"{_RU_WD[d.weekday()]} {d.day:02d}.{d.month:02d}"
+        row.append(types.InlineKeyboardButton(label, callback_data=f"pick:{offset}"))
+        if len(row) == 2:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
+    kb.row(types.InlineKeyboardButton("✖ Отмена", callback_data="pick:cancel"))
     return kb
 
 
@@ -314,13 +398,13 @@ def handle_start(message):
 
 
 HELP_TEXT = (
-    "Что я умею:\n"
-    "• <b>/menu</b> → меню с кнопками\n"
-    "• <b>напиши текст</b> → спрошу: во «Входящие» или в план дня\n"
-    "• <b>/inbox текст</b> → сразу во «Входящие»\n"
-    "• <b>/add текст</b> → сразу в план на сегодня\n"
-    "• <b>/today</b> → план на сегодня (кнопки ✅ отмечают задачи)\n"
-    "• <b>/start КОД</b> → привязать аккаунт"
+    "Пользуйся кнопками снизу 👇\n\n"
+    "• <b>🗓 Сегодня</b> — план на сегодня (кнопки ✅ отмечают задачи)\n"
+    "• <b>➕ В день</b> — задача в план дня (спрошу текст и день)\n"
+    "• <b>📅 В неделю</b> — задача в план недели (текст и день)\n"
+    "• <b>📥 Входящие</b> — закинуть во «Входящие»\n\n"
+    "Ещё: просто напиши текст → спрошу, куда; /menu — показать кнопки; "
+    "/start КОД — привязать аккаунт."
 )
 
 
@@ -357,13 +441,6 @@ def handle_main_buttons(message):
         )
     elif label == BTN_HELP:
         bot.send_message(message.chat.id, HELP_TEXT)
-    elif label == BTN_ADD:
-        msg = bot.send_message(
-            message.chat.id,
-            "Что добавить в план на сегодня? Пришли текст:",
-            reply_markup=types.ForceReply(selective=False),
-        )
-        bot.register_next_step_handler(msg, _step_add_day, user_id)
     elif label == BTN_INBOX:
         msg = bot.send_message(
             message.chat.id,
@@ -371,6 +448,71 @@ def handle_main_buttons(message):
             reply_markup=types.ForceReply(selective=False),
         )
         bot.register_next_step_handler(msg, _step_add_inbox, user_id)
+    elif label == BTN_DAY:
+        msg = bot.send_message(
+            message.chat.id,
+            "Что добавить в план дня? Пришли текст:",
+            reply_markup=types.ForceReply(selective=False),
+        )
+        bot.register_next_step_handler(msg, _step_capture_name, user_id, "day")
+    elif label == BTN_WEEK:
+        msg = bot.send_message(
+            message.chat.id,
+            "Что добавить в план на неделю? Пришли текст:",
+            reply_markup=types.ForceReply(selective=False),
+        )
+        bot.register_next_step_handler(msg, _step_capture_name, user_id, "week")
+
+
+def _step_capture_name(message, user_id, dest):
+    """Шаг 1: получили текст задачи → спрашиваем день кнопками."""
+    text = (message.text or "").strip()
+    if not text or text.startswith("/"):
+        bot.reply_to(message, "Отменено.")
+        return
+    _pending_add[message.chat.id] = {"user_id": user_id, "dest": dest, "text": text}
+    where = "в план на неделю" if dest == "week" else "в план дня"
+    bot.send_message(
+        message.chat.id,
+        f"На какой день добавить {where} «{html.escape(text[:80])}»?",
+        reply_markup=_day_picker_kb(),
+    )
+
+
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("pick:"))
+def cb_pick(call):
+    chat_id = call.message.chat.id
+    arg = call.data.split(":", 1)[1]
+    pending = _pending_add.pop(chat_id, None)
+
+    if arg == "cancel":
+        bot.answer_callback_query(call.id, "Отменено")
+        try:
+            bot.edit_message_text("Отменено.", chat_id, call.message.message_id)
+        except Exception:  # noqa: BLE001
+            pass
+        return
+
+    if not pending:
+        bot.answer_callback_query(call.id, "Сессия истекла, начни заново")
+        return
+
+    day = date.today() + timedelta(days=int(arg))
+    text = pending["text"]
+    label = f"{_RU_WD[day.weekday()]} {day.day:02d}.{day.month:02d}"
+
+    if pending["dest"] == "week":
+        _add_week_task(pending["user_id"], text, day)
+        result = f"📅 В план на неделю ({label}): <b>{html.escape(text)}</b>"
+    else:
+        _add_day_task(pending["user_id"], text, day)
+        result = f"🗓 В план дня ({label}): <b>{html.escape(text)}</b>"
+
+    try:
+        bot.edit_message_text(result, chat_id, call.message.message_id)
+    except Exception:  # noqa: BLE001
+        pass
+    bot.answer_callback_query(call.id, "Готово")
 
 
 @bot.message_handler(commands=["add"])
