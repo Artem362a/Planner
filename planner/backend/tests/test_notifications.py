@@ -367,3 +367,96 @@ class TestListUsersForNotifications:
     def test_regular_user_cannot_list_users(self, client, auth_headers):
         r = client.get("/notifications/users", headers=auth_headers)
         assert r.status_code == 403
+
+
+class TestReminders:
+    def test_create_and_list(self, client, auth_headers):
+        future = (datetime.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M")
+
+        r = client.post(
+            "/reminders",
+            headers=auth_headers,
+            json={"text": "Позвонить маме", "remind_at": future},
+        )
+        assert r.status_code == 200
+        created = r.json()
+        assert created["text"] == "Позвонить маме"
+        assert created["remind_at"] == future
+        assert created["sent"] is False
+
+        listed = client.get("/reminders", headers=auth_headers).json()
+        assert [x["id"] for x in listed] == [created["id"]]
+
+    def test_create_rejects_past(self, client, auth_headers):
+        past = (datetime.now() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
+        r = client.post(
+            "/reminders",
+            headers=auth_headers,
+            json={"text": "поздно", "remind_at": past},
+        )
+        assert r.status_code == 400
+
+    def test_create_rejects_empty_text(self, client, auth_headers):
+        future = (datetime.now() + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M")
+        r = client.post(
+            "/reminders",
+            headers=auth_headers,
+            json={"text": "   ", "remind_at": future},
+        )
+        assert r.status_code == 400
+
+    def test_create_rejects_bad_datetime(self, client, auth_headers):
+        r = client.post(
+            "/reminders",
+            headers=auth_headers,
+            json={"text": "x", "remind_at": "not-a-date"},
+        )
+        assert r.status_code == 400
+
+    def test_list_excludes_sent_and_foreign(self, client, db, user, other_user, auth_headers):
+        from db import Reminder
+
+        future = datetime.now() + timedelta(hours=3)
+        db.add(Reminder(user_id=user.id, text="mine", remind_at=future))
+        db.add(Reminder(user_id=user.id, text="already sent", remind_at=future, sent=True))
+        db.add(Reminder(user_id=other_user.id, text="foreign", remind_at=future))
+        db.commit()
+
+        listed = client.get("/reminders", headers=auth_headers).json()
+        texts = [x["text"] for x in listed]
+        assert "mine" in texts
+        assert "already sent" not in texts
+        assert "foreign" not in texts
+
+    def test_delete(self, client, db, user, auth_headers):
+        from db import Reminder
+
+        row = Reminder(
+            user_id=user.id,
+            text="удалить",
+            remind_at=datetime.now() + timedelta(hours=1),
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.delete(f"/reminders/{row.id}", headers=auth_headers)
+        assert r.status_code == 200
+
+        listed = client.get("/reminders", headers=auth_headers).json()
+        assert all(x["id"] != row.id for x in listed)
+
+    def test_delete_foreign_404(self, client, db, other_user, auth_headers):
+        from db import Reminder
+
+        row = Reminder(
+            user_id=other_user.id,
+            text="чужое",
+            remind_at=datetime.now() + timedelta(hours=1),
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.delete(f"/reminders/{row.id}", headers=auth_headers)
+        assert r.status_code == 404

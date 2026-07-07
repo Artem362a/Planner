@@ -7,6 +7,11 @@ import {
   markAllNotificationsRead,
   deleteNotification,
 } from "../api/notifications";
+import {
+  fetchReminders,
+  createReminder,
+  deleteReminder,
+} from "../api/reminders";
 
 function parseLocalDate(dateStr) {
   const [year, month, day] = String(dateStr || "")
@@ -189,11 +194,87 @@ function saveVirtualDeletedIds(ids) {
   } catch {}
 }
 
+const RU_WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+
+function formatRemindAt(value) {
+  // value: "YYYY-MM-DDTHH:MM"
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return value;
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const hh = String(dt.getHours()).padStart(2, "0");
+  const min = String(dt.getMinutes()).padStart(2, "0");
+  return `${RU_WEEKDAYS[dt.getDay()]} ${dd}.${mm} · ${hh}:${min}`;
+}
+
+function todayString() {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
 export default function NotificationsBell() {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
+  const [view, setView] = React.useState("notifications"); // notifications | reminders
+  const [reminders, setReminders] = React.useState([]);
+  const [remindersLoading, setRemindersLoading] = React.useState(false);
+  const [reminderText, setReminderText] = React.useState("");
+  const [reminderDate, setReminderDate] = React.useState(todayString);
+  const [reminderTime, setReminderTime] = React.useState("");
+  const [reminderError, setReminderError] = React.useState("");
+  const [reminderSaving, setReminderSaving] = React.useState(false);
   const wrapRef = React.useRef(null);
+
+  async function loadReminders() {
+    try {
+      setRemindersLoading(true);
+      const data = await fetchReminders();
+      setReminders(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      setReminders([]);
+    } finally {
+      setRemindersLoading(false);
+    }
+  }
+
+  async function handleCreateReminder(e) {
+    e.preventDefault();
+    const text = reminderText.trim();
+    if (!text || !reminderDate || !reminderTime) return;
+
+    const remindAt = `${reminderDate}T${reminderTime}`;
+    if (new Date(remindAt).getTime() <= Date.now()) {
+      setReminderError("Это время уже прошло");
+      return;
+    }
+
+    try {
+      setReminderSaving(true);
+      setReminderError("");
+      const created = await createReminder({ text, remind_at: remindAt });
+      setReminders((prev) =>
+        [...prev, created].sort((a, b) =>
+          a.remind_at < b.remind_at ? -1 : 1
+        )
+      );
+      setReminderText("");
+      setReminderTime("");
+    } catch (error) {
+      console.error(error);
+      setReminderError("Не удалось создать напоминание");
+    } finally {
+      setReminderSaving(false);
+    }
+  }
+
+  function handleDeleteReminder(id) {
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    deleteReminder(id).catch(() => {});
+  }
 
   async function loadNotifications() {
     try {
@@ -331,19 +412,115 @@ export default function NotificationsBell() {
       {open && (
         <div className="notifications-dropdown">
           <div className="notifications-dropdown-head">
-            <div className="notifications-title">Уведомления</div>
+            <div className="notifications-title">
+              {view === "reminders" ? "Напоминания" : "Уведомления"}
+            </div>
 
-            <button
-              type="button"
-              className="notifications-refresh-btn"
-              onClick={loadNotifications}
-              disabled={loading}
-            >
-              {loading ? "..." : "↻"}
-            </button>
+            <div className="notifications-head-actions">
+              <button
+                type="button"
+                className={
+                  "notifications-refresh-btn" +
+                  (view === "reminders" ? " notifications-view-btn--active" : "")
+                }
+                title={
+                  view === "reminders" ? "К уведомлениям" : "Напоминания"
+                }
+                onClick={() => {
+                  const next =
+                    view === "reminders" ? "notifications" : "reminders";
+                  setView(next);
+                  setReminderError("");
+                  if (next === "reminders") loadReminders();
+                }}
+              >
+                ⏰
+              </button>
+
+              <button
+                type="button"
+                className="notifications-refresh-btn"
+                onClick={view === "reminders" ? loadReminders : loadNotifications}
+                disabled={view === "reminders" ? remindersLoading : loading}
+              >
+                {(view === "reminders" ? remindersLoading : loading)
+                  ? "..."
+                  : "↻"}
+              </button>
+            </div>
           </div>
 
-          {loading && items.length === 0 ? (
+          {view === "reminders" ? (
+            <div className="reminders-view">
+              <form className="reminder-form" onSubmit={handleCreateReminder}>
+                <input
+                  type="text"
+                  className="reminder-form-text"
+                  placeholder="О чём напомнить?"
+                  maxLength={200}
+                  value={reminderText}
+                  onChange={(e) => setReminderText(e.target.value)}
+                />
+                <div className="reminder-form-row">
+                  <input
+                    type="date"
+                    min={todayString()}
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                  />
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => setReminderTime(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="reminder-form-add"
+                    disabled={
+                      reminderSaving ||
+                      !reminderText.trim() ||
+                      !reminderDate ||
+                      !reminderTime
+                    }
+                  >
+                    Добавить
+                  </button>
+                </div>
+                {reminderError && (
+                  <div className="reminder-form-error">{reminderError}</div>
+                )}
+              </form>
+
+              {remindersLoading && reminders.length === 0 ? (
+                <div className="notifications-empty">Загрузка...</div>
+              ) : reminders.length === 0 ? (
+                <div className="notifications-empty">
+                  Нет запланированных напоминаний
+                </div>
+              ) : (
+                <div className="reminders-list">
+                  {reminders.map((r) => (
+                    <div key={r.id} className="reminder-item">
+                      <div className="reminder-item-body">
+                        <div className="reminder-item-when">
+                          {formatRemindAt(r.remind_at)}
+                        </div>
+                        <div className="reminder-item-text">{r.text}</div>
+                      </div>
+                      <button
+                        type="button"
+                        className="notification-delete-btn"
+                        onClick={() => handleDeleteReminder(r.id)}
+                        aria-label="Удалить напоминание"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : loading && items.length === 0 ? (
             <div className="notifications-empty">Загрузка...</div>
           ) : items.length === 0 ? (
             <div className="notifications-empty">

@@ -22,6 +22,16 @@ class NotificationOut(BaseModel):
 class NotificationCountOut(BaseModel):
     unread_count: int
 
+class ReminderIn(BaseModel):
+    text: str
+    remind_at: str  # "YYYY-MM-DDTHH:MM" (локальное время)
+
+class ReminderOut(BaseModel):
+    id: int
+    text: str
+    remind_at: str
+    sent: bool
+
 class UserShortOut(BaseModel):
     id: int
     email: str

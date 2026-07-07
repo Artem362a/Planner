@@ -18,6 +18,7 @@ env/
 # Frontend build
 planner/frontend/dist/
 planner/frontend/dist-ssr/
+planner/frontend/dist.tar.gz
 planner/frontend/node_modules/
 
 # Logs

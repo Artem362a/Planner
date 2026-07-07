@@ -33,7 +33,16 @@ sys.path.insert(0, str(BACKEND_DIR))
 load_dotenv(BACKEND_DIR / ".env")
 load_dotenv()  # на случай локального .env рядом с ботом
 
-from db import DayTask, InboxTask, SessionLocal, TelegramLink, WeekTask  # noqa: E402
+from db import (  # noqa: E402
+    DayTask,
+    InboxTask,
+    Notification,
+    NotificationRecipient,
+    Reminder,
+    SessionLocal,
+    TelegramLink,
+    WeekTask,
+)
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 DIGEST_HOUR = int(os.getenv("TELEGRAM_DIGEST_HOUR", "8"))
@@ -193,6 +202,44 @@ def _add_inbox(user_id: int, text: str) -> None:
         db.commit()
 
 
+def _add_reminder(user_id: int, text: str, remind_at: datetime) -> None:
+    with SessionLocal() as db:
+        db.add(
+            Reminder(
+                user_id=user_id,
+                text=text.strip()[:1000],
+                remind_at=remind_at.replace(second=0, microsecond=0),
+            )
+        )
+        db.commit()
+
+
+def _parse_hhmm(raw: str) -> tuple[int, int] | None:
+    """«18:30», «18.30», «18 30», «1830», «9» → (час, минута) или None."""
+    s = (raw or "").strip().replace(".", ":").replace(" ", ":")
+    if not s:
+        return None
+    if s.isdigit():
+        if len(s) <= 2:
+            hh, mm = int(s), 0
+        elif len(s) == 3:
+            hh, mm = int(s[0]), int(s[1:])
+        elif len(s) == 4:
+            hh, mm = int(s[:2]), int(s[2:])
+        else:
+            return None
+    elif ":" in s:
+        parts = s.split(":")
+        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            return None
+        hh, mm = int(parts[0]), int(parts[1])
+    else:
+        return None
+    if not (0 <= hh <= 23 and 0 <= mm <= 59):
+        return None
+    return hh, mm
+
+
 def _today_tasks(user_id: int, day: date) -> list[DayTask]:
     with SessionLocal() as db:
         return (
@@ -323,15 +370,16 @@ BTN_TODAY = "🗓 Сегодня"
 BTN_INBOX = "📥 Входящие"
 BTN_DAY = "➕ В день"
 BTN_WEEK = "📅 В неделю"
+BTN_REMIND = "⏰ Напоминание"
 BTN_HELP = "❓ Помощь"
-MAIN_LABELS = {BTN_TODAY, BTN_INBOX, BTN_DAY, BTN_WEEK, BTN_HELP}
+MAIN_LABELS = {BTN_TODAY, BTN_INBOX, BTN_DAY, BTN_WEEK, BTN_REMIND, BTN_HELP}
 
 
 def _main_reply_kb() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row(BTN_TODAY, BTN_INBOX)
     kb.row(BTN_DAY, BTN_WEEK)
-    kb.row(BTN_HELP)
+    kb.row(BTN_REMIND, BTN_HELP)
     return kb
 
 
@@ -402,7 +450,8 @@ HELP_TEXT = (
     "• <b>🗓 Сегодня</b> — план на сегодня (кнопки ✅ отмечают задачи)\n"
     "• <b>➕ В день</b> — задача в план дня (спрошу текст и день)\n"
     "• <b>📅 В неделю</b> — задача в план недели (текст и день)\n"
-    "• <b>📥 Входящие</b> — закинуть во «Входящие»\n\n"
+    "• <b>📥 Входящие</b> — закинуть во «Входящие»\n"
+    "• <b>⏰ Напоминание</b> — текст, день и время; пришлю сюда и в колокольчик на сайте\n\n"
     "Ещё: просто напиши текст → спрошу, куда; /menu — показать кнопки; "
     "/start КОД — привязать аккаунт."
 )
@@ -462,6 +511,13 @@ def handle_main_buttons(message):
             reply_markup=types.ForceReply(selective=False),
         )
         bot.register_next_step_handler(msg, _step_capture_name, user_id, "week")
+    elif label == BTN_REMIND:
+        msg = bot.send_message(
+            message.chat.id,
+            "О чём напомнить? Пришли текст:",
+            reply_markup=types.ForceReply(selective=False),
+        )
+        bot.register_next_step_handler(msg, _step_capture_name, user_id, "remind")
 
 
 def _step_capture_name(message, user_id, dest):
@@ -471,10 +527,14 @@ def _step_capture_name(message, user_id, dest):
         bot.reply_to(message, "Отменено.")
         return
     _pending_add[message.chat.id] = {"user_id": user_id, "dest": dest, "text": text}
-    where = "в план на неделю" if dest == "week" else "в план дня"
+    if dest == "remind":
+        question = f"На какой день поставить напоминание «{html.escape(text[:80])}»?"
+    else:
+        where = "в план на неделю" if dest == "week" else "в план дня"
+        question = f"На какой день добавить {where} «{html.escape(text[:80])}»?"
     bot.send_message(
         message.chat.id,
-        f"На какой день добавить {where} «{html.escape(text[:80])}»?",
+        question,
         reply_markup=_day_picker_kb(),
     )
 
@@ -501,6 +561,26 @@ def cb_pick(call):
     text = pending["text"]
     label = f"{_RU_WD[day.weekday()]} {day.day:02d}.{day.month:02d}"
 
+    if pending["dest"] == "remind":
+        try:
+            bot.edit_message_text(
+                f"⏰ «{html.escape(text[:80])}» — {label}.",
+                chat_id,
+                call.message.message_id,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        msg = bot.send_message(
+            chat_id,
+            f"Во сколько напомнить ({label})? Пришли время, например 18:30",
+            reply_markup=types.ForceReply(selective=False),
+        )
+        bot.register_next_step_handler(
+            msg, _step_remind_time, pending["user_id"], text, day
+        )
+        bot.answer_callback_query(call.id)
+        return
+
     if pending["dest"] == "week":
         _add_week_task(pending["user_id"], text, day)
         result = f"📅 В план на неделю ({label}): <b>{html.escape(text)}</b>"
@@ -513,6 +593,54 @@ def cb_pick(call):
     except Exception:  # noqa: BLE001
         pass
     bot.answer_callback_query(call.id, "Готово")
+
+
+def _step_remind_time(message, user_id, text, day: date):
+    """Шаг 3 напоминания: получили время → создаём."""
+    raw = (message.text or "").strip()
+    if not raw or raw.startswith("/"):
+        bot.reply_to(message, "Отменено.")
+        return
+
+    parsed = _parse_hhmm(raw)
+    if parsed is None:
+        msg = bot.reply_to(
+            message,
+            "Не понял время 🤔 Пришли в формате ЧЧ:ММ, например 18:30",
+        )
+        bot.register_next_step_handler(msg, _step_remind_time, user_id, text, day)
+        return
+
+    hh, mm = parsed
+    remind_at = datetime(day.year, day.month, day.day, hh, mm)
+    if remind_at <= datetime.now():
+        msg = bot.reply_to(
+            message,
+            "Это время уже прошло 😅 Пришли другое (ЧЧ:ММ):",
+        )
+        bot.register_next_step_handler(msg, _step_remind_time, user_id, text, day)
+        return
+
+    _add_reminder(user_id, text, remind_at)
+    label = f"{_RU_WD[day.weekday()]} {day.day:02d}.{day.month:02d}"
+    bot.reply_to(
+        message,
+        f"⏰ Напомню {label} в {hh:02d}:{mm:02d}: <b>{html.escape(text)}</b>",
+    )
+
+
+@bot.message_handler(commands=["remind"])
+def handle_remind(message):
+    user_id = _user_id_for_chat(message.chat.id)
+    if not user_id:
+        bot.reply_to(message, "Сначала привяжи аккаунт: /start КОД")
+        return
+    msg = bot.send_message(
+        message.chat.id,
+        "О чём напомнить? Пришли текст:",
+        reply_markup=types.ForceReply(selective=False),
+    )
+    bot.register_next_step_handler(msg, _step_capture_name, user_id, "remind")
 
 
 @bot.message_handler(commands=["add"])
@@ -745,6 +873,82 @@ def _digest_loop() -> None:
         _time.sleep(60)
 
 
+# ---------------------------------------------------------------- reminders
+
+
+def _deliver_due_reminders() -> None:
+    """Наступившие напоминания: колокольчик на сайте + сообщение в TG.
+
+    Помечаем sent сразу после создания уведомления: если Telegram недоступен,
+    напоминание не продублируется при следующем тике (in-app уже есть).
+    """
+    now = datetime.now()
+    tg_targets: list[tuple[int, str]] = []  # (chat_id, text)
+
+    with SessionLocal() as db:
+        due = (
+            db.query(Reminder)
+            .filter(
+                Reminder.sent == False,  # noqa: E712
+                Reminder.remind_at <= now,
+            )
+            .all()
+        )
+        if not due:
+            return
+
+        for r in due:
+            notif = Notification(
+                title="⏰ Напоминание",
+                message=r.text,
+                created_by_user_id=r.user_id,
+                audience_type="single",
+            )
+            db.add(notif)
+            db.flush()
+            db.add(
+                NotificationRecipient(
+                    notification_id=notif.id,
+                    user_id=r.user_id,
+                    is_read=False,
+                )
+            )
+
+            link = (
+                db.query(TelegramLink)
+                .filter(
+                    TelegramLink.user_id == r.user_id,
+                    TelegramLink.chat_id.isnot(None),
+                )
+                .first()
+            )
+            if link:
+                tg_targets.append((int(link.chat_id), r.text))
+
+            r.sent = True
+            r.sent_at = now
+        db.commit()
+
+    print(f"delivered {len(due)} reminder(s), tg={len(tg_targets)}", flush=True)
+    for chat_id, text in tg_targets:
+        try:
+            bot.send_message(chat_id, f"⏰ <b>Напоминание</b>\n\n{html.escape(text)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"reminder send failed for {chat_id}: {e}", flush=True)
+
+
+def _reminders_loop() -> None:
+    """Каждые ~30 сек проверяем наступившие напоминания. Как и дайджест,
+    тело обёрнуто в try/except, чтобы разовая ошибка не убила поток."""
+    print("reminders loop started", flush=True)
+    while True:
+        try:
+            _deliver_due_reminders()
+        except Exception as e:  # noqa: BLE001
+            print(f"reminders loop error: {e}", flush=True)
+        _time.sleep(30)
+
+
 # ---------------------------------------------------------------- entrypoint
 
 
@@ -756,6 +960,7 @@ def _set_commands() -> None:
                 types.BotCommand("menu", "Меню с кнопками"),
                 types.BotCommand("today", "План на сегодня"),
                 types.BotCommand("add", "Задача в план на сегодня"),
+                types.BotCommand("remind", "Поставить напоминание"),
                 types.BotCommand("inbox", "Добавить во «Входящие»"),
                 types.BotCommand("help", "Помощь"),
             ]
@@ -767,6 +972,7 @@ def _set_commands() -> None:
 def main() -> None:
     _set_commands()
     threading.Thread(target=_digest_loop, daemon=True).start()
+    threading.Thread(target=_reminders_loop, daemon=True).start()
     print("Telegram bot started (long polling)…", flush=True)
     bot.infinity_polling(skip_pending=True, timeout=30)
 

@@ -207,6 +207,118 @@
   color: #62598e;
 }
 
+/* ---- Напоминания (вид ⏰ внутри дропдауна колокольчика) ---- */
+.notifications-head-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.notifications-view-btn--active {
+  background: #6f58e8;
+  color: #ffffff;
+}
+
+.reminder-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f8f5ff;
+}
+
+.reminder-form-text {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #e2dbf5;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  color: #312b55;
+  background: #ffffff;
+}
+
+.reminder-form-row {
+  display: flex;
+  gap: 6px;
+}
+
+.reminder-form-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #e2dbf5;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  color: #312b55;
+  background: #ffffff;
+}
+
+.reminder-form-add {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  background: #6f58e8;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reminder-form-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.reminder-form-error {
+  font-size: 12px;
+  color: #d94057;
+}
+
+.reminders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.reminder-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f8f5ff;
+}
+
+.reminder-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-item-when {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6f58e8;
+  margin-bottom: 2px;
+}
+
+.reminder-item-text {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #62598e;
+  overflow-wrap: anywhere;
+}
+
+.reminder-item .notification-delete-btn {
+  opacity: 1;
+}
+
 @media (max-width: 700px) {
   .notifications-dropdown {
     right: -10px;

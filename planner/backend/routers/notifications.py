@@ -21,6 +21,7 @@ from db import (
     GoalStage,
     Notification,
     NotificationRecipient,
+    Reminder,
     TaskCategory,
     User,
     WeekTask,
@@ -319,6 +320,103 @@ def delete_notification(
     db.commit()
 
     return MessageOut(message="Notification deleted")
+
+
+# ---------------------------------------------------------------- reminders
+
+
+@router.get("/reminders", response_model=list[ReminderOut])
+def list_reminders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ожидающие (ещё не отправленные) напоминания пользователя."""
+    current_user_row = cast(Any, current_user)
+
+    rows = (
+        db.query(Reminder)
+        .filter(
+            Reminder.user_id == current_user_row.id,
+            Reminder.sent == False,  # noqa: E712
+        )
+        .order_by(Reminder.remind_at.asc(), Reminder.id.asc())
+        .all()
+    )
+
+    return [
+        ReminderOut(
+            id=cast(Any, r).id,
+            text=cast(Any, r).text,
+            remind_at=cast(Any, r).remind_at.strftime("%Y-%m-%dT%H:%M"),
+            sent=bool(cast(Any, r).sent),
+        )
+        for r in rows
+    ]
+
+
+@router.post("/reminders", response_model=ReminderOut)
+def create_reminder(
+    body: ReminderIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    try:
+        remind_at = datetime.fromisoformat(body.remind_at)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Bad remind_at, use YYYY-MM-DDTHH:MM")
+    # Секунды/таймзону отбрасываем: храним наивные минуты локального времени.
+    remind_at = remind_at.replace(second=0, microsecond=0, tzinfo=None)
+
+    if remind_at <= datetime.now():
+        raise HTTPException(status_code=400, detail="Время напоминания уже прошло")
+
+    row = Reminder(
+        user_id=current_user_row.id,
+        text=text,
+        remind_at=remind_at,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    row_cast = cast(Any, row)
+    return ReminderOut(
+        id=row_cast.id,
+        text=row_cast.text,
+        remind_at=row_cast.remind_at.strftime("%Y-%m-%dT%H:%M"),
+        sent=bool(row_cast.sent),
+    )
+
+
+@router.delete("/reminders/{reminder_id}", response_model=MessageOut)
+def delete_reminder(
+    reminder_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    current_user_row = cast(Any, current_user)
+
+    row = (
+        db.query(Reminder)
+        .filter(
+            Reminder.id == reminder_id,
+            Reminder.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    db.delete(row)
+    db.commit()
+
+    return MessageOut(message="Reminder deleted")
 
 
 @router.get("/notifications", response_model=list[NotificationOut])

@@ -94,7 +94,39 @@ class NotificationRecipient(Base):
     notification: Mapped["Notification"] = relationship(
         "Notification",
         back_populates="recipients",
+    )                 
+
+class Reminder(Base):
+    """Личное напоминание: в назначенное время уходит в колокольчик и в TG-бота.
+
+    Доставку выполняет цикл в planner/bot/bot.py (_reminders_loop) — он же
+    создаёт Notification/NotificationRecipient и шлёт сообщение в Telegram.
+    remind_at хранится наивным локальным временем сервера (как и остальные
+    даты приложения).
+    """
+
+    __tablename__ = "reminders"
+    __table_args__ = {"schema": "notifications"}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("auth.users.id"),
+        nullable=False,
+        index=True,
     )
+
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    remind_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+
+    sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
 
 class Goal(Base):
     __tablename__ = "goals"
