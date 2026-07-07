@@ -83,6 +83,9 @@
   background: #f3edff;
   color: #6f58e8;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .notifications-empty {

@@ -192,6 +192,8 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
   // Режим редактирования шаблона прямо в интерфейсе плана дня.
   const [editingTemplate, setEditingTemplate] = useState(null);
   const isTemplateMode = !!editingTemplate;
+  // Сохранять ли начало дня в шаблон (галочка в режиме редактирования).
+  const [templateSaveDayStart, setTemplateSaveDayStart] = useState(false);
   // Счётчик синтетических id для локальных задач шаблона (отрицательные, чтобы
   // не пересекаться с серверными).
   const templateTaskIdRef = useRef(-1);
@@ -208,6 +210,18 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
   const [conflictState, setConflictState] = useState(null);
   const [formError, setFormError] = useState(null);
   const [timeMode, setTimeMode] = useState("duration");
+  // Защита от двойного сабмита: при плохом соединении пользователь жмёт
+  // «Добавить» несколько раз и создаёт дубликаты задач.
+  const [isSaving, setIsSaving] = useState(false);
+  // Тик раз в минуту — двигает линию «сейчас» на таймлайне без перезагрузки.
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60_000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
   const dayString = formatLocalDate(selectedDate);
   const notesSaveTimerRef = useRef(null);
@@ -238,6 +252,22 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
     previousTaskOrderRef.current = [];
     fetchDayTasks(dayString).then(setTasks).catch(console.error);
   }, [dayString, isTemplateMode]);
+
+  // Вернулись на вкладку — подтягиваем свежие задачи (могли добавиться,
+  // например, через Telegram-бота). Не дёргаем во время редактирования.
+  useEffect(() => {
+    if (isTemplateMode) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (isModalOpen || dragIndex !== null) return;
+      fetchDayTasks(dayString).then(setTasks).catch(console.error);
+      setCurrentTime(new Date());
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [dayString, isTemplateMode, isModalOpen, dragIndex]);
 
   useLayoutEffect(() => {
     const currentOrder = tasks.map((t) => t.id);
@@ -330,6 +360,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
     setIsApplyTemplateOpen(false);
     setExpandedTaskId(null);
     setDayStartTime(tpl.day_start || "06:00");
+    setTemplateSaveDayStart(!!tpl.day_start);
     onTemplateModeChange?.(tpl);
   };
 
@@ -363,7 +394,10 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
         name,
         color: editingTemplateColor,
         tasks: cleaned,
-        day_start: dayStartTime ? dayStartTime.slice(0, 5) : "",
+        // Пустая строка очищает day_start на бэке — шаблон перестаёт
+        // трогать начало дня при импорте.
+        day_start:
+          templateSaveDayStart && dayStartTime ? dayStartTime.slice(0, 5) : "",
       });
       setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
       exitTemplateEdit();
@@ -613,6 +647,27 @@ const overdueImportCandidates = useMemo(
 
     return points[points.length - 1].y;
   };
+
+  // Линия «сейчас» на таймлайне: только для сегодняшнего дня и только когда
+  // текущее время попадает в диапазон таймлайна.
+  const timelineNowMarker = (() => {
+    if (isTemplateMode) return null;
+    if (dayString !== formatLocalDate(currentTime)) return null;
+
+    const nowMinute = currentTime.getHours() * 60 + currentTime.getMinutes();
+    if (nowMinute < timelineStartMinute || nowMinute > timelineEndMinute) {
+      return null;
+    }
+
+    const top = Math.min(timelineHeight, Math.max(0, minuteToTimelineY(nowMinute)));
+    return {
+      top,
+      label: currentTime.toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+  })();
 
   const timelineTaskLayouts = useMemo(() => {
     const result = [];
@@ -1175,6 +1230,8 @@ const overdueImportCandidates = useMemo(
   };
 
   const doCreateOrUpdate = async (body, conflictTask, newFixedStart) => {
+    if (isSaving) return;
+    setIsSaving(true);
     try {
       let newTasks;
 
@@ -1215,6 +1272,8 @@ const overdueImportCandidates = useMemo(
       closeModal();
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1228,6 +1287,7 @@ const overdueImportCandidates = useMemo(
   // Применение шаблона. Если расписание (с учётом начала дня и уже
   // существующих задач) выходит за полночь — сначала предупреждаем и спрашиваем.
   const applyTemplateWithCheck = async (tpl, force = false) => {
+    if (isSaving) return;
     const dayStartMin = timeStringToMinutes(dayStartTime);
     const tplDuration = (tpl.tasks || []).reduce(
       (sum, t) => sum + (t.duration_min || 0),
@@ -1266,6 +1326,7 @@ const overdueImportCandidates = useMemo(
     }
 
     try {
+      setIsSaving(true);
       setApplyTemplateError("");
       await applyDayTemplate(tpl.id, dayString);
       const updated = await fetchDayTasks(dayString);
@@ -1287,11 +1348,14 @@ const overdueImportCandidates = useMemo(
           : "Не удалось применить шаблон."
       );
       setTemplateOverflowConfirm(null);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSaving) return;
     if (!form.title.trim()) return;
 
     let durationMin;
@@ -1713,6 +1777,7 @@ const overdueImportCandidates = useMemo(
           <input
             type="time"
             value={dayStartTime}
+            disabled={isTemplateMode && !templateSaveDayStart}
             onChange={async (e) => {
               const value = e.target.value;
               setDayStartTime(value);
@@ -1728,6 +1793,16 @@ const overdueImportCandidates = useMemo(
               }
             }}
           />
+          {isTemplateMode && (
+            <label className="day-start-tpl-check" title="При импорте шаблон установит это время начала дня">
+              <input
+                type="checkbox"
+                checked={templateSaveDayStart}
+                onChange={(e) => setTemplateSaveDayStart(e.target.checked)}
+              />
+              фиксировать в шаблоне
+            </label>
+          )}
         </div>
 
         {viewMode === "list" ? (
@@ -1990,6 +2065,18 @@ const overdueImportCandidates = useMemo(
               </div>
 
               <div className="day-timeline-track">
+                {timelineNowMarker && (
+                  <div
+                    className="day-timeline-now-marker"
+                    style={{ "--now-marker-top": `${timelineNowMarker.top}px` }}
+                    title={`Сейчас ${timelineNowMarker.label}`}
+                    aria-hidden="true"
+                  >
+                    <span className="day-timeline-now-line" />
+                    <span className="day-timeline-now-dot" />
+                  </div>
+                )}
+
                 {timelineHours.map((minute) => (
                   <div
                     key={minute}
@@ -2343,8 +2430,12 @@ const overdueImportCandidates = useMemo(
               )}
 
               <div className="task-modal-buttons">
-                <button type="submit" className="primary-btn">
-                  {editingTaskId === null ? "Добавить" : "Сохранить"}
+                <button type="submit" className="primary-btn" disabled={isSaving}>
+                  {isSaving
+                    ? "Сохраняю…"
+                    : editingTaskId === null
+                    ? "Добавить"
+                    : "Сохранить"}
                 </button>
 
                 <button
@@ -2483,6 +2574,7 @@ const overdueImportCandidates = useMemo(
                     <button
                       type="button"
                       className="primary-btn"
+                      disabled={isSaving}
                       onClick={() => applyTemplateWithCheck(tpl)}
                     >
                       Импорт

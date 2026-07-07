@@ -162,6 +162,8 @@ export default function GoalsPage() {
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
 
   const [createForm, setCreateForm] = useState(createEmptyForm());
+  // Защита от двойного сабмита при медленной сети (дубликаты целей).
+  const [goalSaving, setGoalSaving] = useState(false);
   const [newStageTitle, setNewStageTitle] = useState("");
 
   const isEditing = editingGoalId !== null;
@@ -344,6 +346,7 @@ export default function GoalsPage() {
 
   async function handleCreateGoal(e) {
     e.preventDefault();
+    if (goalSaving) return;
 
     const title = createForm.title.trim();
     if (!title) {
@@ -381,6 +384,7 @@ export default function GoalsPage() {
     };
 
     try {
+      setGoalSaving(true);
       if (isEditing) {
         const existing = goals.find((g) => g.id === editingGoalId);
         await updateGoal(editingGoalId, {
@@ -449,6 +453,8 @@ export default function GoalsPage() {
     } catch (error) {
       console.error(error);
       alert(error.message || (isEditing ? "Не удалось сохранить цель" : "Не удалось создать цель"));
+    } finally {
+      setGoalSaving(false);
     }
   }
 
@@ -1175,8 +1181,16 @@ export default function GoalsPage() {
                     </div>
 
                     <div className="modal-buttons">
-                      <button type="submit" className="week-add-btn">
-                        {isEditing ? "Сохранить" : "Добавить цель"}
+                      <button
+                        type="submit"
+                        className="week-add-btn"
+                        disabled={goalSaving}
+                      >
+                        {goalSaving
+                          ? "Сохраняю…"
+                          : isEditing
+                          ? "Сохранить"
+                          : "Добавить цель"}
                       </button>
 
                       <button

@@ -133,6 +133,8 @@ function WeekPlannerPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  // Защита от двойного сабмита при медленной сети (дубликаты задач).
+  const [isSaving, setIsSaving] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -219,6 +221,20 @@ function WeekPlannerPage() {
     if (isTemplateMode) return; // в режиме шаблона задачи засеяны локально
     loadTasks(weekStart);
   }, [weekStart, isTemplateMode]);
+
+  // Вернулись на вкладку — обновляем список (задачи могли добавиться через бота).
+  useEffect(() => {
+    if (isTemplateMode) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (isModalOpen) return; // не сбрасываем состояние во время редактирования
+      loadTasks(weekStart);
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [weekStart, isTemplateMode, isModalOpen]);
 
   function goPrevWeek() {
     const d = new Date(weekStart);
@@ -347,12 +363,16 @@ function WeekPlannerPage() {
   }
 
   async function applyWeekTemplateHandler(templateId) {
+    if (isSaving) return;
     try {
+      setIsSaving(true);
       await applyWeekTemplate(templateId, formatLocalDate(weekStart));
       await loadTasks(weekStart);
       setIsApplyTemplateOpen(false);
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -611,6 +631,7 @@ function WeekPlannerPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isSaving) return;
     if (!form.name.trim()) return;
 
     let startOffset = Number(form.startOffset);
@@ -646,6 +667,7 @@ function WeekPlannerPage() {
     };
 
     try {
+      setIsSaving(true);
       if (!editingTask) {
         const created = await persistCreate(baseBody);
         setTasks((prev) => [...prev, created]);
@@ -662,6 +684,8 @@ function WeekPlannerPage() {
       closeModal();
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -1798,8 +1822,12 @@ async function handleDragEnd() {
                     </div>
 
                     <div className="modal-buttons">
-                      <button type="submit" className="week-add-btn">
-                        Сохранить
+                      <button
+                        type="submit"
+                        className="week-add-btn"
+                        disabled={isSaving}
+                      >
+                        {isSaving ? "Сохраняю…" : "Сохранить"}
                       </button>
 
                       <button
@@ -1896,6 +1924,7 @@ async function handleDragEnd() {
                           <button
                             type="button"
                             className="primary-btn"
+                            disabled={isSaving}
                             onClick={() => applyWeekTemplateHandler(tpl.id)}
                           >
                             Импорт

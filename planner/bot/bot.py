@@ -899,7 +899,7 @@ def _deliver_due_reminders() -> None:
 
         for r in due:
             notif = Notification(
-                title="⏰ Напоминание",
+                title="Напоминание",
                 message=r.text,
                 created_by_user_id=r.user_id,
                 audience_type="single",

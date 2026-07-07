@@ -196,6 +196,27 @@ function saveVirtualDeletedIds(ids) {
 
 const RU_WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 
+function AlarmClockIcon({ size = 15 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 1.5" />
+      <path d="M5.2 3.2 2.5 5.5" />
+      <path d="m18.8 3.2 2.7 2.3" />
+    </svg>
+  );
+}
+
 function formatRemindAt(value) {
   // value: "YYYY-MM-DDTHH:MM"
   const dt = new Date(value);
@@ -325,6 +346,10 @@ export default function NotificationsBell() {
 
   React.useEffect(() => {
     loadNotifications();
+    // Поллинг: напоминания (и прочие серверные уведомления) появляются в
+    // колокольчике без перезагрузки страницы.
+    const timer = setInterval(loadNotifications, 60000);
+    return () => clearInterval(timer);
   }, []);
 
   React.useEffect(() => {
@@ -434,7 +459,7 @@ export default function NotificationsBell() {
                   if (next === "reminders") loadReminders();
                 }}
               >
-                ⏰
+                <AlarmClockIcon />
               </button>
 
               <button

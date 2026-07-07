@@ -134,6 +134,7 @@ export default function InboxPage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
     if (!form.title.trim()) return;
     setSubmitting(true);
     try {
