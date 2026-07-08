@@ -1,32 +1,37 @@
 /* =========================
    DARK THEME
    ---
-   Aim for clear hierarchy:
-     page bg     = #0f0d18  (deepest, behind everything)
-     panel bg    = #1a1626  (the .app shell)
-     card bg     = #251f37  (cards on top of panel — clearly lighter)
-     hover bg    = #2f2845
-     line        = #3a3354
-     text main   = #f1ecff
-     text soft   = #b5acd2
-     text muted  = #847a9d
-     accent      = #a48bff
+   Neutral graphite surfaces (hue ~255, sat <10%) with violet reserved
+   for accents. Chips / active states use translucent accent —
+   rgba(154, 134, 255, a) — so they sit naturally on any surface.
+
+   Surface ramp (dark → light):
+     page bg     = #121118
+     input/track = #131217
+     card-2      = #1a1920  (list items, side panels)
+     card        = #1d1c24  (cards, modals, popovers)
+     hover       = #232230
+     line        = #262530 / strong #33313f
+     text main   = #e4e2ed
+     text soft   = #a5a2b5
+     text muted  = #706d80
+     accent      = #a48bff, chip text #c8beff / #b4a8fa
    ========================= */
 
 :root[data-theme="dark"] {
-  --bg-dark: #0f0d18;
-  --bg-app: #0f0d18;
-  --panel-bg: #1a1626;
-  --header-bg: linear-gradient(90deg, #2e2456 0%, #251c44 100%);
-  --card-bg: #251f37;
-  --text-main: #f1ecff;
-  --text-soft: #b5acd2;
-  --text-muted: #847a9d;
-  --line: #322b48;
-  --line-strong: #3f3760;
+  --bg-dark: #121118;
+  --bg-app: #121118;
+  --panel-bg: #16151c;
+  --header-bg: linear-gradient(90deg, #372c66 0%, #27214b 100%);
+  --card-bg: #1d1c24;
+  --text-main: #e4e2ed;
+  --text-soft: #a5a2b5;
+  --text-muted: #7d7990;
+  --line: #262530;
+  --line-strong: #33313f;
   --accent: #a48bff;
   --accent-2: #c77fea;
-  --accent-soft: #382b6a;
+  --accent-soft: rgba(154, 134, 255, 0.25);
   --danger: #ef8585;
   --success: #93dca0;
   --shadow-main: 0 18px 40px rgba(0, 0, 0, 0.7);
@@ -40,16 +45,16 @@
 }
 
 :root[data-theme="dark"] * {
-  scrollbar-color: #4a405e #181323;
+  scrollbar-color: #393746 #121116;
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-track {
-  background: #181323;
+  background: #121116;
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-thumb {
-  background: #4a405e;
+  background: #393746;
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
-  background: #5c5176;
+  background: #484659;
 }
 
 /* ---------- App shell ---------- */
@@ -69,6 +74,7 @@
 
 :root[data-theme="dark"] .card {
   background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -80,18 +86,18 @@
 :root[data-theme="dark"] .day-open-link,
 :root[data-theme="dark"] .week-open-link {
   background: var(--accent-soft);
-  color: #d6c6ff;
+  color: #c8beff;
 }
 
 :root[data-theme="dark"] .day-open-link:hover,
 :root[data-theme="dark"] .week-open-link:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 
 /* ---------- Side menu ---------- */
 
 :root[data-theme="dark"] .side-menu {
-  background: linear-gradient(180deg, #1f1832 0%, #18142a 100%);
+  background: linear-gradient(180deg, #1a1920 0%, #14131a 100%);
   color: var(--text-main);
 }
 
@@ -113,12 +119,12 @@
 }
 
 :root[data-theme="dark"] .side-menu-logout {
-  background: #2a2440;
-  color: #d6c6ff;
+  background: #232230;
+  color: #c8beff;
 }
 
 :root[data-theme="dark"] .side-menu-logout:hover {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.25);
 }
 
 :root[data-theme="dark"] .side-menu-backdrop {
@@ -134,7 +140,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-mode {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
 }
 
@@ -143,8 +149,8 @@
 }
 
 :root[data-theme="dark"] .day-overview-mode button.active {
-  background: #322a4f;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #eae8f4;
 }
 
 :root[data-theme="dark"] .important-header-title {
@@ -156,7 +162,7 @@
 }
 
 :root[data-theme="dark"] .important-task-item {
-  background: #1f1932;
+  background: #1a1920;
   box-shadow: none;
   border: 1px solid var(--line);
 }
@@ -166,8 +172,8 @@
 }
 
 :root[data-theme="dark"] .important-time {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 
 :root[data-theme="dark"] .important-meta,
@@ -176,7 +182,7 @@
 }
 
 :root[data-theme="dark"] .important-checkbox span {
-  border-color: #5a4f7a;
+  border-color: #4b4860;
 }
 
 :root[data-theme="dark"] .day-overview-timeline-hour {
@@ -184,7 +190,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-timeline-track {
-  background: #1c1729;
+  background: #131217;
   border-left-color: var(--line);
 }
 
@@ -193,7 +199,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-timeline-item {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
 }
 
@@ -221,7 +227,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-now-dot {
-  border-color: #251f37;
+  border-color: #1d1c24;
 }
 
 /* ---------- Month calendar ---------- */
@@ -237,20 +243,21 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .custom-month-cell {
-  background: #1f1932;
-  color: var(--text-main);
+  background: transparent;
+  color: var(--text-soft);
 }
 :root[data-theme="dark"] .custom-month-cell.other {
-  background: #181323;
-  color: var(--text-muted);
+  background: transparent;
+  color: #46434f;
 }
 :root[data-theme="dark"] .custom-month-cell:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.1);
+  color: var(--text-main);
 }
 :root[data-theme="dark"] .custom-month-cell.selected {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.22);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 
 /* ---------- Week mini ---------- */
@@ -262,7 +269,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .week-mini-task-card {
-  background: #1f1932;
+  background: #1a1920;
   box-shadow: none;
   border: 1px solid var(--line);
 }
@@ -270,11 +277,11 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-mini-task-dates {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .week-mini-track {
-  background: #181323;
+  background: #121116;
 }
 :root[data-theme="dark"] .week-mini-separator {
   background: rgba(255, 255, 255, 0.08);
@@ -296,7 +303,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .targets-add {
-  color: #d6c6ff;
+  color: #c8beff;
 }
 :root[data-theme="dark"] .targets-lines {
   border-top-color: var(--line);
@@ -312,12 +319,12 @@
 }
 
 :root[data-theme="dark"] .account-profile-band {
-  background: linear-gradient(135deg, #2c2444 0%, #251f37 100%);
+  background: linear-gradient(135deg, #252336 0%, #1d1c24 100%);
   border-bottom-color: var(--line);
 }
 
 :root[data-theme="dark"] .account-profile-copy span {
-  color: #c2b3ff;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .account-profile-copy h1 {
   color: var(--text-main);
@@ -343,7 +350,7 @@
 }
 
 :root[data-theme="dark"] .account-field input {
-  background: #1c1828;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -354,59 +361,59 @@
 }
 
 :root[data-theme="dark"] .account-upload {
-  background: #1c1828;
-  border-color: #4a3f6c;
-  color: #c2b3ff;
+  background: #131217;
+  border-color: #3c3a4c;
+  color: #b4a8fa;
 }
 
 :root[data-theme="dark"] .account-primary-btn {
-  background: #6b56c0;
-  color: #ffffff;
+  background: #7c66e3;
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .account-primary-btn:hover {
-  background: #7a64d0;
+  background: #8a76ec;
 }
 :root[data-theme="dark"] .account-primary-btn--secondary {
   background: transparent;
-  color: #c2b3ff;
-  border-color: #4a3f6c;
+  color: #b4a8fa;
+  border-color: #3c3a4c;
 }
 :root[data-theme="dark"] .account-primary-btn--secondary:hover {
-  background: #2a2440;
+  background: #232230;
 }
 
 :root[data-theme="dark"] .account-status {
-  background: #2a2440;
-  color: #c2b3ff;
+  background: #232230;
+  color: #b4a8fa;
 }
 
 :root[data-theme="dark"] .account-theme-btn {
-  background: #1c1828;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .account-theme-btn:hover {
-  background: #251f37;
-  border-color: #4a3f6c;
+  background: #1d1c24;
+  border-color: #3c3a4c;
 }
 :root[data-theme="dark"] .account-theme-btn--active {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.25);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 
 :root[data-theme="dark"] .account-avatar-option--active {
   border-color: var(--accent);
-  background: #2a2440;
+  background: #232230;
 }
 
 :root[data-theme="dark"] .account-session {
-  background: #1c1828;
+  background: #131217;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .account-session--current {
-  background: #2a2440;
-  border-color: #4a3f6c;
+  background: #232230;
+  border-color: #3c3a4c;
 }
 :root[data-theme="dark"] .account-session-title {
   color: var(--text-main);
@@ -416,11 +423,11 @@
 }
 :root[data-theme="dark"] .account-session-revoke {
   background: transparent;
-  border-color: #4a3f6c;
-  color: #c2b3ff;
+  border-color: #3c3a4c;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .account-session-revoke:hover {
-  background: #2a2440;
+  background: #232230;
   border-color: var(--accent);
 }
 
@@ -429,12 +436,12 @@
 }
 
 :root[data-theme="dark"] .account-danger-btn {
-  background: #3a1e1e;
-  border-color: #6b3737;
+  background: #2a1c20;
+  border-color: #543138;
   color: #ff9d9d;
 }
 :root[data-theme="dark"] .account-danger-btn:hover {
-  background: #4a2424;
+  background: #342329;
 }
 
 /* ---------- Day Planner page ---------- */
@@ -445,12 +452,13 @@
 
 :root[data-theme="dark"] .day-big-card {
   background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .day-view-toggle {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line-strong);
   box-shadow: none;
 }
@@ -460,8 +468,8 @@
 }
 
 :root[data-theme="dark"] .day-view-toggle button.active {
-  background: #322a4f;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #eae8f4;
 }
 
 :root[data-theme="dark"] .day-timeline-hours,
@@ -482,7 +490,7 @@
 }
 
 :root[data-theme="dark"] .day-timeline-task {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -513,11 +521,11 @@
 }
 :root[data-theme="dark"] .day-timeline-menu:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #d6c6ff;
+  color: #c8beff;
 }
 
 :root[data-theme="dark"] .day-timeline-popover {
-  background: #251f37;
+  background: #1d1c24;
   border-color: var(--line);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
 }
@@ -533,11 +541,11 @@
 :root[data-theme="dark"] .day-timeline-empty {
   border-color: var(--line);
   color: var(--text-muted);
-  background: #1c1729;
+  background: #131217;
 }
 
 :root[data-theme="dark"] .day-side-panel {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -546,11 +554,11 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .day-side-title-row span {
-  color: #c2b3ff;
+  color: #b4a8fa;
 }
 
 :root[data-theme="dark"] .day-side-section textarea {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -560,7 +568,7 @@
 }
 
 :root[data-theme="dark"] .day-goals-placeholder {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
   color: var(--text-muted);
 }
@@ -568,18 +576,18 @@
 :root[data-theme="dark"] .day-goals-add-btn,
 :root[data-theme="dark"] .day-goals-quick-form button,
 :root[data-theme="dark"] .day-goals-open-link {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 
 :root[data-theme="dark"] .day-goals-quick-form input {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .day-goals-card {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -597,7 +605,7 @@
 /* Day task list view */
 
 :root[data-theme="dark"] .day-task-item {
-  background: #1f1932;
+  background: #1a1920;
   box-shadow: none;
   border: 1px solid var(--line);
 }
@@ -612,20 +620,20 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .day-task-time {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .day-task-time--fixed {
-  background: #5a4a1a;
+  background: #3a3118;
   color: #ffd866;
 }
 :root[data-theme="dark"] .day-task-checkbox span {
-  background: #1c1729;
-  border-color: #5a4f7a;
+  background: #131217;
+  border-color: #4b4860;
 }
 :root[data-theme="dark"] .day-task-inline-add {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .day-task-empty {
   color: var(--text-muted);
@@ -634,7 +642,7 @@
 /* Overdue modal */
 
 :root[data-theme="dark"] .overdue-modal {
-  background: #1c1729;
+  background: #131217;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 :root[data-theme="dark"] .od-header {
@@ -649,22 +657,22 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .od-dismiss-all:hover {
-  background: #2a2440;
-  color: #d6c6ff;
+  background: #232230;
+  color: #c8beff;
 }
 :root[data-theme="dark"] .od-close {
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-close:hover {
-  background: #2a2440;
-  color: #d6c6ff;
+  background: #232230;
+  color: #c8beff;
 }
 :root[data-theme="dark"] .od-empty,
 :root[data-theme="dark"] .od-all-clear {
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-card {
-  background: #251f37;
+  background: #1d1c24;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -672,39 +680,39 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .od-card-cat {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .od-card-date {
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-btn--move {
-  background: #382b6a;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.25);
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .od-btn--move:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 :root[data-theme="dark"] .od-btn--ignore {
-  background: #2a2440;
+  background: #232230;
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .od-btn--ignore:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .od-chip {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .od-chip:hover,
 :root[data-theme="dark"] .od-chip--active {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .od-date-input {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -712,7 +720,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-cancel:hover {
-  color: #d6c6ff;
+  color: #c8beff;
 }
 
 /* Overdue badge in header */
@@ -729,7 +737,7 @@
 
 :root[data-theme="dark"] .target-widget-item,
 :root[data-theme="dark"] .goals-create-card {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -744,7 +752,7 @@
 }
 
 :root[data-theme="dark"] .target-widget-bar {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 
 :root[data-theme="dark"] .target-widget-meta {
@@ -752,11 +760,11 @@
 }
 
 :root[data-theme="dark"] .targets-open-link {
-  background: #382b6a;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.25);
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .targets-open-link:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 
 /* Generic goal/target card backgrounds across goals-* CSS files */
@@ -770,7 +778,7 @@
 /* ---------- Statistics page ---------- */
 
 :root[data-theme="dark"] .stats-period-pill {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
@@ -778,13 +786,13 @@
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .stats-period-pill--active {
-  background: #6b56c0;
-  border-color: #6b56c0;
-  color: #ffffff;
+  background: #7c66e3;
+  border-color: #7c66e3;
+  color: #eae8f4;
 }
 
 :root[data-theme="dark"] .stats-card {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -792,7 +800,7 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .stats-card-value--purple {
-  color: #c2b3ff;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .stats-card-label {
   color: var(--text-muted);
@@ -801,7 +809,7 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .stats-chart-wrap {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .stats-cat-label {
@@ -812,21 +820,21 @@
 }
 :root[data-theme="dark"] .stats-cat-track,
 :root[data-theme="dark"] .stats-priority-bar {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .stats-priority-item {
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .stats-goals-box--active {
-  background: #1a2c40;
-  border-color: #2f5582;
+  background: #182231;
+  border-color: #33506b;
 }
 :root[data-theme="dark"] .stats-goals-box--done {
-  background: #1a3a25;
-  border-color: #2f7a45;
+  background: #182a1f;
+  border-color: #2f5940;
 }
 :root[data-theme="dark"] .stats-goals-box--archived {
-  background: #232032;
+  background: #1b1a21;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .stats-goals-val {
@@ -857,12 +865,13 @@
 :root[data-theme="dark"] .about-story-left,
 :root[data-theme="dark"] .about-story-right {
   background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .about-badge {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .about-title,
 :root[data-theme="dark"] .about-card h3,
@@ -875,12 +884,12 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .about-secondary-link {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .about-quote {
-  background: linear-gradient(135deg, #2a2440 0%, #221b3a 100%);
-  color: #c2b3ff;
+  background: linear-gradient(135deg, #232230 0%, #1e1c30 100%);
+  color: #b4a8fa;
 }
 
 /* ---------- Feedback page (user form + inbox + my feedback) ---------- */
@@ -888,6 +897,7 @@
 :root[data-theme="dark"] .feedback-page-card,
 :root[data-theme="dark"] .feedback-admin-card {
   background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -900,16 +910,16 @@
 }
 :root[data-theme="dark"] .feedback-badge,
 :root[data-theme="dark"] .feedback-back-link {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .feedback-back-link:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 :root[data-theme="dark"] .feedback-form input:not([type="checkbox"]),
 :root[data-theme="dark"] .feedback-form select,
 :root[data-theme="dark"] .feedback-textarea {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -920,14 +930,14 @@
   box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18);
 }
 :root[data-theme="dark"] .feedback-success {
-  background: #1a3a25;
+  background: #182a1f;
   color: var(--success);
 }
 
 /* Inbox cards (FeedbackInboxPage + my feedback) */
 :root[data-theme="dark"] .feedback-inbox-card,
 :root[data-theme="dark"] .feedback-stat-card {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
   color: var(--text-main);
@@ -943,42 +953,42 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .feedback-inbox-message {
-  background: #1c1729;
+  background: #131217;
   color: var(--text-main);
 }
 :root[data-theme="dark"] .feedback-inbox-tag,
 :root[data-theme="dark"] .feedback-tab-btn,
 :root[data-theme="dark"] .feedback-filter-chip {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .feedback-inbox-tag--soft {
-  background: #2a2440;
+  background: #232230;
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .feedback-inbox-tag--new,
 :root[data-theme="dark"] .feedback-inbox-tag--status {
-  background: #1a3a25;
+  background: #182a1f;
   color: var(--success);
 }
 :root[data-theme="dark"] .feedback-inbox-tag--progress {
-  background: #4a3a1a;
+  background: #342b16;
   color: #ffd866;
 }
 :root[data-theme="dark"] .feedback-inbox-tag--resolved {
-  background: #1a2c40;
+  background: #182231;
   color: #8fb8ef;
 }
 :root[data-theme="dark"] .feedback-tab-btn--active,
 :root[data-theme="dark"] .feedback-filter-chip--active {
-  background: linear-gradient(135deg, #6b56c0, #4d3aa0);
-  color: #ffffff;
+  background: linear-gradient(135deg, #7c66e3, #5f4cc4);
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .feedback-reply-block {
   border-top-color: var(--line);
 }
 :root[data-theme="dark"] .feedback-reply-view {
-  background: #1c1729;
+  background: #131217;
 }
 :root[data-theme="dark"] .feedback-reply-text,
 :root[data-theme="dark"] .feedback-user-reply-text {
@@ -986,20 +996,20 @@
 }
 :root[data-theme="dark"] .feedback-reply-title,
 :root[data-theme="dark"] .feedback-user-reply-title {
-  color: #c2b3ff;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .feedback-reply-date,
 :root[data-theme="dark"] .feedback-user-reply-date {
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .feedback-reply-textarea {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .feedback-user-reply {
-  background: #1a2c40;
-  border-color: #2f5582;
+  background: #182231;
+  border-color: #33506b;
 }
 :root[data-theme="dark"] .feedback-screenshots-title {
   color: var(--text-main);
@@ -1010,12 +1020,12 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .feedback-upload-btn {
-  background: #1c1729;
-  border-color: #4a3f6c;
-  color: #c2b3ff;
+  background: #131217;
+  border-color: #3c3a4c;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .feedback-upload-btn:hover {
-  background: #2a2440;
+  background: #232230;
   border-color: var(--accent);
 }
 
@@ -1023,6 +1033,7 @@
 
 :root[data-theme="dark"] .notification-admin-card {
   background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -1037,7 +1048,7 @@
 :root[data-theme="dark"] .notification-admin-form input,
 :root[data-theme="dark"] .notification-admin-form select,
 :root[data-theme="dark"] .notification-admin-form textarea {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1048,7 +1059,7 @@
   box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18);
 }
 :root[data-theme="dark"] .notification-user-item {
-  background: #1f1932;
+  background: #1a1920;
   border: 1px solid var(--line);
 }
 
@@ -1067,37 +1078,37 @@
 /* Inline SVG inside the hamburger uses fill="#7b5ecf"; CSS fill wins. */
 :root[data-theme="dark"] .icon-circle svg rect,
 :root[data-theme="dark"] .icon-circle svg path {
-  fill: #d6c6ff;
+  fill: #c8beff;
 }
 
 /* "Открыть" link on cards — boost contrast */
 :root[data-theme="dark"] .day-open-link,
 :root[data-theme="dark"] .week-open-link {
-  background: #382b6a;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.25);
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .day-open-link:hover,
 :root[data-theme="dark"] .week-open-link:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 
 /* ---------- Shared buttons (secondary / modal-cancel) ---------- */
 
 :root[data-theme="dark"] .secondary-btn,
 :root[data-theme="dark"] .modal-cancel-btn {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
   color: #e7e2f5;
 }
 :root[data-theme="dark"] .secondary-btn:hover,
 :root[data-theme="dark"] .modal-cancel-btn:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 
 /* "Сохранить как шаблон", "Применить шаблон" toolbar buttons inherit
    .secondary-btn, so they're covered above. The day-view-toggle wrapper
    plus pinpoint overrides on its inner buttons: */
 :root[data-theme="dark"] .day-view-toggle {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line-strong);
   box-shadow: none;
 }
@@ -1105,8 +1116,8 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .day-view-toggle button.active {
-  background: #4a3a8c;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.36);
+  color: #eae8f4;
 }
 
 /* ---------- Generic .modal / .task-modal surfaces ---------- */
@@ -1118,7 +1129,7 @@
 
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .task-modal {
-  background: #251f37;
+  background: #1d1c24;
   color: var(--text-main);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
 }
@@ -1140,13 +1151,13 @@
 :root[data-theme="dark"] .modal input[type="number"],
 :root[data-theme="dark"] .modal input[type="color"],
 :root[data-theme="dark"] .modal select {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .template-name-input {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1163,7 +1174,7 @@
 /* ---------- Category select trigger + dropdown (used inside modals) ---------- */
 
 :root[data-theme="dark"] .category-select-trigger {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1178,7 +1189,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .category-select-dropdown {
-  background: #251f37;
+  background: #1d1c24;
   border-color: var(--line);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
 }
@@ -1186,25 +1197,25 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-select-option:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .category-select-option--active {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.25);
 }
 :root[data-theme="dark"] .category-select-divider {
   background: var(--line);
 }
 :root[data-theme="dark"] .category-select-manage {
-  color: #c2b3ff;
+  color: #b4a8fa;
 }
 :root[data-theme="dark"] .category-select-manage:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 
 /* ---------- Category Manager modal ---------- */
 
 :root[data-theme="dark"] .category-manager-item {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
   color: var(--text-main);
 }
@@ -1212,43 +1223,43 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-manager-icon {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .category-manager-create h4 {
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-manager-modal input[type="text"] {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-color-palette,
 :root[data-theme="dark"] .category-icon-grid {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .category-icon-picker-trigger {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-icon-preview {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .category-icon-picker-arrow {
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .category-icon-option {
-  background: #251f37;
-  color: #d6c6ff;
+  background: #1d1c24;
+  color: #c8beff;
 }
 :root[data-theme="dark"] .category-icon-option:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .category-icon-option--active {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.25);
   border-color: var(--accent);
 }
 
@@ -1266,40 +1277,40 @@
 
 /* Filter pills (Активные / Завершённые / Все) */
 :root[data-theme="dark"] .goal-filter-btn {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .goal-filter-btn:hover {
-  background: #2a2440;
+  background: #232230;
   border-color: var(--accent);
-  color: #d6c6ff;
+  color: #c8beff;
 }
 :root[data-theme="dark"] .goal-filter-btn--active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 
 /* Goal type chips inside the create modal */
 :root[data-theme="dark"] .goal-type-chip {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .goal-type-chip:hover {
-  background: #2a2440;
+  background: #232230;
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .goal-type-chip--active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 
 /* Goal cards on the goals list */
 :root[data-theme="dark"] .goal-card--soft {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
   box-shadow: none;
 }
@@ -1310,17 +1321,17 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .goal-meta-chip {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 
 /* Action buttons (check / delete) */
 :root[data-theme="dark"] .goal-action-btn--success {
-  background: #1a3a25;
+  background: #182a1f;
   color: var(--success);
 }
 :root[data-theme="dark"] .goal-action-btn--danger {
-  background: #3a1e1e;
+  background: #2a1c20;
   color: #ff9d9d;
 }
 
@@ -1335,14 +1346,14 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .goal-advanced-toggle {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .goal-checkbox-row {
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .subtasks-form-block--soft {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
 }
 
@@ -1364,13 +1375,13 @@
 
 :root[data-theme="dark"] .priority-select-trigger,
 :root[data-theme="dark"] [class*="priority-select"][class*="trigger"] {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .priority-select-dropdown,
 :root[data-theme="dark"] [class*="priority-select"][class*="dropdown"] {
-  background: #251f37;
+  background: #1d1c24;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .priority-select-option,
@@ -1378,7 +1389,7 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .priority-select-option:hover {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
 }
 
 /* ---------- Notifications bell + dropdown ---------- */
@@ -1390,7 +1401,7 @@
   background: rgba(255, 255, 255, 0.16);
 }
 :root[data-theme="dark"] .notifications-dropdown {
-  background: #251f37;
+  background: #1d1c24;
   border-color: var(--line);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.6);
 }
@@ -1398,19 +1409,19 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .notifications-refresh-btn {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .notifications-empty {
-  background: #1c1729;
+  background: #131217;
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .notification-item {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .notification-item:hover {
-  background: #2a2440;
+  background: #232230;
 }
 :root[data-theme="dark"] .notification-item-title {
   color: var(--text-main);
@@ -1419,19 +1430,19 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .notification-item-source {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .notification-item--danger {
-  background: #3a1e1e;
-  border-color: #6b3737;
+  background: #2a1c20;
+  border-color: #543138;
 }
 :root[data-theme="dark"] .notification-item--warning {
-  background: #3a2f1a;
-  border-color: #6b5a2f;
+  background: #302816;
+  border-color: #55482a;
 }
 :root[data-theme="dark"] .notification-item--info {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line);
 }
 
@@ -1456,15 +1467,15 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-nav-btn {
-  background: #322a4f;
-  color: #d6c6ff;
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
 }
 :root[data-theme="dark"] .week-nav-btn:hover {
-  background: #4a3a8c;
+  background: rgba(154, 134, 255, 0.36);
 }
 
 :root[data-theme="dark"] .week-grid-excel {
-  background: #1f1932;
+  background: #1a1920;
   border-color: var(--line);
 }
 :root[data-theme="dark"] .week-grid-cell--corner,
@@ -1476,25 +1487,25 @@
 }
 :root[data-theme="dark"] .week-grid-cell--corner,
 :root[data-theme="dark"] .week-grid-cell--day {
-  background: #2a2440;
+  background: #232230;
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-grid-cell--task-name {
-  background: #1f1932;
+  background: #1a1920;
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-grid-cell--task-name-important {
-  background: #382b6a;
-  color: #ffffff;
+  background: rgba(154, 134, 255, 0.25);
+  color: #eae8f4;
 }
 :root[data-theme="dark"] .week-grid-cell--task-name-done {
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .week-grid-days-track {
-  background: #1f1932;
+  background: #1a1920;
 }
 :root[data-theme="dark"] .week-grid-row--done .week-grid-days-track {
-  background: #1a1428;
+  background: #141319;
 }
 :root[data-theme="dark"] .week-loading {
   color: var(--text-muted);
@@ -1502,16 +1513,16 @@
 
 /* Tags / chips inside the week table */
 :root[data-theme="dark"] .tag {
-  background: #322a4f;
+  background: rgba(154, 134, 255, 0.13);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .tag-important {
-  background: #5a1e25;
+  background: #3d222a;
   color: #ff9d9d;
 }
 :root[data-theme="dark"] .tag-light {
-  background: #2a2440;
-  color: #d6c6ff;
+  background: #232230;
+  color: #c8beff;
 }
 
 /* ---------- Form controls in dark mode ---------- */
@@ -1538,7 +1549,7 @@
 
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .task-modal {
-  background: #251f37 !important;
+  background: #1d1c24 !important;
   color: var(--text-main) !important;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55) !important;
 }
@@ -1559,7 +1570,7 @@
 :root[data-theme="dark"] .task-modal-form input,
 :root[data-theme="dark"] .task-modal-form select,
 :root[data-theme="dark"] .task-modal-form textarea {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1584,7 +1595,7 @@
 /* Priority select inside modals (modal-polish.css uses !important) */
 :root[data-theme="dark"] .priority-select-trigger,
 :root[data-theme="dark"] .category-select-trigger {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1610,7 +1621,7 @@
 }
 :root[data-theme="dark"] .priority-select-dropdown,
 :root[data-theme="dark"] .category-select-dropdown {
-  background: #251f37 !important;
+  background: #1d1c24 !important;
   border-color: var(--line) !important;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55) !important;
 }
@@ -1620,49 +1631,49 @@
 }
 :root[data-theme="dark"] .priority-select-option:hover,
 :root[data-theme="dark"] .category-select-option:hover {
-  background: #322a4f !important;
+  background: rgba(154, 134, 255, 0.13) !important;
 }
 :root[data-theme="dark"] .priority-select-option--active,
 :root[data-theme="dark"] .category-select-option--active {
-  background: #382b6a !important;
-  color: #ffffff !important;
+  background: rgba(154, 134, 255, 0.25) !important;
+  color: #eae8f4 !important;
 }
 :root[data-theme="dark"] .category-select-manage {
-  color: #c2b3ff !important;
+  color: #b4a8fa !important;
 }
 :root[data-theme="dark"] .category-select-manage:hover {
-  background: #322a4f !important;
+  background: rgba(154, 134, 255, 0.13) !important;
 }
 
 /* Time-mode toggle inside the day-task modal */
 :root[data-theme="dark"] .time-mode-btn {
-  background: #1c1729;
+  background: #131217;
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .time-mode-btn:hover {
-  background: #2a2440;
+  background: #232230;
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .time-mode-btn--active {
-  background: #382b6a;
+  background: rgba(154, 134, 255, 0.25);
   border-color: var(--accent);
-  color: #ffffff;
+  color: #eae8f4;
 }
 
 /* Week task type chips (Обычная / Повторяющаяся / Объёмная) */
 :root[data-theme="dark"] .week-task-type-option {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
 :root[data-theme="dark"] .week-task-type-option:has(input:checked) {
-  background: #382b6a !important;
+  background: rgba(154, 134, 255, 0.25) !important;
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .week-task-type-option input {
-  background: #1c1729 !important;
-  border-color: #5a4f7a !important;
+  background: #131217 !important;
+  border-color: #4b4860 !important;
 }
 :root[data-theme="dark"] .week-task-type-option input:checked {
   background: var(--accent) !important;
@@ -1671,58 +1682,58 @@
 
 /* Week range block (volumetric task) */
 :root[data-theme="dark"] .week-range-block {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line) !important;
 }
 
 /* Day-of-week pills (Пн / Вт / ...) */
 :root[data-theme="dark"] .week-repeat-day {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .week-repeat-day:hover {
-  background: #2a2440 !important;
+  background: #232230 !important;
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .week-repeat-day.is-selected,
 :root[data-theme="dark"] .week-repeat-day:has(input:checked) {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #ffffff !important;
+  color: #eae8f4 !important;
 }
 :root[data-theme="dark"] .week-range-day.is-selected:not(.is-edge) {
-  background: #2a2440 !important;
-  border-color: #4a3f6c !important;
-  color: #d6c6ff !important;
+  background: #232230 !important;
+  border-color: #3c3a4c !important;
+  color: #c8beff !important;
 }
 
 /* Goal create modal type chips already styled without !important;
    keeping the same accent treatment with !important to be safe. */
 :root[data-theme="dark"] .goal-type-chip {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .goal-type-chip:hover {
-  background: #2a2440 !important;
+  background: #232230 !important;
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .goal-type-chip--active {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #ffffff !important;
+  color: #eae8f4 !important;
 }
 
 /* Cancel / secondary buttons — week-modal.css forces them light with !important. */
 :root[data-theme="dark"] .modal-cancel-btn,
 :root[data-theme="dark"] .secondary-btn {
-  background: #322a4f !important;
+  background: rgba(154, 134, 255, 0.13) !important;
   color: var(--text-main) !important;
 }
 :root[data-theme="dark"] .modal-cancel-btn:hover,
 :root[data-theme="dark"] .secondary-btn:hover {
-  background: #4a3a8c !important;
+  background: rgba(154, 134, 255, 0.36) !important;
 }
 
 /* Subtasks form inside modals */
@@ -1730,7 +1741,7 @@
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .subtasks-form-input-row input {
-  background: #1c1729 !important;
+  background: #131217 !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1738,11 +1749,183 @@
   color: var(--text-muted) !important;
 }
 :root[data-theme="dark"] .subtasks-form-input-row button {
-  color: #d6c6ff !important;
+  color: #c8beff !important;
 }
 :root[data-theme="dark"] .subtasks-form-text {
   color: var(--text-main) !important;
 }
 :root[data-theme="dark"] .subtasks-form-remove {
   color: #ff9d9d !important;
+}
+
+/* ============================================================
+   Goals / Inbox / Statistics — hardened dark overrides.
+   These pages ship their own light styles (some imported by the
+   page component itself); !important settles any cascade fight.
+   ============================================================ */
+
+/* --- Goals page --- */
+
+:root[data-theme="dark"] .goal-filter-btn {
+  background: #1a1920 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .goal-filter-btn:hover {
+  background: #232230 !important;
+  border-color: var(--accent) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-filter-btn--active {
+  background: rgba(154, 134, 255, 0.24) !important;
+  border-color: var(--accent) !important;
+  color: #dcd4ff !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .goal-progress-track {
+  background: #2a2833 !important;
+}
+:root[data-theme="dark"] .goal-progress-percent {
+  color: var(--text-soft) !important;
+}
+
+:root[data-theme="dark"] .goal-action-btn--success {
+  background: rgba(126, 207, 138, 0.13) !important;
+  color: #8bd8a0 !important;
+}
+:root[data-theme="dark"] .goal-action-btn--danger {
+  background: rgba(255, 122, 122, 0.12) !important;
+  color: #f39a9a !important;
+}
+:root[data-theme="dark"] .goal-action-btn--focus {
+  background: rgba(154, 134, 255, 0.1) !important;
+  color: #8b86a0 !important;
+}
+:root[data-theme="dark"] .goal-action-btn--focus.is-active {
+  background: rgba(154, 134, 255, 0.24) !important;
+  color: #c8beff !important;
+}
+
+/* --- Inbox page --- */
+
+:root[data-theme="dark"] .tag {
+  background: rgba(154, 134, 255, 0.13) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .tag-important {
+  background: #3d222a !important;
+  color: #ff9d9d !important;
+}
+
+:root[data-theme="dark"] .inbox-assign-btn--day {
+  background: rgba(154, 134, 255, 0.14) !important;
+  color: #b9abff !important;
+}
+:root[data-theme="dark"] .inbox-assign-btn--day:hover {
+  background: rgba(154, 134, 255, 0.26) !important;
+}
+:root[data-theme="dark"] .inbox-assign-btn--week {
+  background: rgba(100, 170, 255, 0.13) !important;
+  color: #8ec2ff !important;
+}
+:root[data-theme="dark"] .inbox-assign-btn--week:hover {
+  background: rgba(100, 170, 255, 0.24) !important;
+}
+
+:root[data-theme="dark"] .inbox-desc-toggle {
+  color: #b4a8fa;
+}
+:root[data-theme="dark"] .inbox-desc-toggle:hover {
+  color: #c8beff;
+}
+:root[data-theme="dark"] .inbox-task-desc {
+  background: #131217;
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .inbox-task-date {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .inbox-week-label {
+  background: rgba(154, 134, 255, 0.14);
+  color: #b9abff;
+}
+:root[data-theme="dark"] .inbox-modal-task-name {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .inbox-textarea {
+  background: #131217 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .inbox-section-divider {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .inbox-section-divider::before,
+:root[data-theme="dark"] .inbox-section-divider::after {
+  background: var(--line);
+}
+:root[data-theme="dark"] .inbox-empty-title {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .inbox-empty,
+:root[data-theme="dark"] .inbox-empty-hint {
+  color: var(--text-muted);
+}
+
+/* --- Statistics page --- */
+
+:root[data-theme="dark"] .stats-period-pill {
+  background: #1a1920 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .stats-period-pill:hover {
+  border-color: var(--accent) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .stats-period-pill--active {
+  background: rgba(154, 134, 255, 0.24) !important;
+  border-color: var(--accent) !important;
+  color: #dcd4ff !important;
+}
+
+:root[data-theme="dark"] .stats-view-toggle {
+  background: #1a1920 !important;
+  border: 1px solid var(--line);
+}
+:root[data-theme="dark"] .stats-view-btn {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .stats-view-btn:hover {
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .stats-view-btn--active {
+  background: rgba(154, 134, 255, 0.24) !important;
+  color: #dcd4ff !important;
+  box-shadow: none !important;
+}
+
+/* --- Small checkboxes on timelines (dashboard + day plan) --- */
+
+:root[data-theme="dark"] .day-timeline-small-check input {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #4b4860;
+}
+:root[data-theme="dark"] .day-timeline-small-check input:checked {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* --- Consent checkbox row (feedback + auth forms) --- */
+
+:root[data-theme="dark"] .legal-checkbox {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .legal-checkbox a {
+  color: #b4a8fa;
+}
+:root[data-theme="dark"] .legal-checkbox input[type="checkbox"] {
+  accent-color: var(--accent);
 }

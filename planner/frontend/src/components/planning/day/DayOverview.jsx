@@ -526,6 +526,18 @@ function ImportantToday({ selectedDay }) {
                 const isSmallGroup = t.type === "small-group";
 
                 const bgColor = isDone ? "#aaaaaa" : categoryColor;
+                // On dark surfaces a 9% flat tint (hex "16") is invisible;
+                // use a top-down gradient + tinted border instead.
+                const isDarkTheme =
+                  document.documentElement.getAttribute("data-theme") === "dark";
+                const blockStyle = isDarkTheme
+                  ? {
+                      backgroundColor: `${bgColor}24`,
+                      borderColor: `${bgColor}40`,
+                    }
+                  : {
+                      backgroundColor: `${bgColor}16`,
+                    };
 
                 return (
                   <article
@@ -539,8 +551,8 @@ function ImportantToday({ selectedDay }) {
                     style={{
                       top: `${top}px`,
                       height: `${height}px`,
+                      ...blockStyle,
                       borderLeftColor: isDone ? "#aaaaaa" : categoryColor,
-                      backgroundColor: isDone ? "#aaaaaa16" : `${categoryColor}16`,
                       cursor: isSmallGroup ? "default" : "pointer",
                     }}
                     onClick={isSmallGroup ? undefined : () => toggleStatus(t)}

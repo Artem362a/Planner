@@ -37,6 +37,12 @@ const TEMPLATE_COLORS = [
   "#B97AD6", "#A6A2D8", "#95A0BF",
 ];
 
+// Category tints that read fine on white are invisible on dark surfaces —
+// timeline blocks bump their alphas when the dark theme is active.
+function isDarkTheme() {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+}
+
 function hexToRgba(hex, alpha = 0.14) {
   if (!hex) return `rgba(187, 187, 187, ${alpha})`;
 
@@ -2104,10 +2110,10 @@ const overdueImportCandidates = useMemo(
                         style={{
                           top: `${Math.max(0, item.top)}px`,
                           height: `${item.height}px`,
-                          background: `linear-gradient(90deg, ${hexToRgba(
-                            color,
-                            0.18
-                          )} 0%, ${hexToRgba(color, 0.08)} 100%)`,
+                          background: isDarkTheme()
+                            ? hexToRgba(color, 0.14)
+                            : `linear-gradient(90deg, ${hexToRgba(color, 0.18)} 0%, ${hexToRgba(color, 0.08)} 100%)`,
+                          ...(isDarkTheme() && { borderColor: hexToRgba(color, 0.25) }),
                           borderLeftColor: color,
                         }}
                       >
@@ -2173,7 +2179,12 @@ const overdueImportCandidates = useMemo(
                       style={{
                         top: `${Math.max(0, top)}px`,
                         height: `${height}px`,
-                        background: `linear-gradient(90deg, ${hexToRgba(bgColor, isDone ? 0.14 : 0.2)} 0%, ${hexToRgba(bgColor, isDone ? 0.07 : 0.1)} 100%)`,
+                        background: isDarkTheme()
+                          ? hexToRgba(bgColor, isDone ? 0.09 : 0.15)
+                          : `linear-gradient(90deg, ${hexToRgba(bgColor, isDone ? 0.14 : 0.2)} 0%, ${hexToRgba(bgColor, isDone ? 0.07 : 0.1)} 100%)`,
+                        ...(isDarkTheme() && {
+                          borderColor: hexToRgba(bgColor, isDone ? 0.14 : 0.25),
+                        }),
                         borderLeftColor: isDone ? "#aaaaaa" : color,
                         cursor: "pointer",
                       }}

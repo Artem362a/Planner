@@ -75,6 +75,19 @@ export default function StatisticsPage() {
     period <= 7 ? 0 : period <= 30 ? 4 : 13;
   const barSize = period <= 7 ? 28 : period <= 30 ? 12 : 5;
 
+  // Recharts colors live in JSX, not CSS, so pick them per theme.
+  const isDark =
+    document.documentElement.getAttribute("data-theme") === "dark";
+  const chartDone = isDark ? "#8f7ae0" : "#7d68c9";
+  const chartRemaining = isDark ? "#33303f" : "#d8cef1";
+  const chartTick = { fontSize: 11, fill: isDark ? "#8f8a9e" : "#9a92b6" };
+  const chartTooltipStyle = {
+    borderRadius: 12,
+    border: `1px solid ${isDark ? "#33313f" : "#ece6ff"}`,
+    fontSize: 13,
+    ...(isDark ? { background: "#1d1c24", color: "#e4e2ed" } : {}),
+  };
+
   return (
     <div className="app-wrapper">
       <div className="app">
@@ -155,14 +168,14 @@ export default function StatisticsPage() {
                         >
                           <XAxis
                             dataKey="date"
-                            tick={{ fontSize: 11, fill: "#9a92b6" }}
+                            tick={chartTick}
                             interval={barInterval}
                             axisLine={false}
                             tickLine={false}
                           />
                           <YAxis
                             allowDecimals={false}
-                            tick={{ fontSize: 11, fill: "#9a92b6" }}
+                            tick={chartTick}
                             axisLine={false}
                             tickLine={false}
                           />
@@ -183,22 +196,18 @@ export default function StatisticsPage() {
                               fill: "rgba(125, 104, 201, 0.12)",
                               radius: 4,
                             }}
-                            contentStyle={{
-                              borderRadius: 12,
-                              border: "1px solid #ece6ff",
-                              fontSize: 13,
-                            }}
+                            contentStyle={chartTooltipStyle}
                           />
                           <Bar
                             dataKey="completed"
                             stackId="day"
-                            fill="#7d68c9"
+                            fill={chartDone}
                             radius={[4, 4, 0, 0]}
                           />
                           <Bar
                             dataKey="remaining"
                             stackId="day"
-                            fill="#d8cef1"
+                            fill={chartRemaining}
                             radius={[4, 4, 0, 0]}
                           />
                         </BarChart>
@@ -241,24 +250,20 @@ export default function StatisticsPage() {
                           }))}
                           margin={{ top: 16, right: 40, bottom: 16, left: 40 }}
                         >
-                          <PolarGrid stroke="#3a2f5e" />
+                          <PolarGrid stroke={isDark ? "#33313f" : "#3a2f5e"} />
                           <PolarAngleAxis
                             dataKey="subject"
-                            tick={{ fontSize: 12, fill: "#9a92b6" }}
+                            tick={{ ...chartTick, fontSize: 12 }}
                           />
                           <Radar
                             dataKey="value"
-                            stroke="#7d68c9"
-                            fill="#7d68c9"
+                            stroke={chartDone}
+                            fill={chartDone}
                             fillOpacity={0.35}
                           />
                           <Tooltip
                             formatter={(v) => [v, "Выполнено"]}
-                            contentStyle={{
-                              borderRadius: 12,
-                              border: "1px solid #ece6ff",
-                              fontSize: 13,
-                            }}
+                            contentStyle={chartTooltipStyle}
                           />
                         </RadarChart>
                       </ResponsiveContainer>
