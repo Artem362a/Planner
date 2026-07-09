@@ -56,6 +56,19 @@
   max-width: 320px;
 }
 
+/* На мобилках modals.css задаёт .category-color-swatch { width: 100% } под
+   грид-палитры модалок; во flex-баннере это растягивает свотч на всю строку —
+   переводим палитру баннера в грид с мелкими ячейками. */
+@media (max-width: 700px) {
+  .template-edit-banner-palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+    gap: 6px;
+    width: 100%;
+    max-width: none;
+  }
+}
+
 /* Выключенные (видимые, но неинтерактивные) блоки в режиме шаблона */
 .is-template-disabled {
   opacity: 0.45;

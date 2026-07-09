@@ -214,6 +214,34 @@ def _add_reminder(user_id: int, text: str, remind_at: datetime) -> None:
         db.commit()
 
 
+def _active_reminders(user_id: int) -> list:
+    with SessionLocal() as db:
+        return (
+            db.query(Reminder)
+            .filter(
+                Reminder.user_id == user_id,
+                Reminder.sent == False,  # noqa: E712
+            )
+            .order_by(Reminder.remind_at)
+            .limit(25)
+            .all()
+        )
+
+
+def _delete_reminder(user_id: int, reminder_id: int) -> bool:
+    with SessionLocal() as db:
+        r = (
+            db.query(Reminder)
+            .filter(Reminder.id == reminder_id, Reminder.user_id == user_id)
+            .first()
+        )
+        if not r:
+            return False
+        db.delete(r)
+        db.commit()
+        return True
+
+
 def _parse_hhmm(raw: str) -> tuple[int, int] | None:
     """«18:30», «18.30», «18 30», «1830», «9» → (час, минута) или None."""
     s = (raw or "").strip().replace(".", ":").replace(" ", ":")
@@ -512,12 +540,8 @@ def handle_main_buttons(message):
         )
         bot.register_next_step_handler(msg, _step_capture_name, user_id, "week")
     elif label == BTN_REMIND:
-        msg = bot.send_message(
-            message.chat.id,
-            "О чём напомнить? Пришли текст:",
-            reply_markup=types.ForceReply(selective=False),
-        )
-        bot.register_next_step_handler(msg, _step_capture_name, user_id, "remind")
+        text, kb = _reminders_menu(user_id)
+        bot.send_message(message.chat.id, text, reply_markup=kb)
 
 
 def _step_capture_name(message, user_id, dest):
@@ -629,6 +653,69 @@ def _step_remind_time(message, user_id, text, day: date):
     )
 
 
+def _reminders_menu(user_id: int) -> tuple[str, types.InlineKeyboardMarkup]:
+    """Текст + клавиатура меню напоминаний: активные (тап — удалить) и «новое»."""
+    items = _active_reminders(user_id)
+    kb = types.InlineKeyboardMarkup()
+    for r in items:
+        title = r.text if len(r.text) <= 24 else r.text[:23] + "…"
+        when = (
+            f"{_RU_WD[r.remind_at.weekday()]} "
+            f"{r.remind_at.day:02d}.{r.remind_at.month:02d} "
+            f"{r.remind_at.hour:02d}:{r.remind_at.minute:02d}"
+        )
+        kb.add(
+            types.InlineKeyboardButton(
+                f"❌ {when} · {title}",
+                callback_data=f"rem:del:{r.id}",
+            )
+        )
+    kb.add(
+        types.InlineKeyboardButton("➕ Новое напоминание", callback_data="rem:new")
+    )
+    if items:
+        text = (
+            f"⏰ <b>Активные напоминания</b> — {len(items)}\n\n"
+            "Нажми на напоминание, чтобы удалить его."
+        )
+    else:
+        text = "⏰ Активных напоминаний нет."
+    return text, kb
+
+
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("rem:"))
+def cb_reminders(call):
+    chat_id = call.message.chat.id
+    user_id = _user_id_for_chat(chat_id)
+    if not user_id:
+        bot.answer_callback_query(call.id, "Сначала привяжи аккаунт: /start КОД")
+        return
+
+    parts = call.data.split(":")
+    action = parts[1] if len(parts) > 1 else ""
+
+    if action == "new":
+        bot.answer_callback_query(call.id)
+        msg = bot.send_message(
+            chat_id,
+            "О чём напомнить? Пришли текст:",
+            reply_markup=types.ForceReply(selective=False),
+        )
+        bot.register_next_step_handler(msg, _step_capture_name, user_id, "remind")
+        return
+
+    if action == "del" and len(parts) > 2:
+        deleted = _delete_reminder(user_id, int(parts[2]))
+        bot.answer_callback_query(call.id, "Удалено" if deleted else "Уже удалено")
+        text, kb = _reminders_menu(user_id)
+        try:
+            bot.edit_message_text(
+                text, chat_id, call.message.message_id, reply_markup=kb
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+
 @bot.message_handler(commands=["remind"])
 def handle_remind(message):
     user_id = _user_id_for_chat(message.chat.id)
@@ -641,6 +728,16 @@ def handle_remind(message):
         reply_markup=types.ForceReply(selective=False),
     )
     bot.register_next_step_handler(msg, _step_capture_name, user_id, "remind")
+
+
+@bot.message_handler(commands=["reminders"])
+def handle_reminders(message):
+    user_id = _user_id_for_chat(message.chat.id)
+    if not user_id:
+        bot.reply_to(message, "Сначала привяжи аккаунт: /start КОД")
+        return
+    text, kb = _reminders_menu(user_id)
+    bot.send_message(message.chat.id, text, reply_markup=kb)
 
 
 @bot.message_handler(commands=["add"])
@@ -961,6 +1058,7 @@ def _set_commands() -> None:
                 types.BotCommand("today", "План на сегодня"),
                 types.BotCommand("add", "Задача в план на сегодня"),
                 types.BotCommand("remind", "Поставить напоминание"),
+                types.BotCommand("reminders", "Активные напоминания"),
                 types.BotCommand("inbox", "Добавить во «Входящие»"),
                 types.BotCommand("help", "Помощь"),
             ]

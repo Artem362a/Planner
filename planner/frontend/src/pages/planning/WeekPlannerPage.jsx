@@ -63,10 +63,11 @@ const WEEK_DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
 // Та же палитра, что у шаблонов дня (DayPlanFull).
 const TEMPLATE_COLORS = [
-  "#9B7BE8", "#7C67D8", "#7EA7F2", "#6F8EDB", "#67C5D8",
-  "#5FD6C0", "#72C99F", "#8BCB6F", "#B9C86A", "#D5C65F",
-  "#F0B36A", "#E99A6D", "#F1848E", "#E36F9E", "#D985C7",
-  "#B97AD6", "#A6A2D8", "#95A0BF",
+  "#9B7BE8", "#7C67D8", "#5A6FD1", "#6F8EDB", "#7EA7F2", "#4FA3E0",
+  "#67C5D8", "#48B8B0", "#5FD6C0", "#3FAE8C", "#72C99F", "#63B85E",
+  "#8BCB6F", "#A0B455", "#B9C86A", "#D5C65F", "#E5B84E", "#F0B36A",
+  "#E68A4F", "#E99A6D", "#E06A5E", "#F1848E", "#C95576", "#E36F9E",
+  "#D985C7", "#B064C9", "#B97AD6", "#A6A2D8", "#7E88A8", "#95A0BF",
 ];
 
 function groupConsecutiveDays(days) {
