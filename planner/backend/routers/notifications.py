@@ -394,6 +394,52 @@ def create_reminder(
     )
 
 
+@router.post("/reminders/{reminder_id}/snooze", response_model=ReminderOut)
+def snooze_reminder(
+    reminder_id: int,
+    body: ReminderSnoozeIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Отложить напоминание на `minutes` минут.
+
+    База отсчёта — max(сейчас, remind_at): уже сработавшее откладывается
+    «от сейчас», ещё не сработавшее — переносится позже запланированного.
+    Сброс `sent` возвращает сработавшее напоминание в очередь доставки.
+    """
+    current_user_row = cast(Any, current_user)
+
+    if not (1 <= body.minutes <= 7 * 24 * 60):
+        raise HTTPException(status_code=400, detail="minutes must be 1..10080")
+
+    row = (
+        db.query(Reminder)
+        .filter(
+            Reminder.id == reminder_id,
+            Reminder.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    row_cast = cast(Any, row)
+    now = datetime.now().replace(second=0, microsecond=0)
+    base = max(now, row_cast.remind_at)
+    row_cast.remind_at = base + timedelta(minutes=body.minutes)
+    row_cast.sent = False
+    row_cast.sent_at = None
+    db.commit()
+    db.refresh(row)
+
+    return ReminderOut(
+        id=row_cast.id,
+        text=row_cast.text,
+        remind_at=row_cast.remind_at.strftime("%Y-%m-%dT%H:%M"),
+        sent=bool(row_cast.sent),
+    )
+
+
 @router.delete("/reminders/{reminder_id}", response_model=MessageOut)
 def delete_reminder(
     reminder_id: int,

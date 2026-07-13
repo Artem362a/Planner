@@ -32,6 +32,10 @@ class ReminderOut(BaseModel):
     remind_at: str
     sent: bool
 
+class ReminderSnoozeIn(BaseModel):
+    # На сколько минут отложить (1 мин … 7 дней).
+    minutes: int
+
 class UserShortOut(BaseModel):
     id: int
     email: str

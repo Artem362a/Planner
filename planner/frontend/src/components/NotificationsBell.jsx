@@ -11,6 +11,7 @@ import {
   fetchReminders,
   createReminder,
   deleteReminder,
+  snoozeReminder,
 } from "../api/reminders";
 
 function parseLocalDate(dateStr) {
@@ -297,6 +298,19 @@ export default function NotificationsBell() {
     deleteReminder(id).catch(() => {});
   }
 
+  async function handleSnoozeReminder(id, minutes) {
+    try {
+      const updated = await snoozeReminder(id, minutes);
+      setReminders((prev) =>
+        prev
+          .map((r) => (r.id === id ? updated : r))
+          .sort((a, b) => (a.remind_at < b.remind_at ? -1 : 1))
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   async function loadNotifications() {
     try {
       setLoading(true);
@@ -531,6 +545,23 @@ export default function NotificationsBell() {
                           {formatRemindAt(r.remind_at)}
                         </div>
                         <div className="reminder-item-text">{r.text}</div>
+                        <div className="reminder-item-snooze">
+                          {[
+                            [15, "+15м"],
+                            [60, "+1ч"],
+                            [24 * 60, "+1д"],
+                          ].map(([minutes, label]) => (
+                            <button
+                              key={minutes}
+                              type="button"
+                              className="reminder-snooze-btn"
+                              title={`Отложить на ${label.slice(1)}`}
+                              onClick={() => handleSnoozeReminder(r.id, minutes)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <button
                         type="button"

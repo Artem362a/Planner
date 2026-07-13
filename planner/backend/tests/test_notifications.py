@@ -460,3 +460,102 @@ class TestReminders:
 
         r = client.delete(f"/reminders/{row.id}", headers=auth_headers)
         assert r.status_code == 404
+
+
+class TestReminderSnooze:
+    def test_snooze_pending_shifts_from_remind_at(self, client, db, user, auth_headers):
+        """Будущее напоминание переносится от запланированного времени."""
+        from db import Reminder
+
+        remind_at = (datetime.now() + timedelta(hours=2)).replace(second=0, microsecond=0)
+        row = Reminder(user_id=user.id, text="перенести", remind_at=remind_at)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.post(
+            f"/reminders/{row.id}/snooze",
+            headers=auth_headers,
+            json={"minutes": 60},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        expected = (remind_at + timedelta(minutes=60)).strftime("%Y-%m-%dT%H:%M")
+        assert body["remind_at"] == expected
+        assert body["sent"] is False
+
+    def test_snooze_fired_counts_from_now(self, client, db, user, auth_headers):
+        """Сработавшее напоминание откладывается «от сейчас» и возвращается в очередь."""
+        from db import Reminder
+
+        fired_at = datetime.now() - timedelta(minutes=30)
+        row = Reminder(
+            user_id=user.id,
+            text="сработало",
+            remind_at=fired_at,
+            sent=True,
+            sent_at=fired_at,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.post(
+            f"/reminders/{row.id}/snooze",
+            headers=auth_headers,
+            json={"minutes": 10},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["sent"] is False
+
+        new_at = datetime.strptime(body["remind_at"], "%Y-%m-%dT%H:%M")
+        delta_min = (new_at - datetime.now()).total_seconds() / 60
+        assert 8 <= delta_min <= 11  # ~10 минут от «сейчас», не от старого времени
+
+        db.refresh(row)
+        assert row.sent is False
+        assert row.sent_at is None
+
+        # Снова видно в списке ожидающих.
+        listed = client.get("/reminders", headers=auth_headers).json()
+        assert any(x["id"] == row.id for x in listed)
+
+    def test_snooze_foreign_404(self, client, db, other_user, auth_headers):
+        from db import Reminder
+
+        row = Reminder(
+            user_id=other_user.id,
+            text="чужое",
+            remind_at=datetime.now() + timedelta(hours=1),
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        r = client.post(
+            f"/reminders/{row.id}/snooze",
+            headers=auth_headers,
+            json={"minutes": 10},
+        )
+        assert r.status_code == 404
+
+    def test_snooze_rejects_bad_minutes(self, client, db, user, auth_headers):
+        from db import Reminder
+
+        row = Reminder(
+            user_id=user.id,
+            text="валидация",
+            remind_at=datetime.now() + timedelta(hours=1),
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+
+        for minutes in (0, -5, 7 * 24 * 60 + 1):
+            r = client.post(
+                f"/reminders/{row.id}/snooze",
+                headers=auth_headers,
+                json={"minutes": minutes},
+            )
+            assert r.status_code == 400

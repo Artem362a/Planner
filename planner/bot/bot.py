@@ -973,6 +973,78 @@ def _digest_loop() -> None:
 # ---------------------------------------------------------------- reminders
 
 
+def _snooze_keyboard(reminder_id: int) -> types.InlineKeyboardMarkup:
+    """Кнопки «отложить» под сработавшим напоминанием."""
+    kb = types.InlineKeyboardMarkup()
+    kb.row(
+        types.InlineKeyboardButton("⏰ +10 мин", callback_data=f"rsnz:{reminder_id}:10"),
+        types.InlineKeyboardButton("+1 час", callback_data=f"rsnz:{reminder_id}:60"),
+    )
+    kb.row(
+        types.InlineKeyboardButton("+3 часа", callback_data=f"rsnz:{reminder_id}:180"),
+        types.InlineKeyboardButton("Завтра утром", callback_data=f"rsnz:{reminder_id}:tom"),
+    )
+    return kb
+
+
+def _snooze_reminder(user_id: int, reminder_id: int, remind_at: datetime) -> datetime | None:
+    """Переносит напоминание на remind_at и возвращает его в очередь доставки.
+    None — напоминание не найдено (удалено или чужое)."""
+    with SessionLocal() as db:
+        r = (
+            db.query(Reminder)
+            .filter(Reminder.id == reminder_id, Reminder.user_id == user_id)
+            .first()
+        )
+        if r is None:
+            return None
+        r.remind_at = remind_at.replace(second=0, microsecond=0)
+        r.sent = False
+        r.sent_at = None
+        db.commit()
+        return r.remind_at
+
+
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("rsnz:"))
+def cb_snooze(call):
+    user_id = _user_id_for_chat(call.message.chat.id)
+    if not user_id:
+        bot.answer_callback_query(call.id, "Аккаунт не привязан")
+        return
+
+    try:
+        _, rid_raw, arg = call.data.split(":", 2)
+        reminder_id = int(rid_raw)
+    except ValueError:
+        bot.answer_callback_query(call.id)
+        return
+
+    now = datetime.now()
+    if arg == "tom":
+        remind_at = datetime(now.year, now.month, now.day, 9, 0) + timedelta(days=1)
+    else:
+        remind_at = now + timedelta(minutes=int(arg))
+
+    new_at = _snooze_reminder(user_id, reminder_id, remind_at)
+    if new_at is None:
+        bot.answer_callback_query(call.id, "Напоминание уже удалено")
+        return
+
+    label = (
+        f"{_RU_WD[new_at.weekday()]} {new_at.day:02d}.{new_at.month:02d} "
+        f"{new_at.hour:02d}:{new_at.minute:02d}"
+    )
+    try:
+        bot.edit_message_text(
+            f"{call.message.html_text}\n\n🔁 <i>Отложено до {label}</i>",
+            call.message.chat.id,
+            call.message.message_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    bot.answer_callback_query(call.id, f"Отложено до {label}")
+
+
 def _deliver_due_reminders() -> None:
     """Наступившие напоминания: колокольчик на сайте + сообщение в TG.
 
@@ -980,7 +1052,7 @@ def _deliver_due_reminders() -> None:
     напоминание не продублируется при следующем тике (in-app уже есть).
     """
     now = datetime.now()
-    tg_targets: list[tuple[int, str]] = []  # (chat_id, text)
+    tg_targets: list[tuple[int, str, int]] = []  # (chat_id, text, reminder_id)
 
     with SessionLocal() as db:
         due = (
@@ -1020,16 +1092,20 @@ def _deliver_due_reminders() -> None:
                 .first()
             )
             if link:
-                tg_targets.append((int(link.chat_id), r.text))
+                tg_targets.append((int(link.chat_id), r.text, r.id))
 
             r.sent = True
             r.sent_at = now
         db.commit()
 
     print(f"delivered {len(due)} reminder(s), tg={len(tg_targets)}", flush=True)
-    for chat_id, text in tg_targets:
+    for chat_id, text, reminder_id in tg_targets:
         try:
-            bot.send_message(chat_id, f"⏰ <b>Напоминание</b>\n\n{html.escape(text)}")
+            bot.send_message(
+                chat_id,
+                f"⏰ <b>Напоминание</b>\n\n{html.escape(text)}",
+                reply_markup=_snooze_keyboard(reminder_id),
+            )
         except Exception as e:  # noqa: BLE001
             print(f"reminder send failed for {chat_id}: {e}", flush=True)
 

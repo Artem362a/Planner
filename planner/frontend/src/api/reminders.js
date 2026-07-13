@@ -37,3 +37,13 @@ export async function deleteReminder(reminderId) {
 
   return await handleResponse(res, "Failed to delete reminder");
 }
+
+export async function snoozeReminder(reminderId, minutes) {
+  const res = await fetch(`${API_URL}/reminders/${reminderId}/snooze`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ minutes }),
+  });
+
+  return await handleResponse(res, "Failed to snooze reminder");
+}
