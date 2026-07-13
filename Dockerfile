@@ -20,8 +20,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install -r backend-requirements.txt -r bot-requirements.txt
 
 FROM base AS runtime
+# tzdata: slim images have no zoneinfo, and the app works in naive local
+# time (reminders, digest hour) — without it TZ=Europe/Samara would be
+# silently ignored and everything would run in UTC.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 curl \
+    && apt-get install -y --no-install-recommends libpq5 curl tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 appuser
 COPY --from=deps /opt/venv /opt/venv

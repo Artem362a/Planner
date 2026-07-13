@@ -1,13 +1,18 @@
 services:
   postgres:
-    image: postgres:16
+    # 17 to match the version the prod data was born on — a dump from a
+    # newer server restored into an older one is not supported.
+    image: postgres:17
     container_name: dayplan-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-Etc/UTC}
     ports:
-      - "${POSTGRES_HOST_PORT:-5432}:5432"
+      # 127.0.0.1 binding: host-only access for psql/backups; nothing on the
+      # LAN should reach the DB directly.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -28,8 +33,13 @@ services:
       # Overrides the .env value so the app talks to the "postgres" service
       # instead of localhost, which inside the container is itself.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # The app stores naive local datetimes; keep container clocks on the
+      # server's timezone (set TZ in the root .env, e.g. Europe/Samara).
+      TZ: ${TZ:-Etc/UTC}
     ports:
-      - "8000:8000"
+      # 127.0.0.1 binding: only frpc/nginx on this host may reach the API,
+      # not the whole LAN.
+      - "127.0.0.1:8000:8000"
     volumes:
       - backend_uploads:/app/planner/backend/uploads
     depends_on:
@@ -53,13 +63,14 @@ services:
       - planner/backend/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    # xray (SOCKS proxy for Telegram) runs on the host, not in compose —
-    # host.docker.internal makes it reachable from inside the container on
-    # both Docker Desktop and Linux Docker Engine (20.10+). Set
-    # TELEGRAM_PROXY=socks5h://host.docker.internal:<port> in
-    # planner/backend/.env when running the bot this way.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      TZ: ${TZ:-Etc/UTC}
+    # NOTE on the Telegram proxy: xray runs on the host and listens on
+    # 127.0.0.1 only, which is unreachable from a bridge-network container.
+    # On the prod laptop a docker-compose.override.yml (not in git) puts this
+    # service on `network_mode: host` so TELEGRAM_PROXY=socks5h://127.0.0.1:...
+    # keeps working unchanged; the override also repoints DATABASE_URL at the
+    # published 127.0.0.1 postgres port, since `postgres:` doesn't resolve on
+    # the host network.
     depends_on:
       postgres:
         condition: service_healthy

@@ -40,3 +40,6 @@ planner/backend/uploads/
 
 # OS
 Thumbs.db
+
+# Host-specific compose tweaks (prod laptop uses one for the bot's host networking)
+docker-compose.override.yml
