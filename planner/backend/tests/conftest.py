@@ -23,10 +23,15 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
 import pytest
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-# Importing main triggers ensure_schemas + create_all (idempotent).
+# Bring the target DB (TEST_DATABASE_URL if set, else the dev DB) up to the
+# latest schema before anything imports models against it. Idempotent.
+alembic_command.upgrade(AlembicConfig(str(BACKEND_DIR / "alembic.ini")), "head")
+
 from main import app  # noqa: E402
 from auth import create_access_token, hash_password  # noqa: E402
 from dependencies import get_db  # noqa: E402
