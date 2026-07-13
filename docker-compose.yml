@@ -3,14 +3,68 @@ services:
     image: postgres:16
     container_name: dayplan-postgres
     environment:
-      POSTGRES_USER: dayplan_user
-      POSTGRES_PASSWORD: dayplan_pass
-      POSTGRES_DB: dayplan
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dayplan-backend
+    env_file:
+      - planner/backend/.env
+    environment:
+      # Overrides the .env value so the app talks to the "postgres" service
+      # instead of localhost, which inside the container is itself.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_uploads:/app/planner/backend/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dayplan-bot
+    command: python /app/planner/bot/bot.py
+    env_file:
+      - planner/backend/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    # xray (SOCKS proxy for Telegram) runs on the host, not in compose —
+    # host.docker.internal makes it reachable from inside the container on
+    # both Docker Desktop and Linux Docker Engine (20.10+). Set
+    # TELEGRAM_PROXY=socks5h://host.docker.internal:<port> in
+    # planner/backend/.env when running the bot this way.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   postgres_data:
+  backend_uploads:
