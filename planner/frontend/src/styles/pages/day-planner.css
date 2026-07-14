@@ -347,6 +347,76 @@
   gap: 8px;
 }
 
+.day-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Кнопка режима напоминаний (🔔) */
+.day-remind-mode-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e3dbf5;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #625a86;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(87, 68, 146, 0.05);
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.day-remind-mode-btn:hover {
+  background: #f5f0ff;
+  color: #5f3fc1;
+}
+
+.day-remind-mode-btn--active,
+.day-remind-mode-btn--active:hover {
+  background: #6f58e8;
+  border-color: #6f58e8;
+  color: #ffffff;
+}
+
+.day-remind-mode-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f3edff;
+  font-size: 13px;
+  color: #5f3fc1;
+}
+
+.day-remind-mode-hint svg {
+  flex-shrink: 0;
+}
+
+/* Свич напоминания на задаче (режим 🔔) и индикатор в обычном режиме */
+.day-task-remind-switch {
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.day-timeline-remind-switch {
+  align-self: start;
+  margin-top: 8px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.day-task-remind-ind {
+  margin-left: 8px;
+  font-size: 12px;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 .day-view-toggle {
   display: inline-flex;
   align-items: center;

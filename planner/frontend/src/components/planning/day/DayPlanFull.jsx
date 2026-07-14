@@ -151,11 +151,32 @@ function categoriesArrayToMap(items) {
   return result;
 }
 
+function BellIcon({ size = 16 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
 export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }) {
   // Дефолт «напомнить за N минут» из настроек аккаунта.
   const defaultRemindLead = user?.task_reminder_lead_min ?? 10;
   const [tasks, setTasks] = useState([]);
   const [viewMode, setViewMode] = useState("timeline");
+  // Режим «🔔»: на задачах с временем показываются свичи напоминаний.
+  const [remindMode, setRemindMode] = useState(false);
   const [dayNotes, setDayNotes] = useState("");
   const [expandedTimelineGroupId, setExpandedTimelineGroupId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1477,6 +1498,21 @@ const overdueImportCandidates = useMemo(
     await doCreateOrUpdate(body, null, null);
   };
 
+  const toggleTaskReminder = async (task) => {
+    if (!task.start_time || task.status === 1) return;
+    // Вкл — с дефолтным N из настроек, выкл — «-1» снимает напоминание.
+    const nextLead = task.remind_lead_min != null ? -1 : defaultRemindLead;
+    try {
+      const updated = await persistUpdate(task.id, {
+        ...task,
+        remind_lead_min: nextLead,
+      });
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const cycleStatus = async (task) => {
     const nextStatus = task.status === 1 ? 0 : 1;
 
@@ -1775,24 +1811,49 @@ const overdueImportCandidates = useMemo(
             </button>
           </div>
 
-          <div className="day-view-toggle" aria-label="Режим отображения">
-            <button
-              type="button"
-              className={viewMode === "timeline" ? "active" : ""}
-              onClick={() => setViewMode("timeline")}
-            >
-              Таймлайн
-            </button>
+          <div className="day-toolbar-right">
+            {!isTemplateMode && (
+              <button
+                type="button"
+                className={
+                  "day-remind-mode-btn" +
+                  (remindMode ? " day-remind-mode-btn--active" : "")
+                }
+                title="Режим напоминаний: отметь задачи, о которых напомнить"
+                aria-pressed={remindMode}
+                onClick={() => setRemindMode((prev) => !prev)}
+              >
+                <BellIcon />
+              </button>
+            )}
 
-            <button
-              type="button"
-              className={viewMode === "list" ? "active" : ""}
-              onClick={() => setViewMode("list")}
-            >
-              Список
-            </button>
+            <div className="day-view-toggle" aria-label="Режим отображения">
+              <button
+                type="button"
+                className={viewMode === "timeline" ? "active" : ""}
+                onClick={() => setViewMode("timeline")}
+              >
+                Таймлайн
+              </button>
+
+              <button
+                type="button"
+                className={viewMode === "list" ? "active" : ""}
+                onClick={() => setViewMode("list")}
+              >
+                Список
+              </button>
+            </div>
           </div>
         </div>
+
+        {remindMode && !isTemplateMode && (
+          <div className="day-remind-mode-hint">
+            <BellIcon size={14} /> Отметь задачи с фиксированным временем — бот
+            и колокольчик напомнят за {defaultRemindLead} мин до начала. Своё
+            время — в редактировании задачи.
+          </div>
+        )}
 
         <div className="day-start-bar">
           <span>Начало дня:</span>
@@ -2007,6 +2068,30 @@ const overdueImportCandidates = useMemo(
                       </div>
                     )}
                   </div>
+
+                  {!remindMode && t.remind_lead_min != null && t.status !== 1 && (
+                    <span
+                      className="day-task-remind-ind"
+                      title={`Напоминание за ${t.remind_lead_min} мин до начала`}
+                    >
+                      🔔
+                    </span>
+                  )}
+
+                  {remindMode && t.start_time && t.status !== 1 && (
+                    <label
+                      className="task-remind-toggle day-task-remind-switch"
+                      title="Напомнить об этой задаче"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={t.remind_lead_min != null}
+                        onChange={() => toggleTaskReminder(t)}
+                      />
+                      <span className="task-remind-slider" aria-hidden="true" />
+                    </label>
+                  )}
 
                   <div className={`day-task-time${t.start_time ? " day-task-time--fixed" : ""}`}>
                     {t.computed_start_time}
@@ -2232,6 +2317,14 @@ const overdueImportCandidates = useMemo(
                             {task.computed_start_time}
                             {task.duration_min ? ` – ${task.computed_end_time}` : ""}
                           </span>
+                          {!remindMode && task.remind_lead_min != null && !isDone && (
+                            <span
+                              className="day-task-remind-ind"
+                              title={`Напоминание за ${task.remind_lead_min} мин до начала`}
+                            >
+                              🔔
+                            </span>
+                          )}
                           {task.subtasks?.length > 0 && (
                             <button
                               type="button"
@@ -2249,6 +2342,21 @@ const overdueImportCandidates = useMemo(
 
                         {after.map(renderTimelineAttachedItem)}
                       </div>
+
+                      {remindMode && task.start_time && !isDone && (
+                        <label
+                          className="task-remind-toggle day-timeline-remind-switch"
+                          title="Напомнить об этой задаче"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={task.remind_lead_min != null}
+                            onChange={() => toggleTaskReminder(task)}
+                          />
+                          <span className="task-remind-slider" aria-hidden="true" />
+                        </label>
+                      )}
 
                       <button
                         type="button"
