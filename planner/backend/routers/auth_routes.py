@@ -31,6 +31,7 @@ from db import (
     WeekTemplate,
 )
 from dependencies import get_current_developer, get_current_user, get_db, security
+from reminder_rules import REMINDER_SETTINGS_LIMITS
 from schemas import *
 from serializers import *
 
@@ -237,6 +238,27 @@ def update_day_start(
 ):
     row = cast(Any, current_user)
     row.default_day_start_time = _parse_hhmm(body.default_day_start_time)
+    db.commit()
+    db.refresh(current_user)
+    return _user_to_out(current_user)
+
+
+@router.patch("/auth/reminder-settings", response_model=UserResponse)
+def update_reminder_settings(
+    body: UserReminderSettingsIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    for field, (lo, hi) in REMINDER_SETTINGS_LIMITS.items():
+        value = getattr(body, field)
+        if not (lo <= value <= hi):
+            raise HTTPException(status_code=400, detail=f"{field} must be {lo}..{hi}")
+
+    row = cast(Any, current_user)
+    row.task_reminder_lead_min = body.task_reminder_lead_min
+    row.reminder_repeat_min = body.reminder_repeat_min
+    row.reminder_repeat_max = body.reminder_repeat_max
+    row.goal_deadline_days = body.goal_deadline_days
     db.commit()
     db.refresh(current_user)
     return _user_to_out(current_user)

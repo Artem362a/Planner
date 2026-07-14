@@ -22,7 +22,7 @@ function addDays(date, days) {
   return nextDate;
 }
 
-function DayPlannerPage() {
+function DayPlannerPage({ user }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [overdueCount, setOverdueCount] = useState(0);
   const [showOverdueModal, setShowOverdueModal] = useState(false);
@@ -134,6 +134,7 @@ function DayPlannerPage() {
               <DayPlanFull
                 selectedDate={selectedDate}
                 onTemplateModeChange={setTemplateMode}
+                user={user}
               />
             </div>
 

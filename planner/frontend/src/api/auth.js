@@ -112,6 +112,16 @@ export async function updateDayStart(timeHHMM) {
   return await handleResponse(res, "Failed to update default day start");
 }
 
+export async function updateReminderSettings(settings) {
+  const res = await fetch(`${API_URL}/auth/reminder-settings`, {
+    method: "PATCH",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(settings),
+  });
+
+  return await handleResponse(res, "Failed to update reminder settings");
+}
+
 export async function fetchSessions() {
   const res = await fetch(`${API_URL}/auth/sessions`, {
     headers: getAuthHeaders(),

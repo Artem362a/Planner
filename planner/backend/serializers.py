@@ -74,6 +74,10 @@ def _user_to_out(user: User) -> UserResponse:
         avatar=getattr(row, "avatar", None),
         theme=getattr(row, "theme", "light") or "light",
         default_day_start_time=start_str,
+        task_reminder_lead_min=getattr(row, "task_reminder_lead_min", 10),
+        reminder_repeat_min=getattr(row, "reminder_repeat_min", 30),
+        reminder_repeat_max=getattr(row, "reminder_repeat_max", 3),
+        goal_deadline_days=getattr(row, "goal_deadline_days", 3),
     )
 
 
@@ -154,6 +158,7 @@ def _task_to_out(t: DayTaskRow) -> TaskOut:
         subtasks=t.subtasks or [],
         order_index=t.order_index,
         source_week_task_id=t.source_week_task_id,
+        remind_lead_min=getattr(t, "remind_lead_min", None),
     )
 
 def _template_to_out(tmpl: DayTemplateRow) -> DayTemplateOut:

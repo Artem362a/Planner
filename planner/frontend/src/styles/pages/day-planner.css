@@ -109,6 +109,46 @@
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
+/* Чекбокс «напомнить за N минут» в форме задачи */
+.task-remind-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #62598e;
+}
+
+.task-remind-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.task-remind-check input {
+  accent-color: #6f58e8;
+  cursor: pointer;
+}
+
+.task-remind-lead {
+  width: 64px;
+  padding: 4px 6px;
+  border: 1px solid #e2dbf5;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  color: #312b55;
+}
+
+.task-remind-lead:disabled {
+  opacity: 0.5;
+}
+
+.task-remind-unit {
+  font-size: 12px;
+  color: #9b93c4;
+}
+
 /* Галочка «фиксировать начало дня в шаблоне» (режим редактирования шаблона) */
 .day-start-tpl-check {
   display: inline-flex;

@@ -282,6 +282,26 @@
   color: #d94057;
 }
 
+.reminder-form-recur select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #e2dbf5;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  color: #312b55;
+  background: #ffffff;
+}
+
+.reminder-form-recur input {
+  flex: 0 0 64px;
+}
+
+.reminder-item-recur {
+  color: #9b8fd0;
+}
+
 .reminders-list {
   display: flex;
   flex-direction: column;

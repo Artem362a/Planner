@@ -22,6 +22,7 @@ from db import (
     InboxTask,
     Notification,
     NotificationRecipient,
+    Reminder,
     TaskCategory,
     User,
     WeekTask,
@@ -32,6 +33,49 @@ from schemas import *
 from serializers import *
 
 router = APIRouter()
+
+
+def _sync_task_reminder(db: Session, user_id: int, task: Any) -> None:
+    """Приводит Reminder(kind='task') в соответствие задаче дня.
+
+    Напоминание живёт, пока у задачи есть remind_lead_min и start_time,
+    она не выполнена и время напоминания ещё впереди; иначе удаляется.
+    Задачу нужно flush'нуть до вызова (нужен task.id).
+    """
+    rem = db.query(Reminder).filter(Reminder.source_task_id == task.id).first()
+
+    lead = getattr(task, "remind_lead_min", None)
+    remind_at = None
+    if lead is not None and task.start_time is not None and task.status == 0:
+        remind_at = datetime.combine(task.day, task.start_time) - timedelta(minutes=lead)
+
+    if remind_at is None or remind_at <= datetime.now():
+        if rem is not None:
+            db.delete(rem)
+        return
+
+    text = f"Задача «{task.title}» в {task.start_time.strftime('%H:%M')}"
+    if rem is None:
+        db.add(
+            Reminder(
+                user_id=user_id,
+                text=text,
+                remind_at=remind_at,
+                kind="task",
+                source_task_id=task.id,
+            )
+        )
+        return
+
+    rem_row = cast(Any, rem)
+    if rem_row.remind_at != remind_at or rem_row.text != text:
+        rem_row.text = text
+        rem_row.remind_at = remind_at
+        rem_row.sent = False
+        rem_row.sent_at = None
+        rem_row.ack = None
+        rem_row.ack_at = None
+        rem_row.repeat_count = 0
 
 @router.get("/day/{day}", response_model=List[TaskOut])
 def get_day(
@@ -219,9 +263,16 @@ def create_task(
         status=body.status,
         subtasks=subtasks_payload,
         order_index=new_order_index,
+        remind_lead_min=(
+            body.remind_lead_min
+            if body.remind_lead_min is not None and body.remind_lead_min >= 0
+            else None
+        ),
     )
 
     db.add(task)
+    db.flush()
+    _sync_task_reminder(db, current_user_row.id, cast(Any, task))
     db.commit()
     db.refresh(task)
 
@@ -280,6 +331,9 @@ def update_task(
         task.subtasks = [s.dict() for s in body.subtasks]
     if body.source_week_task_id is not None:
         task.source_week_task_id = body.source_week_task_id
+    if body.remind_lead_min is not None:
+        # Отрицательное значение = снять напоминание (None в PATCH значит «не менять»).
+        task.remind_lead_min = body.remind_lead_min if body.remind_lead_min >= 0 else None
 
     # Синхронизация в недельную задачу, если дневная была импортирована из недели
     if task.source_week_task_id is not None:
@@ -385,6 +439,7 @@ def update_task(
             if inbox_row is not None:
                 cast(Any, inbox_row).completed_at = datetime.utcnow()
 
+    _sync_task_reminder(db, current_user_row.id, cast(Any, task))
     db.commit()
     db.refresh(db_task)
 
@@ -634,9 +689,12 @@ def reschedule_task(
         # перенесённой задачи не отметило бы исходное входящее/недельную задачу.
         source_inbox_task_id=getattr(t, "source_inbox_task_id", None),
         source_week_task_id=t.source_week_task_id,
+        remind_lead_min=getattr(t, "remind_lead_min", None),
     )
 
     db.add(new_task)
+    db.flush()
+    _sync_task_reminder(db, current_user_row.id, cast(Any, new_task))
     db.commit()
     db.refresh(new_task)
 

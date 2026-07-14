@@ -103,6 +103,11 @@ class Reminder(Base):
     создаёт Notification/NotificationRecipient и шлёт сообщение в Telegram.
     remind_at хранится наивным локальным временем сервера (как и остальные
     даты приложения).
+
+    Жизненный цикл: pending (sent=false) → доставлено (sent=true) →
+    ждёт ответа (ack is null; бот повторяет доставку по настройкам юзера) →
+    ack='done'/'read'. Повторяющееся (recur_*) после ответа или пропуска
+    целого цикла перепланируется на следующее срабатывание.
     """
 
     __tablename__ = "reminders"
@@ -120,6 +125,30 @@ class Reminder(Base):
 
     sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # manual — создано руками; task — автоматически из задачи дня.
+    kind: Mapped[str] = mapped_column(
+        String, nullable=False, default="manual", server_default="manual"
+    )
+    # Задача-источник для kind='task'; удаление задачи сносит напоминание.
+    source_task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("planning.day_tasks.id", ondelete="CASCADE"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
+    # Повторяемость: каждые recur_every единиц recur_unit ('day'|'week'|'month').
+    recur_every: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recur_unit: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Ответ пользователя на сработавшее напоминание: 'done' | 'read'.
+    ack: Mapped[str | None] = mapped_column(String, nullable=True)
+    ack_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Сколько повторных доставок уже сделано после первой.
+    repeat_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -216,6 +245,16 @@ class User(Base):
     theme = Column(String, nullable=False, default="light")
     # Default start_time used when a new DaySettings row is created.
     default_day_start_time = Column(Time, nullable=False, default=time(6, 0))
+
+    # --- Настройки напоминаний ---
+    # Дефолт «за сколько минут до начала задачи напомнить» (подставляется в чекбокс).
+    task_reminder_lead_min = Column(Integer, nullable=False, default=10, server_default="10")
+    # Повторная доставка, если на напоминание не ответили: интервал (0 = выключено)…
+    reminder_repeat_min = Column(Integer, nullable=False, default=30, server_default="30")
+    # …и максимум повторов.
+    reminder_repeat_max = Column(Integer, nullable=False, default=3, server_default="3")
+    # За сколько дней предупреждать о дедлайне цели (0 = выключено).
+    goal_deadline_days = Column(Integer, nullable=False, default=3, server_default="3")
 
 
 class UserSession(Base):
@@ -344,6 +383,9 @@ class DayTask(Base):
     source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
     source_inbox_task_id = Column(Integer, ForeignKey("planning.inbox_tasks.id"), nullable=True, index=True)
     dismissed = Column(Boolean, default=False, nullable=False)
+    # За сколько минут до start_time напомнить (null = не напоминать).
+    # Связанный Reminder(kind='task') синхронизирует routers/day.py.
+    remind_lead_min = Column(Integer, nullable=True)
 
 
 class DayNote(Base):

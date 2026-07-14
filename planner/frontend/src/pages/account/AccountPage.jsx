@@ -9,6 +9,7 @@ import {
   revokeOtherSessions,
   revokeSession,
   updateDayStart,
+  updateReminderSettings,
   updatePassword,
   updateProfile,
   updateTheme,
@@ -129,6 +130,15 @@ function AccountPage({ user, onUserUpdate }) {
   const [dayStartSaving, setDayStartSaving] = useState(false);
   const [dayStartStatus, setDayStartStatus] = useState("");
 
+  const [remSettings, setRemSettings] = useState({
+    task_reminder_lead_min: user?.task_reminder_lead_min ?? 10,
+    reminder_repeat_min: user?.reminder_repeat_min ?? 30,
+    reminder_repeat_max: user?.reminder_repeat_max ?? 3,
+    goal_deadline_days: user?.goal_deadline_days ?? 3,
+  });
+  const [remSettingsSaving, setRemSettingsSaving] = useState(false);
+  const [remSettingsStatus, setRemSettingsStatus] = useState("");
+
   const [categoriesMap, setCategoriesMap] = useState({});
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
@@ -167,6 +177,12 @@ function AccountPage({ user, onUserUpdate }) {
     setAvatar(user?.avatar || PRESET_AVATARS[0].value);
     setTheme(user?.theme || "light");
     setDayStart(user?.default_day_start_time || "06:00");
+    setRemSettings({
+      task_reminder_lead_min: user?.task_reminder_lead_min ?? 10,
+      reminder_repeat_min: user?.reminder_repeat_min ?? 30,
+      reminder_repeat_max: user?.reminder_repeat_max ?? 3,
+      goal_deadline_days: user?.goal_deadline_days ?? 3,
+    });
   }, [user]);
 
   useEffect(() => {
@@ -348,6 +364,31 @@ function AccountPage({ user, onUserUpdate }) {
       setDayStartStatus(err.message || "Не удалось сохранить");
     } finally {
       setDayStartSaving(false);
+    }
+  }
+
+  function setRemSettingField(field, rawValue) {
+    setRemSettings((prev) => ({ ...prev, [field]: rawValue }));
+  }
+
+  async function handleReminderSettingsSubmit(event) {
+    event.preventDefault();
+    setRemSettingsStatus("");
+    setRemSettingsSaving(true);
+    try {
+      const payload = {
+        task_reminder_lead_min: Number(remSettings.task_reminder_lead_min) || 0,
+        reminder_repeat_min: Number(remSettings.reminder_repeat_min) || 0,
+        reminder_repeat_max: Number(remSettings.reminder_repeat_max) || 0,
+        goal_deadline_days: Number(remSettings.goal_deadline_days) || 0,
+      };
+      const updated = await updateReminderSettings(payload);
+      onUserUpdate?.(updated);
+      setRemSettingsStatus("Настройки напоминаний сохранены");
+    } catch (err) {
+      setRemSettingsStatus(err.message || "Не удалось сохранить");
+    } finally {
+      setRemSettingsSaving(false);
     }
   }
 
@@ -542,6 +583,88 @@ function AccountPage({ user, onUserUpdate }) {
                   </button>
 
                   {dayStartStatus && <div className="account-status">{dayStartStatus}</div>}
+                </div>
+              </form>
+
+              <form className="account-section" onSubmit={handleReminderSettingsSubmit}>
+                <div className="account-section-info">
+                  <h2>Напоминания</h2>
+                  <p>
+                    Дефолт «напомнить за N минут» для задач дня; повторная
+                    отправка в Telegram, если не ответить на напоминание
+                    (0 — выключить); предупреждение о дедлайне цели за N дней
+                    (0 — выключить).
+                  </p>
+                </div>
+
+                <div className="account-section-controls">
+                  <label className="account-field">
+                    <span>Задача дня: за N минут</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={1440}
+                      value={remSettings.task_reminder_lead_min}
+                      onChange={(e) =>
+                        setRemSettingField("task_reminder_lead_min", e.target.value)
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label className="account-field">
+                    <span>Повтор без ответа: через N минут</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={1440}
+                      value={remSettings.reminder_repeat_min}
+                      onChange={(e) =>
+                        setRemSettingField("reminder_repeat_min", e.target.value)
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label className="account-field">
+                    <span>Максимум повторов</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={remSettings.reminder_repeat_max}
+                      onChange={(e) =>
+                        setRemSettingField("reminder_repeat_max", e.target.value)
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label className="account-field">
+                    <span>Дедлайн цели: за N дней</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={60}
+                      value={remSettings.goal_deadline_days}
+                      onChange={(e) =>
+                        setRemSettingField("goal_deadline_days", e.target.value)
+                      }
+                      required
+                    />
+                  </label>
+
+                  <button
+                    type="submit"
+                    className="account-primary-btn"
+                    disabled={remSettingsSaving}
+                  >
+                    {remSettingsSaving ? "Сохраняем..." : "Сохранить"}
+                  </button>
+
+                  {remSettingsStatus && (
+                    <div className="account-status">{remSettingsStatus}</div>
+                  )}
                 </div>
               </form>
 

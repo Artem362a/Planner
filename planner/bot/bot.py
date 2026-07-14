@@ -35,14 +35,17 @@ load_dotenv()  # на случай локального .env рядом с бо�
 
 from db import (  # noqa: E402
     DayTask,
+    Goal,
     InboxTask,
     Notification,
     NotificationRecipient,
     Reminder,
     SessionLocal,
     TelegramLink,
+    User,
     WeekTask,
 )
+from reminder_rules import add_interval, reschedule_recurring  # noqa: E402
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 DIGEST_HOUR = int(os.getenv("TELEGRAM_DIGEST_HOUR", "8"))
@@ -951,6 +954,78 @@ def _send_daily_digest() -> None:
             print(f"digest send failed for {chat_id}: {e}", flush=True)
 
 
+def _send_goal_deadline_alerts() -> None:
+    """Предупреждения о дедлайнах целей: за goal_deadline_days дней (настройка
+    пользователя, 0 = выключено) и в сам день дедлайна. Колокольчик + TG.
+    Вызывается раз в сутки вместе с дайджестом."""
+    today = date.today()
+    tg_targets: list[tuple[int, str]] = []
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(Goal, User)
+            .join(User, User.id == Goal.user_id)
+            .filter(
+                Goal.status == "active",
+                Goal.target_date.isnot(None),
+            )
+            .all()
+        )
+        if not rows:
+            return
+
+        links = {
+            link.user_id: link.chat_id
+            for link in db.query(TelegramLink).filter(TelegramLink.chat_id.isnot(None)).all()
+        }
+
+        sent = 0
+        for g, u in rows:
+            lead_days = u.goal_deadline_days or 0
+            if lead_days <= 0:
+                continue
+            days_left = (g.target_date - today).days
+            if days_left != lead_days and days_left != 0:
+                continue
+
+            title = g.title
+            when = g.target_date.strftime("%d.%m")
+            if days_left == 0:
+                message = f"Сегодня дедлайн цели «{title}»"
+            else:
+                message = f"Через {days_left} дн. дедлайн цели «{title}» ({when})"
+
+            notif = Notification(
+                title="Дедлайн цели",
+                message=message,
+                created_by_user_id=g.user_id,
+                audience_type="single",
+            )
+            db.add(notif)
+            db.flush()
+            db.add(
+                NotificationRecipient(
+                    notification_id=notif.id,
+                    user_id=g.user_id,
+                    is_read=False,
+                )
+            )
+            sent += 1
+
+            chat_id = links.get(g.user_id)
+            if chat_id is not None:
+                tg_targets.append((int(chat_id), message))
+        db.commit()
+
+    if sent:
+        print(f"goal deadline alerts: {sent}, tg={len(tg_targets)}", flush=True)
+    for chat_id, message in tg_targets:
+        try:
+            bot.send_message(chat_id, f"🎯 <b>{html.escape(message)}</b>")
+        except Exception as e:  # noqa: BLE001
+            print(f"goal deadline send failed for {chat_id}: {e}", flush=True)
+
+
 def _digest_loop() -> None:
     """Раз в сутки в DIGEST_HOUR шлём дайджест всем привязанным.
 
@@ -964,6 +1039,7 @@ def _digest_loop() -> None:
             now = datetime.now()
             if now.hour == DIGEST_HOUR and sent_for != now.date():
                 _send_daily_digest()
+                _send_goal_deadline_alerts()
                 sent_for = now.date()
         except Exception as e:  # noqa: BLE001
             print(f"digest loop error: {e}", flush=True)
@@ -973,9 +1049,13 @@ def _digest_loop() -> None:
 # ---------------------------------------------------------------- reminders
 
 
-def _snooze_keyboard(reminder_id: int) -> types.InlineKeyboardMarkup:
-    """Кнопки «отложить» под сработавшим напоминанием."""
+def _reminder_keyboard(reminder_id: int) -> types.InlineKeyboardMarkup:
+    """Кнопки под сработавшим напоминанием: ответ + «отложить»."""
     kb = types.InlineKeyboardMarkup()
+    kb.row(
+        types.InlineKeyboardButton("✅ Сделано", callback_data=f"rack:{reminder_id}:done"),
+        types.InlineKeyboardButton("👀 Прочитано", callback_data=f"rack:{reminder_id}:read"),
+    )
     kb.row(
         types.InlineKeyboardButton("⏰ +10 мин", callback_data=f"rsnz:{reminder_id}:10"),
         types.InlineKeyboardButton("+1 час", callback_data=f"rsnz:{reminder_id}:60"),
@@ -1001,6 +1081,9 @@ def _snooze_reminder(user_id: int, reminder_id: int, remind_at: datetime) -> dat
         r.remind_at = remind_at.replace(second=0, microsecond=0)
         r.sent = False
         r.sent_at = None
+        r.ack = None
+        r.ack_at = None
+        r.repeat_count = 0
         db.commit()
         return r.remind_at
 
@@ -1043,6 +1126,90 @@ def cb_snooze(call):
     except Exception:  # noqa: BLE001
         pass
     bot.answer_callback_query(call.id, f"Отложено до {label}")
+
+
+def _ack_reminder(user_id: int, reminder_id: int, status: str) -> tuple[str, datetime | None] | None:
+    """Ответ на сработавшее напоминание («сделано»/«прочитано»).
+
+    Возвращает ("ok", None) | ("next", следующее срабатывание) для
+    повторяющегося | ("pending", None), если напоминание ещё не сработало
+    (например, уже отложено с другой кнопки); None — не найдено.
+    """
+    with SessionLocal() as db:
+        r = (
+            db.query(Reminder)
+            .filter(Reminder.id == reminder_id, Reminder.user_id == user_id)
+            .first()
+        )
+        if r is None:
+            return None
+        if not r.sent:
+            return ("pending", None)
+
+        now = datetime.now()
+
+        if status == "done" and r.source_task_id is not None:
+            task = (
+                db.query(DayTask)
+                .filter(DayTask.id == r.source_task_id, DayTask.user_id == user_id)
+                .first()
+            )
+            if task is not None:
+                task.status = 1
+
+        result: tuple[str, datetime | None]
+        if r.recur_every:
+            reschedule_recurring(r, now)
+            result = ("next", r.remind_at)
+        else:
+            r.ack = status
+            r.ack_at = now
+            result = ("ok", None)
+        db.commit()
+        return result
+
+
+@bot.callback_query_handler(func=lambda c: c.data and c.data.startswith("rack:"))
+def cb_ack(call):
+    user_id = _user_id_for_chat(call.message.chat.id)
+    if not user_id:
+        bot.answer_callback_query(call.id, "Аккаунт не привязан")
+        return
+
+    try:
+        _, rid_raw, status = call.data.split(":", 2)
+        reminder_id = int(rid_raw)
+        assert status in ("done", "read")
+    except (ValueError, AssertionError):
+        bot.answer_callback_query(call.id)
+        return
+
+    result = _ack_reminder(user_id, reminder_id, status)
+    if result is None:
+        bot.answer_callback_query(call.id, "Напоминание уже удалено")
+        return
+    kind, next_at = result
+    if kind == "pending":
+        bot.answer_callback_query(call.id, "Напоминание уже перенесено")
+        return
+
+    mark = "✅ Сделано" if status == "done" else "👀 Прочитано"
+    suffix = ""
+    if kind == "next" and next_at is not None:
+        label = (
+            f"{_RU_WD[next_at.weekday()]} {next_at.day:02d}.{next_at.month:02d} "
+            f"{next_at.hour:02d}:{next_at.minute:02d}"
+        )
+        suffix = f" · следующее {label}"
+    try:
+        bot.edit_message_text(
+            f"{call.message.html_text}\n\n<i>{mark}{suffix}</i>",
+            call.message.chat.id,
+            call.message.message_id,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    bot.answer_callback_query(call.id, f"{mark}{suffix}")
 
 
 def _deliver_due_reminders() -> None:
@@ -1104,10 +1271,73 @@ def _deliver_due_reminders() -> None:
             bot.send_message(
                 chat_id,
                 f"⏰ <b>Напоминание</b>\n\n{html.escape(text)}",
-                reply_markup=_snooze_keyboard(reminder_id),
+                reply_markup=_reminder_keyboard(reminder_id),
             )
         except Exception as e:  # noqa: BLE001
             print(f"reminder send failed for {chat_id}: {e}", flush=True)
+
+
+def _redeliver_unacked() -> None:
+    """Повторная доставка напоминаний без ответа + перепланирование
+    повторяющихся, у которых пропущен целый цикл.
+
+    Интервал и максимум повторов — настройки пользователя
+    (reminder_repeat_min = 0 отключает повторы). Повторы шлём только в TG:
+    в колокольчике уведомление и так висит непрочитанным.
+    """
+    now = datetime.now()
+    tg_targets: list[tuple[int, str, int, int, int]] = []
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(Reminder, User)
+            .join(User, User.id == Reminder.user_id)
+            .filter(
+                Reminder.sent == True,  # noqa: E712
+                Reminder.ack.is_(None),
+            )
+            .all()
+        )
+        if not rows:
+            return
+
+        links = {
+            link.user_id: link.chat_id
+            for link in db.query(TelegramLink).filter(TelegramLink.chat_id.isnot(None)).all()
+        }
+
+        for r, u in rows:
+            # Наступил следующий цикл повторяющегося — перепланируем,
+            # чтобы оно не умерло без ответа.
+            if r.recur_every and add_interval(r.remind_at, r.recur_every, r.recur_unit) <= now:
+                reschedule_recurring(r, now)
+                continue
+
+            repeat_min = u.reminder_repeat_min or 0
+            repeat_max = u.reminder_repeat_max or 0
+            if repeat_min <= 0 or r.repeat_count >= repeat_max:
+                continue
+            if r.sent_at is None or now < r.sent_at + timedelta(minutes=repeat_min):
+                continue
+
+            chat_id = links.get(r.user_id)
+            if chat_id is None:
+                continue
+
+            r.repeat_count += 1
+            r.sent_at = now
+            tg_targets.append((int(chat_id), r.text, r.id, r.repeat_count, repeat_max))
+        db.commit()
+
+    for chat_id, text, reminder_id, n, total in tg_targets:
+        try:
+            bot.send_message(
+                chat_id,
+                f"🔔 <b>Напоминание</b> <i>(повтор {n}/{total})</i>\n\n{html.escape(text)}",
+                reply_markup=_reminder_keyboard(reminder_id),
+            )
+        except Exception as e:  # noqa: BLE001
+            print(f"reminder repeat failed for {chat_id}: {e}", flush=True)
 
 
 def _reminders_loop() -> None:
@@ -1119,6 +1349,10 @@ def _reminders_loop() -> None:
             _deliver_due_reminders()
         except Exception as e:  # noqa: BLE001
             print(f"reminders loop error: {e}", flush=True)
+        try:
+            _redeliver_unacked()
+        except Exception as e:  # noqa: BLE001
+            print(f"redeliver loop error: {e}", flush=True)
         _time.sleep(30)
 
 

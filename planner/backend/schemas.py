@@ -25,16 +25,28 @@ class NotificationCountOut(BaseModel):
 class ReminderIn(BaseModel):
     text: str
     remind_at: str  # "YYYY-MM-DDTHH:MM" (локальное время)
+    # Повторяемость: каждые recur_every единиц recur_unit; оба либо заданы, либо нет.
+    recur_every: int | None = None
+    recur_unit: Literal["day", "week", "month"] | None = None
 
 class ReminderOut(BaseModel):
     id: int
     text: str
     remind_at: str
     sent: bool
+    kind: str = "manual"
+    recur_every: int | None = None
+    recur_unit: str | None = None
+    ack: str | None = None
 
 class ReminderSnoozeIn(BaseModel):
     # На сколько минут отложить (1 мин … 7 дней).
     minutes: int
+
+class ReminderAckIn(BaseModel):
+    # Ответ на сработавшее напоминание: done останавливает повторы
+    # (и отмечает задачу-источник выполненной), read — только останавливает.
+    status: Literal["done", "read"]
 
 class UserShortOut(BaseModel):
     id: int
@@ -128,6 +140,13 @@ class UserDayStartUpdateIn(BaseModel):
     default_day_start_time: str  # "HH:MM" or "HH:MM:SS"
 
 
+class UserReminderSettingsIn(BaseModel):
+    task_reminder_lead_min: int  # дефолт «за N минут» для задач дня
+    reminder_repeat_min: int     # интервал повторной доставки, 0 = выключено
+    reminder_repeat_max: int     # максимум повторов
+    goal_deadline_days: int      # предупреждать о дедлайне цели за N дней, 0 = выключено
+
+
 class UserResponse(BaseModel):
     id: int
     email: str
@@ -136,6 +155,10 @@ class UserResponse(BaseModel):
     avatar: str | None = None
     theme: str = "light"
     default_day_start_time: str = "06:00"
+    task_reminder_lead_min: int = 10
+    reminder_repeat_min: int = 30
+    reminder_repeat_max: int = 3
+    goal_deadline_days: int = 3
 
 
 class TokenOut(BaseModel):
@@ -172,6 +195,9 @@ class TaskIn(BaseModel):
     subtasks: List[SubTask] = []
     insert_before_id: int | None = None
     source_week_task_id: int | None = None
+    # Напомнить за N минут до start_time. None = не менять (в PATCH),
+    # отрицательное значение = снять напоминание.
+    remind_lead_min: int | None = None
 
 class TaskOut(TaskIn):
     id: int
@@ -434,6 +460,7 @@ class DayTaskRow(Protocol):
     subtasks: Any
     order_index: int
     source_week_task_id: int | None
+    remind_lead_min: int | None
 
 
 

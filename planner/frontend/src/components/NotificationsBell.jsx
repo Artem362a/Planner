@@ -236,6 +236,19 @@ function todayString() {
   return `${now.getFullYear()}-${mm}-${dd}`;
 }
 
+function formatRecurrence(reminder) {
+  const every = reminder.recur_every;
+  const unit = reminder.recur_unit;
+  if (!every || !unit) return null;
+  if (every === 1) {
+    if (unit === "day") return "каждый день";
+    if (unit === "week") return "каждую неделю";
+    if (unit === "month") return "каждый месяц";
+  }
+  const unitLabel = { day: "дн.", week: "нед.", month: "мес." }[unit] || unit;
+  return `каждые ${every} ${unitLabel}`;
+}
+
 export default function NotificationsBell() {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
@@ -246,6 +259,8 @@ export default function NotificationsBell() {
   const [reminderText, setReminderText] = React.useState("");
   const [reminderDate, setReminderDate] = React.useState(todayString);
   const [reminderTime, setReminderTime] = React.useState("");
+  const [reminderRecurUnit, setReminderRecurUnit] = React.useState("");
+  const [reminderRecurEvery, setReminderRecurEvery] = React.useState(1);
   const [reminderError, setReminderError] = React.useState("");
   const [reminderSaving, setReminderSaving] = React.useState(false);
   const wrapRef = React.useRef(null);
@@ -274,10 +289,17 @@ export default function NotificationsBell() {
       return;
     }
 
+    const body = { text, remind_at: remindAt };
+    if (reminderRecurUnit) {
+      const every = Math.max(1, Number(reminderRecurEvery) || 1);
+      body.recur_every = every;
+      body.recur_unit = reminderRecurUnit;
+    }
+
     try {
       setReminderSaving(true);
       setReminderError("");
-      const created = await createReminder({ text, remind_at: remindAt });
+      const created = await createReminder(body);
       setReminders((prev) =>
         [...prev, created].sort((a, b) =>
           a.remind_at < b.remind_at ? -1 : 1
@@ -285,6 +307,8 @@ export default function NotificationsBell() {
       );
       setReminderText("");
       setReminderTime("");
+      setReminderRecurUnit("");
+      setReminderRecurEvery(1);
     } catch (error) {
       console.error(error);
       setReminderError("Не удалось создать напоминание");
@@ -525,6 +549,28 @@ export default function NotificationsBell() {
                     Добавить
                   </button>
                 </div>
+                <div className="reminder-form-row reminder-form-recur">
+                  <select
+                    value={reminderRecurUnit}
+                    onChange={(e) => setReminderRecurUnit(e.target.value)}
+                    title="Повторять напоминание"
+                  >
+                    <option value="">Не повторять</option>
+                    <option value="day">Повторять: дни</option>
+                    <option value="week">Повторять: недели</option>
+                    <option value="month">Повторять: месяцы</option>
+                  </select>
+                  {reminderRecurUnit && (
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={reminderRecurEvery}
+                      onChange={(e) => setReminderRecurEvery(e.target.value)}
+                      title="Каждые N"
+                    />
+                  )}
+                </div>
                 {reminderError && (
                   <div className="reminder-form-error">{reminderError}</div>
                 )}
@@ -543,6 +589,18 @@ export default function NotificationsBell() {
                       <div className="reminder-item-body">
                         <div className="reminder-item-when">
                           {formatRemindAt(r.remind_at)}
+                          {formatRecurrence(r) && (
+                            <span
+                              className="reminder-item-recur"
+                              title="Повторяющееся напоминание"
+                            >
+                              {" "}
+                              · 🔁 {formatRecurrence(r)}
+                            </span>
+                          )}
+                          {r.kind === "task" && (
+                            <span title="Создано из задачи в плане дня"> · 📋</span>
+                          )}
                         </div>
                         <div className="reminder-item-text">{r.text}</div>
                         <div className="reminder-item-snooze">

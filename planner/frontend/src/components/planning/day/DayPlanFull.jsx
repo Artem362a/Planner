@@ -151,7 +151,9 @@ function categoriesArrayToMap(items) {
   return result;
 }
 
-export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
+export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }) {
+  // Дефолт «напомнить за N минут» из настроек аккаунта.
+  const defaultRemindLead = user?.task_reminder_lead_min ?? 10;
   const [tasks, setTasks] = useState([]);
   const [viewMode, setViewMode] = useState("timeline");
   const [dayNotes, setDayNotes] = useState("");
@@ -176,6 +178,8 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange }) {
     subtasks: [],
     start_time: "",
     end_time: "",
+    remind: false,
+    remind_lead: 10,
   });
 
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -1117,6 +1121,8 @@ const overdueImportCandidates = useMemo(
       subtasks: [],
       start_time: "",
       end_time: "",
+      remind: false,
+      remind_lead: defaultRemindLead,
     });
     setTimeMode("duration");
 
@@ -1146,6 +1152,9 @@ const overdueImportCandidates = useMemo(
       subtasks: task.subtasks || [],
       start_time: startSliced,
       end_time: endTime,
+      remind: task.remind_lead_min != null,
+      remind_lead:
+        task.remind_lead_min != null ? task.remind_lead_min : defaultRemindLead,
     });
     setTimeMode(hasRange ? "range" : "duration");
 
@@ -1410,6 +1419,12 @@ const overdueImportCandidates = useMemo(
       status: 0,
       subtasks: form.subtasks,
       insert_before_id: editingTaskId === null ? insertBeforeId : null,
+      // Напоминание возможно только у задачи с фиксированным началом;
+      // -1 явно снимает его (null бэкенд трактует как «не менять»).
+      remind_lead_min:
+        startTime && form.remind
+          ? Math.max(0, Math.min(1440, Number(form.remind_lead) || 0))
+          : -1,
     };
 
     if (startTime) {
@@ -2369,6 +2384,33 @@ const overdueImportCandidates = useMemo(
                       onChange={handleFormChange}
                     />
                   </label>
+                </div>
+              )}
+
+              {timeMode === "range" && !isTemplateMode && (
+                <div className="task-remind-row">
+                  <label className="task-remind-check">
+                    <input
+                      type="checkbox"
+                      checked={form.remind}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, remind: e.target.checked }))
+                      }
+                    />
+                    <span>Напомнить за</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="task-remind-lead"
+                    min={0}
+                    max={1440}
+                    value={form.remind_lead}
+                    disabled={!form.remind}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, remind_lead: e.target.value }))
+                    }
+                  />
+                  <span className="task-remind-unit">мин (бот и колокольчик)</span>
                 </div>
               )}
 

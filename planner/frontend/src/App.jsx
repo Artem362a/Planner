@@ -438,7 +438,7 @@ const App = () => {
           path="/day-plan"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <DayPlannerPage />
+              <DayPlannerPage user={user} />
             </ProtectedRoute>
           }
         />

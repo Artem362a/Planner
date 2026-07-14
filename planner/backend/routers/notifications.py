@@ -28,10 +28,24 @@ from db import (
     WeekTemplate,
 )
 from dependencies import get_current_developer, get_current_user, get_db
+from reminder_rules import RECUR_EVERY_MAX, RECUR_UNITS, reschedule_recurring
 from schemas import *
 from serializers import *
 
 router = APIRouter()
+
+
+def _reminder_to_out(row: Any) -> ReminderOut:
+    return ReminderOut(
+        id=row.id,
+        text=row.text,
+        remind_at=row.remind_at.strftime("%Y-%m-%dT%H:%M"),
+        sent=bool(row.sent),
+        kind=getattr(row, "kind", "manual") or "manual",
+        recur_every=getattr(row, "recur_every", None),
+        recur_unit=getattr(row, "recur_unit", None),
+        ack=getattr(row, "ack", None),
+    )
 
 @router.get("/notifications/users", response_model=list[UserShortOut])
 def list_users_for_notifications(
@@ -343,15 +357,7 @@ def list_reminders(
         .all()
     )
 
-    return [
-        ReminderOut(
-            id=cast(Any, r).id,
-            text=cast(Any, r).text,
-            remind_at=cast(Any, r).remind_at.strftime("%Y-%m-%dT%H:%M"),
-            sent=bool(cast(Any, r).sent),
-        )
-        for r in rows
-    ]
+    return [_reminder_to_out(cast(Any, r)) for r in rows]
 
 
 @router.post("/reminders", response_model=ReminderOut)
@@ -376,22 +382,26 @@ def create_reminder(
     if remind_at <= datetime.now():
         raise HTTPException(status_code=400, detail="Время напоминания уже прошло")
 
+    if (body.recur_every is None) != (body.recur_unit is None):
+        raise HTTPException(status_code=400, detail="recur_every и recur_unit задаются вместе")
+    if body.recur_every is not None:
+        if body.recur_unit not in RECUR_UNITS:
+            raise HTTPException(status_code=400, detail="recur_unit must be day|week|month")
+        if not (1 <= body.recur_every <= RECUR_EVERY_MAX):
+            raise HTTPException(status_code=400, detail=f"recur_every must be 1..{RECUR_EVERY_MAX}")
+
     row = Reminder(
         user_id=current_user_row.id,
         text=text,
         remind_at=remind_at,
+        recur_every=body.recur_every,
+        recur_unit=body.recur_unit,
     )
     db.add(row)
     db.commit()
     db.refresh(row)
 
-    row_cast = cast(Any, row)
-    return ReminderOut(
-        id=row_cast.id,
-        text=row_cast.text,
-        remind_at=row_cast.remind_at.strftime("%Y-%m-%dT%H:%M"),
-        sent=bool(row_cast.sent),
-    )
+    return _reminder_to_out(cast(Any, row))
 
 
 @router.post("/reminders/{reminder_id}/snooze", response_model=ReminderOut)
@@ -429,15 +439,69 @@ def snooze_reminder(
     row_cast.remind_at = base + timedelta(minutes=body.minutes)
     row_cast.sent = False
     row_cast.sent_at = None
+    row_cast.ack = None
+    row_cast.ack_at = None
+    row_cast.repeat_count = 0
     db.commit()
     db.refresh(row)
 
-    return ReminderOut(
-        id=row_cast.id,
-        text=row_cast.text,
-        remind_at=row_cast.remind_at.strftime("%Y-%m-%dT%H:%M"),
-        sent=bool(row_cast.sent),
+    return _reminder_to_out(row_cast)
+
+
+@router.post("/reminders/{reminder_id}/ack", response_model=ReminderOut)
+def ack_reminder(
+    reminder_id: int,
+    body: ReminderAckIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ответ на сработавшее напоминание: «сделано» или «прочитано».
+
+    Оба ответа останавливают повторную доставку. «Сделано» у напоминания-от-задачи
+    дополнительно отмечает задачу выполненной. Повторяющееся напоминание после
+    любого ответа перепланируется на следующее срабатывание.
+    """
+    current_user_row = cast(Any, current_user)
+
+    row = (
+        db.query(Reminder)
+        .filter(
+            Reminder.id == reminder_id,
+            Reminder.user_id == current_user_row.id,
+        )
+        .first()
     )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    row_cast = cast(Any, row)
+    if not row_cast.sent:
+        raise HTTPException(status_code=400, detail="Reminder has not fired yet")
+
+    now = datetime.now()
+
+    if body.status == "done" and row_cast.source_task_id is not None:
+        task = (
+            db.query(DayTask)
+            .filter(
+                DayTask.id == row_cast.source_task_id,
+                DayTask.user_id == current_user_row.id,
+            )
+            .first()
+        )
+        if task is not None:
+            cast(Any, task).status = 1
+
+    if row_cast.recur_every:
+        reschedule_recurring(row_cast, now)
+    else:
+        row_cast.ack = body.status
+        row_cast.ack_at = now
+
+    db.commit()
+    db.refresh(row)
+
+    return _reminder_to_out(row_cast)
 
 
 @router.delete("/reminders/{reminder_id}", response_model=MessageOut)
