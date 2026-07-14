@@ -2388,8 +2388,11 @@ const overdueImportCandidates = useMemo(
               )}
 
               {timeMode === "range" && !isTemplateMode && (
-                <div className="task-remind-row">
-                  <label className="task-remind-check">
+                <div
+                  className="task-remind-row"
+                  title="Бот и колокольчик на сайте пришлют напоминание"
+                >
+                  <label className="task-remind-toggle">
                     <input
                       type="checkbox"
                       checked={form.remind}
@@ -2397,20 +2400,29 @@ const overdueImportCandidates = useMemo(
                         setForm((prev) => ({ ...prev, remind: e.target.checked }))
                       }
                     />
-                    <span>Напомнить за</span>
+                    <span className="task-remind-slider" aria-hidden="true" />
+                    <span className="task-remind-label">🔔 Напомнить</span>
                   </label>
-                  <input
-                    type="number"
-                    className="task-remind-lead"
-                    min={0}
-                    max={1440}
-                    value={form.remind_lead}
-                    disabled={!form.remind}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, remind_lead: e.target.value }))
-                    }
-                  />
-                  <span className="task-remind-unit">мин (бот и колокольчик)</span>
+
+                  {form.remind && (
+                    <span className="task-remind-lead-wrap">
+                      за
+                      <input
+                        type="number"
+                        className="task-remind-lead"
+                        min={0}
+                        max={1440}
+                        value={form.remind_lead}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            remind_lead: e.target.value,
+                          }))
+                        }
+                      />
+                      мин
+                    </span>
+                  )}
                 </div>
               )}
 

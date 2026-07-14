@@ -109,44 +109,88 @@
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
-/* Чекбокс «напомнить за N минут» в форме задачи */
+/* Тумблер «🔔 Напомнить [за N мин]» в форме задачи */
 .task-remind-row {
   display: flex;
   align-items: center;
+  gap: 12px;
+  min-height: 30px;
+}
+
+.task-remind-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.task-remind-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.task-remind-slider {
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ddd6f3;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.18s ease;
+}
+
+.task-remind-slider::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(63, 45, 117, 0.28);
+  transition: transform 0.18s ease;
+}
+
+.task-remind-toggle input:checked + .task-remind-slider {
+  background: #6f58e8;
+}
+
+.task-remind-toggle input:checked + .task-remind-slider::after {
+  transform: translateX(16px);
+}
+
+.task-remind-toggle input:focus-visible + .task-remind-slider {
+  outline: 2px solid #6f58e8;
+  outline-offset: 2px;
+}
+
+.task-remind-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #312b55;
+}
+
+.task-remind-lead-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: #62598e;
 }
 
-.task-remind-check {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.task-remind-check input {
-  accent-color: #6f58e8;
-  cursor: pointer;
-}
-
 .task-remind-lead {
-  width: 64px;
+  width: 56px;
   padding: 4px 6px;
   border: 1px solid #e2dbf5;
   border-radius: 8px;
   font: inherit;
   font-size: 13px;
   color: #312b55;
-}
-
-.task-remind-lead:disabled {
-  opacity: 0.5;
-}
-
-.task-remind-unit {
-  font-size: 12px;
-  color: #9b93c4;
+  text-align: center;
 }
 
 /* Галочка «фиксировать начало дня в шаблоне» (режим редактирования шаблона) */
