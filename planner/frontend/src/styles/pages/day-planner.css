@@ -432,6 +432,25 @@
   box-shadow: 0 0 0 4px rgba(111, 88, 232, 0.16);
 }
 
+/* На тонких строчках мелких задач (внутри групп) обводка смотрится грубо —
+   там выделение рисуем мягкой «пилюлей» с заливкой. */
+.day-timeline-attached-task.remind-pickable {
+  padding: 3px 8px;
+  margin: 1px 0;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.day-timeline-attached-task.remind-pickable:hover {
+  background: rgba(111, 88, 232, 0.08);
+}
+
+.day-timeline-attached-task.remind-picked {
+  outline: none;
+  box-shadow: none;
+  background: rgba(111, 88, 232, 0.14);
+}
+
 .day-task-remind-ind {
   display: inline-flex;
   align-items: center;
@@ -439,6 +458,11 @@
   color: #6f58e8;
   flex-shrink: 0;
   cursor: default;
+  vertical-align: -2px;
+}
+
+.day-timeline-small-title .day-task-remind-ind {
+  margin-left: 5px;
 }
 
 .day-view-toggle {

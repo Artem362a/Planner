@@ -501,6 +501,16 @@
   box-shadow: 0 0 0 4px rgba(164, 139, 255, 0.22);
 }
 
+:root[data-theme="dark"] .day-timeline-attached-task.remind-pickable:hover {
+  background: rgba(164, 139, 255, 0.1);
+}
+
+:root[data-theme="dark"] .day-timeline-attached-task.remind-picked {
+  outline: none;
+  box-shadow: none;
+  background: rgba(164, 139, 255, 0.2);
+}
+
 :root[data-theme="dark"] .day-task-remind-ind {
   color: #c8beff;
 }
