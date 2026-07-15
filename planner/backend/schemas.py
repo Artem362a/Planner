@@ -269,6 +269,9 @@ class WeekTaskIn(BaseModel):
 class WeekTaskOut(WeekTaskIn):
     id: int
     order_index: int = 0
+    # Только для recurring: статус реального DayTask на каждый день недели
+    # ("YYYY-MM-DD" -> 0|1). Даты без записи ещё не созданы (см. week.py).
+    day_status: dict[str, int] = {}
 
 
 class WeekTaskReorderIn(BaseModel):

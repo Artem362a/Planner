@@ -70,36 +70,6 @@ const TEMPLATE_COLORS = [
   "#D985C7", "#B064C9", "#B97AD6", "#A6A2D8", "#7E88A8", "#95A0BF",
 ];
 
-function groupConsecutiveDays(days) {
-  if (!Array.isArray(days) || days.length === 0) return [];
-
-  const sorted = [...new Set(days)]
-    .map(Number)
-    .filter((n) => !Number.isNaN(n))
-    .sort((a, b) => a - b);
-
-  if (sorted.length === 0) return [];
-
-  const groups = [];
-  let start = sorted[0];
-  let end = sorted[0];
-
-  for (let i = 1; i < sorted.length; i += 1) {
-    const current = sorted[i];
-
-    if (current === end + 1) {
-      end = current;
-    } else {
-      groups.push({ start, end });
-      start = current;
-      end = current;
-    }
-  }
-
-  groups.push({ start, end });
-  return groups;
-}
-
 function startOfToday() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -938,130 +908,56 @@ function hexToRgba(hex, alpha = 1) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function renderRecurringTaskBar(task, color, overdue = false) {
+// Каждый день recurring-задачи выполняется независимо (см. day.py), поэтому
+// красим сегменты по факту конкретного дня (task.day_status), а не по общему
+// прогрессу подзадач шаблона. Соседние дни недели объединяем в один бар,
+// только если у них совпадает статус "выполнено/нет".
+function renderRecurringTaskBar(task, color, weekDays = []) {
   const repeatDays = [...new Set((task.repeat_days || []).map(Number))]
     .filter((n) => !Number.isNaN(n))
     .sort((a, b) => a - b);
 
   if (repeatDays.length === 0) return null;
 
-  const groups = groupConsecutiveDays(repeatDays);
-  const { total, done, progress, hasSubtasks, isDone } =
-    getTaskProgressMeta(task);
+  // status=1 у самой недельной задачи для recurring означает «остановлена»
+  // (архивирована, больше не генерирует дни) — красим как выполненную целиком.
+  const isArchived = Number(task.status) === 1;
+  const dayStatus = task.day_status || {};
 
-  if (isDone) {
-    return groups.map((group, groupIndex) => (
-      <div
-        key={`${task.id}-recurring-done-${groupIndex}`}
-        className={
-          "week-grid-task-bar " +
-          (group.start === group.end ? "week-grid-task-bar--single " : "") +
-          (task.important
-            ? "week-grid-task-bar--important"
-            : "week-grid-task-bar--normal") +
-          " week-grid-task-bar--done" +
-          (overdue ? " week-grid-task-bar--overdue" : "")
-        }
-        style={{
-          left: `calc(${group.start} * (100% / 7) + 6px)`,
-          width: `calc(${group.end - group.start + 1} * (100% / 7) - 12px)`,
-          backgroundColor: color,
-        }}
-      />
-    ));
-  }
+  const segments = [];
+  let current = null;
 
-  if (!hasSubtasks) {
-    return groups.map((group, groupIndex) => (
-      <div
-        key={`${task.id}-recurring-plain-${groupIndex}`}
-        className={
-          "week-grid-task-bar " +
-          (group.start === group.end ? "week-grid-task-bar--single " : "") +
-          (task.important
-            ? "week-grid-task-bar--important"
-            : "week-grid-task-bar--normal") +
-          (overdue ? " week-grid-task-bar--overdue" : "")
-        }
-        style={{
-          left: `calc(${group.start} * (100% / 7) + 6px)`,
-          width: `calc(${group.end - group.start + 1} * (100% / 7) - 12px)`,
-          backgroundColor: color,
-        }}
-      />
-    ));
-  }
+  for (const dayIndex of repeatDays) {
+    const dateStr = weekDays[dayIndex]?.str;
+    const done = isArchived || dayStatus[dateStr] === 1;
 
-  const totalSegments = repeatDays.length;
-
-  return groups.map((group, groupIndex) => {
-    const groupDays = [];
-    for (let day = group.start; day <= group.end; day += 1) {
-      groupDays.push(day);
+    if (current && current.end === dayIndex - 1 && current.done === done) {
+      current.end = dayIndex;
+    } else {
+      current = { start: dayIndex, end: dayIndex, done };
+      segments.push(current);
     }
+  }
 
-    const groupStartIndex = repeatDays.indexOf(group.start);
-
-    return (
-      <div
-        key={`${task.id}-recurring-progress-${groupIndex}`}
-        className={
-          "week-grid-task-recurring-progress" +
-          (overdue ? " week-grid-task-progress--overdue" : "")
-        }
-        style={{
-          left: `calc(${group.start} * (100% / 7) + 6px)`,
-          width: `calc(${group.end - group.start + 1} * (100% / 7) - 12px)`,
-          gridTemplateColumns: `repeat(${groupDays.length}, 1fr)`,
-        }}
-        title={`Выполнено ${done} из ${total} подзадач`}
-      >
-        {groupDays.map((day, localIndex) => {
-          const absoluteSegmentIndex = groupStartIndex + localIndex;
-          const startPart = absoluteSegmentIndex / totalSegments;
-          const endPart = (absoluteSegmentIndex + 1) / totalSegments;
-
-          let segmentProgress = 0;
-
-          if (progress >= endPart) {
-            segmentProgress = 1;
-          } else if (progress <= startPart) {
-            segmentProgress = 0;
-          } else {
-            segmentProgress = (progress - startPart) / (endPart - startPart);
-          }
-
-          return (
-            <div
-              key={`${task.id}-recurring-progress-${groupIndex}-${localIndex}`}
-              className="week-grid-task-recurring-segment"
-            >
-              <div
-                className="week-grid-task-progress-track"
-                style={{
-                  backgroundColor: overdue
-                    ? hexToRgba("#d46a6a", 0.22)
-                    : hexToRgba(color, 0.22),
-                  borderColor: overdue
-                    ? hexToRgba("#b94d4d", 0.34)
-                    : hexToRgba(color, 0.34),
-                }}
-              />
-              {segmentProgress > 0 && (
-                <div
-                  className="week-grid-task-progress-fill"
-                  style={{
-                    width: `${segmentProgress * 100}%`,
-                    backgroundColor: overdue ? "#d46a6a" : color,
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  });
+  return segments.map((seg, segIndex) => (
+    <div
+      key={`${task.id}-recurring-${segIndex}`}
+      className={
+        "week-grid-task-bar " +
+        (seg.start === seg.end ? "week-grid-task-bar--single " : "") +
+        (task.important
+          ? "week-grid-task-bar--important"
+          : "week-grid-task-bar--normal") +
+        (seg.done ? " week-grid-task-bar--done" : "")
+      }
+      style={{
+        left: `calc(${seg.start} * (100% / 7) + 6px)`,
+        width: `calc(${seg.end - seg.start + 1} * (100% / 7) - 12px)`,
+        backgroundColor: color,
+      }}
+      title={seg.done ? "Выполнено в этот день" : undefined}
+    />
+  ));
 }
 
 function handleDragStart(taskId) {
@@ -1344,7 +1240,7 @@ async function handleDragEnd() {
                             ))}
 
                             {t.task_type === "recurring"
-                            ? renderRecurringTaskBar(t, color, overdue)
+                            ? renderRecurringTaskBar(t, color, weekDays)
                             : renderWeekTaskBar(
                                 t,
                                 `calc(${safeStart} * (100% / 7) + 6px)`,
@@ -1455,14 +1351,28 @@ async function handleDragEnd() {
 
                         {expandedTaskId === t.id && (
                           <div className="subtasks-inline-block">
+                            {t.task_type === "recurring" && (
+                              <div className="subtasks-template-hint">
+                                Это чек-лист шаблона — применяется к новым дням.
+                                Факт выполнения смотри в плане на день.
+                              </div>
+                            )}
+
                             {t.subtasks && t.subtasks.length > 0 && (
                               <ul className="subtasks-list">
                                 {t.subtasks.map((s) => (
                                   <li key={s.id} className="subtask-item">
-                                    <label>
+                                    <label
+                                      className={
+                                        t.task_type === "recurring"
+                                          ? "subtask-item--readonly"
+                                          : undefined
+                                      }
+                                    >
                                       <input
                                         type="checkbox"
                                         checked={!!s.done}
+                                        disabled={t.task_type === "recurring"}
                                         onChange={(e) => {
                                           e.stopPropagation();
                                           toggleSubtask(t, s);

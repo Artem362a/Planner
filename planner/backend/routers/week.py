@@ -166,7 +166,30 @@ def api_list_week_tasks(
     if any_created:
         db.commit()
 
-    return [_week_task_model_to_out(row) for row in rows]
+    # Для recurring задач подтягиваем факт по каждому дню недели из реальных
+    # DayTask (у recurring они независимы — см. day.py: каждый день сам за себя).
+    recurring_ids = [
+        cast(Any, row).id for row in rows if (cast(Any, row).task_type or "").strip() == "recurring"
+    ]
+    day_status_by_task: dict[int, dict[str, int]] = {}
+    if recurring_ids:
+        day_rows = (
+            db.query(DayTask.source_week_task_id, DayTask.day, DayTask.status)
+            .filter(
+                DayTask.user_id == current_user_row.id,
+                DayTask.source_week_task_id.in_(recurring_ids),
+                DayTask.day >= week_start,
+                DayTask.day <= week_end,
+            )
+            .all()
+        )
+        for source_id, day, status in day_rows:
+            day_status_by_task.setdefault(source_id, {})[day.isoformat()] = int(status)
+
+    return [
+        _week_task_model_to_out(row, day_status_by_task.get(cast(Any, row).id))
+        for row in rows
+    ]
 
 
 @router.get("/week-tasks/important", response_model=list[WeekTaskOut])

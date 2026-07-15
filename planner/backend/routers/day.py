@@ -349,7 +349,13 @@ def update_task(
         parts = body.remind_anchor_time.split(":")
         task.remind_anchor_time = _time(hour=int(parts[0]), minute=int(parts[1]))
 
-    # Синхронизация в недельную задачу, если дневная была импортирована из недели
+    # Синхронизация в недельную задачу, если дневная была импортирована из недели.
+    # Recurring-задачи (повтор по дням недели) — исключение: там каждый день
+    # независимое повторение, а не растянутый на несколько дней один инстанс.
+    # Кросс-дневное зеркалирование подзадач, синк статуса недельной задачи и
+    # каскад на соседние дни для них не применяются (day_task.status уже
+    # выставлен независимо выше). Авто-выполнение дня по своим же подзадачам —
+    # чисто локальная логика, которая применяется в обоих случаях.
     if task.source_week_task_id is not None:
         week_task = (
             db.query(WeekTask)
@@ -362,88 +368,92 @@ def update_task(
 
         if week_task is not None:
             week_task_row = cast(Any, week_task)
+            is_recurring = week_task_row.task_type == "recurring"
 
-            # Прокидываем подзадачи как есть
             if body.subtasks is not None:
                 synced_subtasks = [s.dict() for s in body.subtasks]
-                week_task_row.subtasks = synced_subtasks
 
-                # Подзадачи общие для всех инстансов недельной задачи: их состояние
-                # пропихиваем в pending sibling-дни, чтобы юзер видел одно и то же
-                # на каждый день. Completed дни — это исторический снапшот, их не трогаем.
-                db.query(DayTask).filter(
-                    DayTask.user_id == current_user_row.id,
-                    DayTask.source_week_task_id == task.source_week_task_id,
-                    DayTask.id != task.id,
-                    DayTask.status == 0,
-                ).update({"subtasks": synced_subtasks}, synchronize_session=False)
+                if not is_recurring:
+                    # Прокидываем подзадачи как есть
+                    week_task_row.subtasks = synced_subtasks
+
+                    # Подзадачи общие для всех инстансов недельной задачи: их состояние
+                    # пропихиваем в pending sibling-дни, чтобы юзер видел одно и то же
+                    # на каждый день. Completed дни — это исторический снапшот, их не трогаем.
+                    db.query(DayTask).filter(
+                        DayTask.user_id == current_user_row.id,
+                        DayTask.source_week_task_id == task.source_week_task_id,
+                        DayTask.id != task.id,
+                        DayTask.status == 0,
+                    ).update({"subtasks": synced_subtasks}, synchronize_session=False)
 
                 # Авто-выполнение только когда все подзадачи отмечены
                 if len(synced_subtasks) > 0 and all(bool(s.get("done")) for s in synced_subtasks):
                     task.status = 1
 
-            # Синхронизируем статус недельной задачи по итоговому статусу дневной
-            week_task_row.status = task.status
+            if not is_recurring:
+                # Синхронизируем статус недельной задачи по итоговому статусу дневной
+                week_task_row.status = task.status
 
-            # Каскад смены статуса: удаление/восстановление дневных задач в других днях
-            if old_status != task.status:
-                if task.status == 1:
-                    # Помечаем прошлые незавершённые дни как выполненные
-                    db.query(DayTask).filter(
-                        DayTask.user_id == current_user_row.id,
-                        DayTask.source_week_task_id == task.source_week_task_id,
-                        DayTask.day < d,
-                        DayTask.status == 0,
-                    ).update({"status": 1}, synchronize_session=False)
-                    # Удаляем будущие незавершённые дни
-                    db.query(DayTask).filter(
-                        DayTask.user_id == current_user_row.id,
-                        DayTask.source_week_task_id == task.source_week_task_id,
-                        DayTask.day > d,
-                        DayTask.status == 0,
-                    ).delete(synchronize_session=False)
-                elif task.status == 0:
-                    restore_day = d + timedelta(days=1)
-                    raw_rd = cast(list[Any] | None, getattr(week_task_row, "repeat_days", None)) or []
-                    restore_repeat_days: set[int] = set()
-                    for rd in raw_rd:
-                        try:
-                            restore_repeat_days.add(int(rd))
-                        except (TypeError, ValueError):
-                            pass
-                    while restore_day <= week_task_row.end_date:
-                        if restore_repeat_days and restore_day.weekday() not in restore_repeat_days:
-                            restore_day += timedelta(days=1)
-                            continue
-                        exists = (
-                            db.query(DayTask)
-                            .filter(
-                                DayTask.user_id == current_user_row.id,
-                                DayTask.day == restore_day,
-                                DayTask.source_week_task_id == task.source_week_task_id,
-                            )
-                            .first()
-                        )
-                        if exists is None:
-                            max_ord = (
-                                db.query(DayTask.order_index)
-                                .filter(DayTask.user_id == current_user_row.id, DayTask.day == restore_day)
-                                .order_by(DayTask.order_index.desc())
+                # Каскад смены статуса: удаление/восстановление дневных задач в других днях
+                if old_status != task.status:
+                    if task.status == 1:
+                        # Помечаем прошлые незавершённые дни как выполненные
+                        db.query(DayTask).filter(
+                            DayTask.user_id == current_user_row.id,
+                            DayTask.source_week_task_id == task.source_week_task_id,
+                            DayTask.day < d,
+                            DayTask.status == 0,
+                        ).update({"status": 1}, synchronize_session=False)
+                        # Удаляем будущие незавершённые дни
+                        db.query(DayTask).filter(
+                            DayTask.user_id == current_user_row.id,
+                            DayTask.source_week_task_id == task.source_week_task_id,
+                            DayTask.day > d,
+                            DayTask.status == 0,
+                        ).delete(synchronize_session=False)
+                    elif task.status == 0:
+                        restore_day = d + timedelta(days=1)
+                        raw_rd = cast(list[Any] | None, getattr(week_task_row, "repeat_days", None)) or []
+                        restore_repeat_days: set[int] = set()
+                        for rd in raw_rd:
+                            try:
+                                restore_repeat_days.add(int(rd))
+                            except (TypeError, ValueError):
+                                pass
+                        while restore_day <= week_task_row.end_date:
+                            if restore_repeat_days and restore_day.weekday() not in restore_repeat_days:
+                                restore_day += timedelta(days=1)
+                                continue
+                            exists = (
+                                db.query(DayTask)
+                                .filter(
+                                    DayTask.user_id == current_user_row.id,
+                                    DayTask.day == restore_day,
+                                    DayTask.source_week_task_id == task.source_week_task_id,
+                                )
                                 .first()
                             )
-                            db.add(DayTask(
-                                user_id=current_user_row.id,
-                                day=restore_day,
-                                title=week_task_row.name,
-                                duration_min=None,
-                                priority="high" if getattr(week_task_row, "important", False) else "medium",
-                                category=week_task_row.category,
-                                status=0,
-                                subtasks=list(week_task_row.subtasks) if week_task_row.subtasks else [],
-                                source_week_task_id=task.source_week_task_id,
-                                order_index=(max_ord[0] + 1) if max_ord else 0,
-                            ))
-                        restore_day += timedelta(days=1)
+                            if exists is None:
+                                max_ord = (
+                                    db.query(DayTask.order_index)
+                                    .filter(DayTask.user_id == current_user_row.id, DayTask.day == restore_day)
+                                    .order_by(DayTask.order_index.desc())
+                                    .first()
+                                )
+                                db.add(DayTask(
+                                    user_id=current_user_row.id,
+                                    day=restore_day,
+                                    title=week_task_row.name,
+                                    duration_min=None,
+                                    priority="high" if getattr(week_task_row, "important", False) else "medium",
+                                    category=week_task_row.category,
+                                    status=0,
+                                    subtasks=list(week_task_row.subtasks) if week_task_row.subtasks else [],
+                                    source_week_task_id=task.source_week_task_id,
+                                    order_index=(max_ord[0] + 1) if max_ord else 0,
+                                ))
+                            restore_day += timedelta(days=1)
 
     # Если задача из Inbox и только что выполнена — фиксируем completed_at
     if old_status != task.status and task.status == 1:

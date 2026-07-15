@@ -182,7 +182,9 @@ def _week_template_to_out(tmpl: WeekTemplateRow) -> WeekTemplateOut:
     )
 
 
-def _week_task_model_to_out(row: Any) -> WeekTaskOut:
+def _week_task_model_to_out(
+    row: Any, day_status: dict[str, int] | None = None
+) -> WeekTaskOut:
     subtasks_raw = cast(list[dict[str, Any]] | None, row.subtasks) or []
     repeat_days_raw = cast(list[int] | None, row.repeat_days) or []
 
@@ -206,6 +208,7 @@ def _week_task_model_to_out(row: Any) -> WeekTaskOut:
             )
             for s in subtasks_raw
         ],
+        day_status=day_status or {},
     )
 
 

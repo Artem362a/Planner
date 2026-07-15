@@ -81,6 +81,24 @@
   padding: 0 4px;
 }
 
+/* Чек-лист повторяющейся недельной задачи — это шаблон для новых дней,
+   а не факт выполнения (тот живёт в плане на день, независимо по дням). */
+.subtasks-template-hint {
+  margin-bottom: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8b84a8;
+}
+
+.subtask-item--readonly {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.subtask-item--readonly input {
+  cursor: default;
+}
+
 .subtask-inline-add-row {
   margin-top: 8px;
   display: flex;
