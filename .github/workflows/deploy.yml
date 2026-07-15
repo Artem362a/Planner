@@ -1,0 +1,84 @@
+name: Deploy
+
+# Деплой стартует только после зелёного CI на main:
+# merge в main -> CI -> (успех) -> Deploy.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-backend:
+    name: Backend + bot (ноут, self-hosted)
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: [self-hosted, dayplan-laptop]
+    steps:
+      - name: Бэкап БД перед миграциями
+        run: bash ~/backup.sh
+      - name: Обновить код и пересобрать контейнеры
+        # Работаем в ~/Planner, а не в workspace раннера: compose-проект
+        # (имя, тома с данными postgres) привязан к этому каталогу.
+        run: |
+          cd ~/Planner
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          docker compose up -d --build backend bot
+      - name: Миграции
+        run: cd ~/Planner && docker compose exec -T backend alembic upgrade head
+      - name: Health check
+        run: |
+          for i in $(seq 1 12); do
+            curl -fsS -o /dev/null http://127.0.0.1:8000/docs && exit 0
+            sleep 5
+          done
+          echo "backend не поднялся"; docker logs dayplan-backend --tail 50; exit 1
+
+  deploy-frontend:
+    name: Frontend (сборка в облаке, выкладка на VDS)
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: planner/frontend/package-lock.json
+      - name: Сборка
+        working-directory: planner/frontend
+        run: |
+          npm ci
+          npm run build
+      - name: SSH-ключ
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VDS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.VDS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: Выкладка на VDS (с бэкапом старой версии)
+        run: |
+          tar -C planner/frontend/dist -czf /tmp/dist.tar.gz .
+          scp /tmp/dist.tar.gz root@${{ secrets.VDS_HOST }}:/tmp/dist.tar.gz
+          ssh root@${{ secrets.VDS_HOST }} 'set -e
+            rm -rf /tmp/frontend-dist-new && mkdir -p /tmp/frontend-dist-new
+            tar -C /tmp/frontend-dist-new -xzf /tmp/dist.tar.gz
+            cp -a /var/www/planner "/var/www/planner.bak.$(date +%Y%m%d_%H%M%S)"
+            rm -rf /var/www/planner/*
+            cp -a /tmp/frontend-dist-new/. /var/www/planner/
+            chmod -R 755 /var/www/planner
+            rm -rf /tmp/frontend-dist-new /tmp/dist.tar.gz
+            # держим только 3 последних бэкапа
+            ls -dt /var/www/planner.bak.* 2>/dev/null | tail -n +4 | xargs -r rm -rf'
+      - name: Проверка, что сайт отвечает
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://dailyplannerapp.ru/)
+          echo "https://dailyplannerapp.ru/ -> $code"
+          test "$code" = "200"
