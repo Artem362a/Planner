@@ -170,9 +170,17 @@
 }
 
 .task-remind-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   font-weight: 600;
   color: #312b55;
+}
+
+.task-remind-label svg {
+  color: #6f58e8;
+  flex-shrink: 0;
 }
 
 .task-remind-lead-wrap {
@@ -425,8 +433,10 @@
 }
 
 .day-task-remind-ind {
+  display: inline-flex;
+  align-items: center;
   margin-left: 8px;
-  font-size: 12px;
+  color: #6f58e8;
   flex-shrink: 0;
   cursor: default;
 }

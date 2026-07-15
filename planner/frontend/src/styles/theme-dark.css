@@ -472,6 +472,61 @@
   color: #eae8f4;
 }
 
+/* ---------- Bell / reminder mode (day plan) ---------- */
+
+:root[data-theme="dark"] .day-remind-mode-btn {
+  background: #1a1920;
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .day-remind-mode-btn:hover {
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
+}
+:root[data-theme="dark"] .day-remind-mode-btn--active,
+:root[data-theme="dark"] .day-remind-mode-btn--active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--panel-bg);
+}
+
+:root[data-theme="dark"] .day-remind-mode-hint {
+  background: rgba(154, 134, 255, 0.13);
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .remind-picked {
+  outline-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(164, 139, 255, 0.22);
+}
+
+:root[data-theme="dark"] .day-task-remind-ind {
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .task-remind-label {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .task-remind-label svg {
+  color: #c8beff;
+}
+:root[data-theme="dark"] .task-remind-note {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .task-remind-lead-wrap {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .task-remind-slider {
+  background: #3a3847;
+}
+:root[data-theme="dark"] .task-remind-toggle input:checked + .task-remind-slider {
+  background: var(--accent);
+}
+:root[data-theme="dark"] .task-remind-toggle input:focus-visible + .task-remind-slider {
+  outline-color: var(--accent);
+}
+
 :root[data-theme="dark"] .day-timeline-hours,
 :root[data-theme="dark"] .day-timeline-time {
   color: var(--text-soft);

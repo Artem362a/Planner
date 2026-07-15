@@ -151,7 +151,7 @@ function categoriesArrayToMap(items) {
   return result;
 }
 
-function BellIcon({ size = 16 }) {
+function BellIcon({ size = 16, strokeWidth = 2, className }) {
   return (
     <svg
       width={size}
@@ -159,10 +159,11 @@ function BellIcon({ size = 16 }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
+      className={className}
     >
       <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -1694,8 +1695,7 @@ const overdueImportCandidates = useMemo(
               className="day-task-remind-ind"
               title={`Напоминание за ${task.remind_lead_min} мин до начала`}
             >
-              {" "}
-              🔔
+              <BellIcon size={11} strokeWidth={2.2} />
             </span>
           )}
         </span>
@@ -2124,7 +2124,7 @@ const overdueImportCandidates = useMemo(
                       className="day-task-remind-ind"
                       title={`Напоминание за ${t.remind_lead_min} мин до начала`}
                     >
-                      🔔
+                      <BellIcon size={11} strokeWidth={2.2} />
                     </span>
                   )}
 
@@ -2363,7 +2363,7 @@ const overdueImportCandidates = useMemo(
                               className="day-task-remind-ind"
                               title={`Напоминание за ${task.remind_lead_min} мин до начала`}
                             >
-                              🔔
+                              <BellIcon size={11} strokeWidth={2.2} />
                             </span>
                           )}
                           {task.subtasks?.length > 0 && (
@@ -2535,7 +2535,10 @@ const overdueImportCandidates = useMemo(
                       }
                     />
                     <span className="task-remind-slider" aria-hidden="true" />
-                    <span className="task-remind-label">🔔 Напомнить</span>
+                    <span className="task-remind-label">
+                      <BellIcon size={14} strokeWidth={2} />
+                      Напомнить
+                    </span>
                   </label>
 
                   {form.remind && (
