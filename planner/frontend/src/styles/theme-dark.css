@@ -880,6 +880,21 @@
 :root[data-theme="dark"] .stats-cat-label {
   color: var(--text-soft);
 }
+:root[data-theme="dark"] .stats-cat-chip {
+  background: var(--panel-bg);
+  border-color: var(--line);
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .stats-cat-chip:hover {
+  border-color: var(--accent);
+}
+:root[data-theme="dark"] .stats-cat-chip--off {
+  background: #131217;
+  opacity: 0.45;
+}
+:root[data-theme="dark"] .stats-cat-chip--reset {
+  color: var(--accent);
+}
 :root[data-theme="dark"] .stats-cat-count {
   color: var(--text-muted);
 }

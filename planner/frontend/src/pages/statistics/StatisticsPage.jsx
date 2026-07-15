@@ -27,12 +27,39 @@ function fmtDate(iso) {
   return `${d}.${m}`;
 }
 
+const HIDDEN_CATS_KEY = "stats.hiddenCategories";
+
+function loadHiddenCats() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDDEN_CATS_KEY) || "[]");
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch {
+    return new Set();
+  }
+}
+
 export default function StatisticsPage() {
   const [period, setPeriod] = useState(30);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [catView, setCatView] = useState("bars");
+  const [hiddenCats, setHiddenCats] = useState(loadHiddenCats);
+
+  const toggleCat = (key) => {
+    setHiddenCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      localStorage.setItem(HIDDEN_CATS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const showAllCats = () => {
+    setHiddenCats(new Set());
+    localStorage.setItem(HIDDEN_CATS_KEY, "[]");
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -62,7 +89,8 @@ export default function StatisticsPage() {
   const categories = Array.isArray(data?.tasks?.by_category)
     ? [...data.tasks.by_category].sort((a, b) => b.total - a.total)
     : [];
-  const catMax = categories[0]?.total || 1;
+  const visibleCategories = categories.filter((c) => !hiddenCats.has(c.key));
+  const catMax = visibleCategories[0]?.total || 1;
 
   const chartData = (data?.tasks?.by_day ?? []).slice(-60).map((d) => ({
     date: fmtDate(d.date),
@@ -241,12 +269,47 @@ export default function StatisticsPage() {
                       )}
                     </div>
 
-                    {catView === "radar" && categories.length >= 3 ? (
+                    {categories.length > 1 && (
+                      <div className="stats-cat-chips">
+                        {categories.map((cat) => {
+                          const hidden = hiddenCats.has(cat.key);
+                          return (
+                            <button
+                              key={cat.key}
+                              type="button"
+                              className={`stats-cat-chip${hidden ? " stats-cat-chip--off" : ""}`}
+                              onClick={() => toggleCat(cat.key)}
+                              title={hidden ? "Показать в статистике" : "Скрыть из статистики"}
+                            >
+                              <span
+                                className="stats-cat-dot"
+                                style={{ background: cat.color || "#bbb" }}
+                              />
+                              {cat.title}
+                            </button>
+                          );
+                        })}
+                        {hiddenCats.size > 0 && (
+                          <button
+                            type="button"
+                            className="stats-cat-chip stats-cat-chip--reset"
+                            onClick={showAllCats}
+                          >
+                            Показать все
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {catView === "radar" && visibleCategories.length >= 3 ? (
                       <ResponsiveContainer width="100%" height={320}>
                         <RadarChart
-                          data={categories.map((cat) => ({
+                          data={visibleCategories.map((cat) => ({
                             subject: cat.title,
-                            value: cat.completed,
+                            // sqrt-шкала: иначе пара крупных категорий
+                            // прижимает остальные оси к центру
+                            value: Math.sqrt(cat.completed),
+                            raw: cat.completed,
                           }))}
                           margin={{ top: 16, right: 40, bottom: 16, left: 40 }}
                         >
@@ -262,14 +325,17 @@ export default function StatisticsPage() {
                             fillOpacity={0.35}
                           />
                           <Tooltip
-                            formatter={(v) => [v, "Выполнено"]}
+                            formatter={(v, n, item) => [
+                              item?.payload?.raw ?? v,
+                              "Выполнено",
+                            ]}
                             contentStyle={chartTooltipStyle}
                           />
                         </RadarChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="stats-category-list">
-                        {categories.map((cat) => {
+                        {visibleCategories.map((cat) => {
                           const volPct = Math.round((cat.total / catMax) * 100);
                           const donePct =
                             cat.total > 0

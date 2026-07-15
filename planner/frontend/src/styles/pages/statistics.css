@@ -146,6 +146,43 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Category filter chips ───────────────────────────────────────────────── */
+.stats-cat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stats-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #e0d9f5;
+  background: #fff;
+  color: #4a3c6f;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, opacity 0.18s, background 0.18s;
+}
+
+.stats-cat-chip:hover {
+  border-color: #7d68c9;
+}
+
+.stats-cat-chip--off {
+  opacity: 0.45;
+  background: #f4f1fb;
+  text-decoration: line-through;
+}
+
+.stats-cat-chip--reset {
+  border-style: dashed;
+  color: #7d68c9;
+}
+
 /* ── Category bars ───────────────────────────────────────────────────────── */
 .stats-category-list {
   display: flex;
