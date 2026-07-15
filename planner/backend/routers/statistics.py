@@ -90,21 +90,32 @@ def get_statistics(
 
     total_planned_min = sum(t.duration_min or 0 for t in day_tasks)
 
-    # ── Streak ──────────────────────────────────────────────────────────────
+    # ── Streak (по всем данным, не ограничен выбранным периодом) ───────────
+    completed_days = [
+        row[0]
+        for row in (
+            db.query(DayTask.day)
+            .filter(DayTask.user_id == current_user.id, DayTask.status == 1)
+            .distinct()
+            .order_by(DayTask.day)
+            .all()
+        )
+        if row[0] <= end_date
+    ]
+    completed_day_set = set(completed_days)
+
     current_streak = 0
-    for entry in reversed(by_day):
-        if entry["completed"] > 0:
-            current_streak += 1
-        else:
-            break
+    probe = end_date
+    while probe in completed_day_set:
+        current_streak += 1
+        probe -= timedelta(days=1)
 
     best_streak = temp = 0
-    for entry in by_day:
-        if entry["completed"] > 0:
-            temp += 1
-            best_streak = max(best_streak, temp)
-        else:
-            temp = 0
+    prev = None
+    for d in completed_days:
+        temp = temp + 1 if prev is not None and d == prev + timedelta(days=1) else 1
+        best_streak = max(best_streak, temp)
+        prev = d
 
     # ── Best day ────────────────────────────────────────────────────────────
     best_day_entry = max(by_day, key=lambda d: d["completed"], default=None)

@@ -73,6 +73,29 @@ class TestStatistics:
         assert body["streak"]["current"] >= 1
         assert body["best_day"]["date"] == date.today().isoformat()
 
+    def test_streak_not_limited_by_period(self, client, db, user, auth_headers):
+        """Стрик глобальный: 10 дней подряд видны целиком даже при period=7."""
+        from datetime import timedelta
+
+        for offset in range(10):
+            _add_task(db, user.id, status=1, day=date.today() - timedelta(days=offset))
+
+        body = client.get("/statistics?period_days=7", headers=auth_headers).json()
+        assert body["streak"]["current"] == 10
+        assert body["streak"]["best"] == 10
+
+    def test_streak_breaks_on_gap(self, client, db, user, auth_headers):
+        from datetime import timedelta
+
+        today = date.today()
+        # 2 дня подряд до сегодня, разрыв, и ещё 3 дня раньше
+        for offset in (0, 1, 3, 4, 5):
+            _add_task(db, user.id, status=1, day=today - timedelta(days=offset))
+
+        body = client.get("/statistics", headers=auth_headers).json()
+        assert body["streak"]["current"] == 2
+        assert body["streak"]["best"] == 3
+
     def test_isolation_between_users(self, client, db, user, other_user, auth_headers):
         _add_task(db, other_user.id, status=1)
         _add_task(db, other_user.id, status=1)
