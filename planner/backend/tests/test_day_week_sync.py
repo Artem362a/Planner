@@ -5,7 +5,7 @@ DayTasks and the parent WeekTask. This file locks that contract.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
 
 
 MONDAY = date(2025, 6, 2)
@@ -261,7 +261,6 @@ class TestSubtasksSyncToWeek:
         mon_row.status = 1
         mon_row.subtasks = [{"title": "s1", "done": True}, {"title": "s2", "done": True}]
         db.commit()
-        mon_id = mon_row.id
 
         # On Wednesday, change s2 back to not-done.
         wed_id = _day_task_id(db, user.id, wt["id"], WEDNESDAY)

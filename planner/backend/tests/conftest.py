@@ -35,7 +35,7 @@ alembic_command.upgrade(AlembicConfig(str(BACKEND_DIR / "alembic.ini")), "head")
 from main import app  # noqa: E402
 from auth import create_access_token, hash_password  # noqa: E402
 from dependencies import get_db  # noqa: E402
-from db import SessionLocal, User, UserSession, engine  # noqa: E402
+from db import User, UserSession, engine  # noqa: E402
 
 
 @pytest.fixture

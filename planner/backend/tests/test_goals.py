@@ -143,7 +143,9 @@ class TestReorderGoals:
         c = Goal(user_id=user.id, title="c", color="#fff", order_index=2)
         db.add_all([a, b, c])
         db.commit()
-        db.refresh(a); db.refresh(b); db.refresh(c)
+        db.refresh(a)
+        db.refresh(b)
+        db.refresh(c)
 
         r = client.post(
             "/goals/reorder",

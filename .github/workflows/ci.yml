@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v0.1]
+  pull_request:
+
+jobs:
+  lint:
+    name: Ruff (backend + bot)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check planner/backend planner/bot
+
+  backend-tests:
+    name: Pytest (backend)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: dayplan_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d dayplan_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # conftest.py подхватывает TEST_DATABASE_URL и сам прогоняет
+      # alembic upgrade head по чистой базе.
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/dayplan_test
+      SECRET_KEY: ci-only-secret-key
+      # Приложение живёт в naive local time — тесты гоняем в том же поясе,
+      # что и прод, а не в UTC раннера.
+      TZ: Europe/Samara
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            planner/backend/requirements.txt
+            planner/backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+        working-directory: planner/backend
+      - run: python -m pytest
+        working-directory: planner/backend
+
+  frontend-build:
+    name: Frontend (vitest + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: planner/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: planner/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+
+  security-code:
+    name: Security (bandit + pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install bandit pip-audit
+      - name: Bandit (medium+)
+        run: >-
+          bandit -r planner/backend planner/bot
+          -x planner/backend/tests,planner/backend/alembic
+          --severity-level medium
+      - name: pip-audit
+        # Ставим зависимости свежими (requirements не запинены) и проверяем
+        # получившееся окружение — то же самое собирает Docker-образ.
+        run: |
+          python -m venv /tmp/audit-venv
+          /tmp/audit-venv/bin/pip install --quiet --upgrade pip
+          /tmp/audit-venv/bin/pip install --quiet \
+            -r planner/backend/requirements.txt \
+            -r planner/bot/requirements.txt
+          # PYSEC-2026-1325: ecdsa (транзитивно из python-jose), Minerva
+          # timing attack — исправления не существует, апстрим чинить не
+          # планирует. Осознанно принимаем.
+          pip-audit --ignore-vuln PYSEC-2026-1325 \
+            --path "$(/tmp/audit-venv/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
+
+  security-image:
+    name: Security (trivy image scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t dayplan-app:ci .
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: dayplan-app:ci
+          format: table
+          # Валим пайплайн только на критических находках с доступным фиксом.
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true

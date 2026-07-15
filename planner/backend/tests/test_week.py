@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-import pytest
 
 
 # Use a fixed historical Monday so weekdays and dates are deterministic.

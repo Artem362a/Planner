@@ -5,30 +5,18 @@ from datetime import time as _time
 from typing import Any, List, cast
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import PlainTextResponse
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from auth import create_access_token, hash_password, verify_password
-from bootstrap import DOCS_DIR, ensure_default_categories_for_user
 from db import (
     DaySettings,
     DayTask,
-    DayTemplate,
-    FeedbackMessage,
-    Goal,
-    GoalCheckin,
-    GoalStage,
     InboxTask,
-    Notification,
-    NotificationRecipient,
     Reminder,
     TaskCategory,
     User,
     WeekTask,
-    WeekTemplate,
 )
-from dependencies import get_current_developer, get_current_user, get_db
+from dependencies import get_current_user, get_db
 from schemas import *
 from serializers import *
 

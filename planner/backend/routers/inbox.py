@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from datetime import time as _time
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException

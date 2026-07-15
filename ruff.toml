@@ -1,0 +1,17 @@
+# Линтер только для python-части (backend + bot); фронт живёт на eslint.
+include = ["planner/backend/**/*.py", "planner/bot/**/*.py"]
+extend-exclude = ["planner/backend/alembic/versions"]
+
+target-version = "py312"
+line-length = 120
+
+[lint]
+# Дефолтный набор (E4/E7/E9 + F): реальные ошибки, без стилистического шума.
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# Роутеры осознанно берут схемы/сериализаторы звёздным импортом
+# (serializers.py ограничивает экспорт через __all__).
+"planner/backend/routers/*.py" = ["F403", "F405"]
+# conftest настраивает sys.path и env до импорта приложения — импорты ниже кода.
+"planner/backend/tests/conftest.py" = ["E402"]

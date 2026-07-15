@@ -4,15 +4,13 @@ from datetime import date, datetime, timedelta
 from datetime import time as _time
 from pathlib import Path
 from uuid import uuid4
-from typing import Any, List, cast
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import PlainTextResponse
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, hash_password, verify_password
-from bootstrap import DOCS_DIR, ensure_default_categories_for_user
+from bootstrap import ensure_default_categories_for_user
 from db import (
     DaySettings,
     DayTask,
@@ -30,7 +28,7 @@ from db import (
     WeekTask,
     WeekTemplate,
 )
-from dependencies import get_current_developer, get_current_user, get_db, security
+from dependencies import get_current_user, get_db
 from reminder_rules import REMINDER_SETTINGS_LIMITS
 from schemas import *
 from serializers import *
