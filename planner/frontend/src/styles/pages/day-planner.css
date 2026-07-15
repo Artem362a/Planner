@@ -570,9 +570,12 @@
 }
 
 .day-timeline-task--compact {
-  grid-template-columns: 34px minmax(0, 1fr) 24px;
+  /* Последняя колонка (карандаш) и правый паддинг остаются как в обычной
+     карточке — иначе кнопка (жёстко 28px) съезжает по X относительно
+     некомпактных задач. Варьируется только левая часть (иконка/отступ). */
+  grid-template-columns: 34px minmax(0, 1fr) 28px;
   gap: 9px;
-  padding: 6px 10px 6px 12px;
+  padding: 6px 12px 6px 12px;
 }
 
 .day-timeline-task--compact .day-timeline-icon {
