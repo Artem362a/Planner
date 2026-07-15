@@ -191,7 +191,7 @@ export default function StatisticsPage() {
                       <ResponsiveContainer width="100%" height={180}>
                         <BarChart
                           data={chartData}
-                          margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
+                          margin={{ top: 8, right: 2, left: 2, bottom: 0 }}
                           barSize={barSize}
                         >
                           <XAxis
@@ -200,12 +200,14 @@ export default function StatisticsPage() {
                             interval={barInterval}
                             axisLine={false}
                             tickLine={false}
+                            height={22}
                           />
                           <YAxis
                             allowDecimals={false}
                             tick={chartTick}
                             axisLine={false}
                             tickLine={false}
+                            width={28}
                           />
                           <Tooltip
                             formatter={(v, n) => [
