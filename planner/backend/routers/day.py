@@ -38,23 +38,28 @@ router = APIRouter()
 def _sync_task_reminder(db: Session, user_id: int, task: Any) -> None:
     """Приводит Reminder(kind='task') в соответствие задаче дня.
 
-    Напоминание живёт, пока у задачи есть remind_lead_min и start_time,
-    она не выполнена и время напоминания ещё впереди; иначе удаляется.
+    Якорь времени — start_time (режим «Начало–Конец», авто-следует за
+    переносом задачи) либо, если его нет, remind_anchor_time (режим
+    «Длительность»: снимок computed_start_time с фронта на момент включения,
+    не пересчитывается сам при изменении соседних задач).
+    Напоминание живёт, пока есть remind_lead_min и якорь, задача не выполнена
+    и время напоминания ещё впереди; иначе удаляется.
     Задачу нужно flush'нуть до вызова (нужен task.id).
     """
     rem = db.query(Reminder).filter(Reminder.source_task_id == task.id).first()
 
     lead = getattr(task, "remind_lead_min", None)
+    anchor = task.start_time or getattr(task, "remind_anchor_time", None)
     remind_at = None
-    if lead is not None and task.start_time is not None and task.status == 0:
-        remind_at = datetime.combine(task.day, task.start_time) - timedelta(minutes=lead)
+    if lead is not None and anchor is not None and task.status == 0:
+        remind_at = datetime.combine(task.day, anchor) - timedelta(minutes=lead)
 
     if remind_at is None or remind_at <= datetime.now():
         if rem is not None:
             db.delete(rem)
         return
 
-    text = f"Задача «{task.title}» в {task.start_time.strftime('%H:%M')}"
+    text = f"Задача «{task.title}» в {anchor.strftime('%H:%M')}"
     if rem is None:
         db.add(
             Reminder(
@@ -206,6 +211,11 @@ def create_task(
         hh, mm = int(parts[0]), int(parts[1])
         start_time = _time(hour=hh, minute=mm)
 
+    remind_anchor_time = None
+    if body.remind_anchor_time:
+        parts = body.remind_anchor_time.split(":")
+        remind_anchor_time = _time(hour=int(parts[0]), minute=int(parts[1]))
+
     subtasks_payload = [s.dict() for s in body.subtasks] if body.subtasks else []
     insert_before_id = body.insert_before_id
     new_order_index = 0
@@ -268,6 +278,7 @@ def create_task(
             if body.remind_lead_min is not None and body.remind_lead_min >= 0
             else None
         ),
+        remind_anchor_time=remind_anchor_time,
     )
 
     db.add(task)
@@ -334,6 +345,9 @@ def update_task(
     if body.remind_lead_min is not None:
         # Отрицательное значение = снять напоминание (None в PATCH значит «не менять»).
         task.remind_lead_min = body.remind_lead_min if body.remind_lead_min >= 0 else None
+    if body.remind_anchor_time is not None:
+        parts = body.remind_anchor_time.split(":")
+        task.remind_anchor_time = _time(hour=int(parts[0]), minute=int(parts[1]))
 
     # Синхронизация в недельную задачу, если дневная была импортирована из недели
     if task.source_week_task_id is not None:
@@ -690,6 +704,7 @@ def reschedule_task(
         source_inbox_task_id=getattr(t, "source_inbox_task_id", None),
         source_week_task_id=t.source_week_task_id,
         remind_lead_min=getattr(t, "remind_lead_min", None),
+        remind_anchor_time=getattr(t, "remind_anchor_time", None),
     )
 
     db.add(new_task)

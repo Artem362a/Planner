@@ -262,6 +262,146 @@ class TestTaskReminderSync:
         assert self._task_reminder(db, r.json()["id"]) is None
 
 
+class TestTaskReminderAnchor:
+    """Напоминание у задачи без фиксированного времени (режим «Длительность») —
+    якорь передаётся фронтом отдельным полем remind_anchor_time."""
+
+    def _tomorrow(self) -> str:
+        return (date.today() + timedelta(days=1)).isoformat()
+
+    def _task_reminder(self, db, task_id):
+        return db.query(Reminder).filter(Reminder.source_task_id == task_id).first()
+
+    def test_create_duration_task_with_anchor(self, client, db, auth_headers):
+        day = self._tomorrow()
+        r = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Разбор почты",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "14:00",
+            },
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["start_time"] is None
+
+        rem = self._task_reminder(db, body["id"])
+        assert rem is not None
+        assert rem.kind == "task"
+        assert rem.remind_at == datetime.fromisoformat(f"{day}T13:50")
+
+    def test_no_anchor_no_reminder(self, client, db, auth_headers):
+        """Без start_time и без anchor напоминание не создаётся."""
+        day = self._tomorrow()
+        r = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={"title": "Без времени", "duration_min": 30, "remind_lead_min": 10},
+        )
+        assert r.status_code == 200
+        assert self._task_reminder(db, r.json()["id"]) is None
+
+    def test_unrelated_patch_does_not_drop_anchor_reminder(self, client, db, auth_headers):
+        """PATCH, не трогающий напоминание, не должен затирать якорь
+        (учитывая, что remind_anchor_time не персистится в ответе API)."""
+        day = self._tomorrow()
+        created = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Разбор почты",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "14:00",
+            },
+        ).json()
+        assert self._task_reminder(db, created["id"]) is not None
+
+        # Обновляем título без упоминания remind_lead_min/remind_anchor_time —
+        # как это делает cycleStatus/toggleSubtask на фронте (шлют весь объект
+        # задачи, но remind_anchor_time в нём никогда не было).
+        r = client.patch(
+            f"/day/{day}/tasks/{created['id']}",
+            headers=auth_headers,
+            json={"title": "Разбор почты (обновлено)"},
+        )
+        assert r.status_code == 200
+
+        rem = self._task_reminder(db, created["id"])
+        assert rem is not None
+        assert rem.remind_at == datetime.fromisoformat(f"{day}T13:50")
+
+    def test_edit_updates_anchor(self, client, db, auth_headers):
+        day = self._tomorrow()
+        created = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Разбор почты",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "14:00",
+            },
+        ).json()
+
+        r = client.patch(
+            f"/day/{day}/tasks/{created['id']}",
+            headers=auth_headers,
+            json={"title": "Разбор почты", "remind_anchor_time": "16:00"},
+        )
+        assert r.status_code == 200
+
+        rem = self._task_reminder(db, created["id"])
+        assert rem.remind_at == datetime.fromisoformat(f"{day}T15:50")
+
+    def test_fixed_start_time_takes_priority_over_anchor(self, client, db, auth_headers):
+        """Если у задачи есть настоящее start_time, оно всегда важнее якоря."""
+        day = self._tomorrow()
+        r = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Созвон",
+                "start_time": "12:00",
+                "remind_lead_min": 10,
+                "remind_anchor_time": "20:00",
+            },
+        )
+        assert r.status_code == 200
+
+        rem = self._task_reminder(db, r.json()["id"])
+        assert rem.remind_at == datetime.fromisoformat(f"{day}T11:50")
+
+    def test_reschedule_carries_anchor(self, client, db, auth_headers):
+        today = date.today().isoformat()
+        tomorrow = self._tomorrow()
+        created = client.post(
+            f"/day/{today}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Разбор почты",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "23:59",
+            },
+        ).json()
+
+        r = client.post(
+            f"/day-tasks/{created['id']}/reschedule",
+            headers=auth_headers,
+            json={"new_date": tomorrow},
+        )
+        assert r.status_code == 200
+        new_id = r.json()["id"]
+
+        rem = self._task_reminder(db, new_id)
+        assert rem is not None
+        assert rem.remind_at == datetime.fromisoformat(f"{tomorrow}T23:49")
+
+
 class TestReminderSettings:
     def test_update_and_read_back(self, client, auth_headers):
         r = client.patch(

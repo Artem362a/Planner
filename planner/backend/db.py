@@ -383,9 +383,16 @@ class DayTask(Base):
     source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
     source_inbox_task_id = Column(Integer, ForeignKey("planning.inbox_tasks.id"), nullable=True, index=True)
     dismissed = Column(Boolean, default=False, nullable=False)
-    # За сколько минут до start_time напомнить (null = не напоминать).
+    # За сколько минут до начала напомнить (null = не напоминать).
     # Связанный Reminder(kind='task') синхронизирует routers/day.py.
     remind_lead_min = Column(Integer, nullable=True)
+    # Якорное время для задач БЕЗ start_time (режим «Длительность»): снимок
+    # вычисленного на фронте computed_start_time на момент включения
+    # напоминания. В отличие от start_time не пересчитывается автоматически
+    # при изменении порядка/длительности соседних задач — обновляется только
+    # явным действием (тумблер/чекбокс), чтобы случайные PATCH других полей
+    # (статус, подзадачи) не затирали и не «плавали».
+    remind_anchor_time = Column(Time, nullable=True)
 
 
 class DayNote(Base):

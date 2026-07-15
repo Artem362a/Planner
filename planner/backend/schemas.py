@@ -195,9 +195,12 @@ class TaskIn(BaseModel):
     subtasks: List[SubTask] = []
     insert_before_id: int | None = None
     source_week_task_id: int | None = None
-    # Напомнить за N минут до start_time. None = не менять (в PATCH),
+    # Напомнить за N минут до начала. None = не менять (в PATCH),
     # отрицательное значение = снять напоминание.
     remind_lead_min: int | None = None
+    # Якорь для задач без start_time (режим «Длительность»): "HH:MM",
+    # снимок текущего computed_start_time с фронта. None = не менять.
+    remind_anchor_time: str | None = None
 
 class TaskOut(TaskIn):
     id: int
@@ -461,6 +464,7 @@ class DayTaskRow(Protocol):
     order_index: int
     source_week_task_id: int | None
     remind_lead_min: int | None
+    remind_anchor_time: Any | None
 
 
 

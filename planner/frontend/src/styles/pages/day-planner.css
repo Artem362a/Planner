@@ -112,8 +112,9 @@
 /* Тумблер «🔔 Напомнить [за N мин]» в форме задачи */
 .task-remind-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   min-height: 30px;
 }
 
@@ -191,6 +192,11 @@
   font-size: 13px;
   color: #312b55;
   text-align: center;
+}
+
+.task-remind-note {
+  font-size: 12px;
+  color: #9b93c4;
 }
 
 /* Галочка «фиксировать начало дня в шаблоне» (режим редактирования шаблона) */
@@ -397,17 +403,25 @@
   flex-shrink: 0;
 }
 
-/* Свич напоминания на задаче (режим 🔔) и индикатор в обычном режиме */
-.day-task-remind-switch {
-  margin-left: 10px;
-  flex-shrink: 0;
+/* Режим 🔔: клик по карточке выделяет задачу для напоминания */
+.remind-pickable {
+  cursor: pointer;
 }
 
-.day-timeline-remind-switch {
-  align-self: start;
-  margin-top: 8px;
-  margin-right: 4px;
-  flex-shrink: 0;
+/* В режиме напоминаний обычные действия карточки приглушены, чтобы
+   случайно не выполнить/удалить задачу вместо выделения. */
+.remind-pickable .day-task-checkbox,
+.remind-pickable .day-task-actions,
+.remind-pickable .day-task-drag-handle,
+.remind-pickable .day-timeline-small-check {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.remind-picked {
+  outline: 2px solid #6f58e8;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 4px rgba(111, 88, 232, 0.16);
 }
 
 .day-task-remind-ind {
