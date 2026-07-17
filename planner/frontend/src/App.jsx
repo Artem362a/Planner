@@ -108,7 +108,13 @@ const Home = ({ user, onLogout }) => {
 
       <aside className={`side-menu ${menuOpen ? "open" : ""}`}>
         <div className="side-menu-header">
-          <div className="side-menu-user-block">
+          {/* Шапка целиком ведёт в аккаунт — тап по аватарке/имени привычнее,
+              чем отдельный пункт меню. */}
+          <Link
+            to="/account"
+            className="side-menu-user-block"
+            onClick={() => setMenuOpen(false)}
+          >
             <UserAvatar user={user} />
 
             <div className="side-menu-user-info">
@@ -117,14 +123,17 @@ const Home = ({ user, onLogout }) => {
               </div>
               <div className="side-menu-user-email">{user?.email}</div>
             </div>
-          </div>
+          </Link>
 
+          {/* Стрелка вместо крестика: крестик рядом с профилем читался как
+              «выйти из аккаунта». */}
           <button
             type="button"
             className="side-menu-close"
             onClick={() => setMenuOpen(false)}
+            aria-label="Закрыть меню"
           >
-            ×
+            ←
           </button>
         </div>
 

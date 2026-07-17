@@ -110,6 +110,52 @@ function shortenUserAgent(ua) {
   return `${browser} · ${os}`;
 }
 
+// Редкие/чувствительные секции (пароль, сессии, удаление) прячем под
+// заголовок-тумблер: на мобилках развёрнутые они съедают половину страницы.
+function CollapsibleSection({
+  title,
+  description,
+  danger = false,
+  as = "div",
+  onSubmit,
+  children,
+}) {
+  const [open, setOpen] = React.useState(false);
+  const Tag = as;
+
+  return (
+    <Tag
+      className={
+        "account-section account-section--collapsible" +
+        (danger ? " account-section--danger" : "")
+      }
+      onSubmit={onSubmit}
+    >
+      <button
+        type="button"
+        className="account-section-toggle"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={open}
+      >
+        <div className="account-section-info">
+          <h2>{title}</h2>
+          {open && description && <p>{description}</p>}
+        </div>
+        <span
+          className={
+            "account-section-chevron" +
+            (open ? " account-section-chevron--open" : "")
+          }
+        >
+          ▸
+        </span>
+      </button>
+
+      {open && <div className="account-section-controls">{children}</div>}
+    </Tag>
+  );
+}
+
 function AccountPage({ user, onUserUpdate }) {
   const navigate = useNavigate();
 
@@ -752,13 +798,12 @@ function AccountPage({ user, onUserUpdate }) {
                 </div>
               </div>
 
-              <form className="account-section" onSubmit={handlePasswordSubmit}>
-                <div className="account-section-info">
-                  <h2>Смена пароля</h2>
-                  <p>Новый пароль должен быть не короче 6 символов</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                as="form"
+                onSubmit={handlePasswordSubmit}
+                title="Смена пароля"
+                description="Новый пароль должен быть не короче 6 символов"
+              >
                   <label className="account-field">
                     <span>Текущий пароль</span>
                     <input
@@ -796,8 +841,7 @@ function AccountPage({ user, onUserUpdate }) {
                   </button>
 
                   {passwordStatus && <div className="account-status">{passwordStatus}</div>}
-                </div>
-              </form>
+              </CollapsibleSection>
 
               {isSamaraStudent && (
                 <div className="account-section">
@@ -833,13 +877,10 @@ function AccountPage({ user, onUserUpdate }) {
                 </div>
               </div>
 
-              <div className="account-section">
-                <div className="account-section-info">
-                  <h2>Активные сессии</h2>
-                  <p>Устройства и браузеры, в которых ты сейчас залогинен. Можно завершить любую сессию.</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                title="Активные сессии"
+                description="Устройства и браузеры, в которых ты сейчас залогинен. Можно завершить любую сессию."
+              >
                   {sessionsLoading && <div className="account-status">Загрузка...</div>}
 
                   {!sessionsLoading && sessions.length === 0 && (
@@ -894,16 +935,13 @@ function AccountPage({ user, onUserUpdate }) {
                   )}
 
                   {sessionsStatus && <div className="account-status">{sessionsStatus}</div>}
-                </div>
-              </div>
+              </CollapsibleSection>
 
-              <div className="account-section account-section--danger">
-                <div className="account-section-info">
-                  <h2>Удаление аккаунта</h2>
-                  <p>Аккаунт и все связанные данные удаляются безвозвратно. Перед удалением рекомендуем скачать архив.</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                danger
+                title="Удаление аккаунта"
+                description="Аккаунт и все связанные данные удаляются безвозвратно. Перед удалением рекомендуем скачать архив."
+              >
                   {!deleteOpen ? (
                     <button
                       type="button"
@@ -950,8 +988,7 @@ function AccountPage({ user, onUserUpdate }) {
                       {deleteStatus && <div className="account-status">{deleteStatus}</div>}
                     </form>
                   )}
-                </div>
-              </div>
+              </CollapsibleSection>
             </div>
           </section>
         </main>

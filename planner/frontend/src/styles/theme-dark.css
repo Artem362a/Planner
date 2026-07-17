@@ -1061,7 +1061,7 @@
 }
 :root[data-theme="dark"] .feedback-tab-btn--active,
 :root[data-theme="dark"] .feedback-filter-chip--active {
-  background: linear-gradient(135deg, #7c66e3, #5f4cc4);
+  background: #6f57d6;
   color: #eae8f4;
 }
 :root[data-theme="dark"] .feedback-reply-block {

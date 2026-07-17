@@ -50,6 +50,13 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 12px;
+}
+
+.side-menu-user-block:hover .side-menu-user-name {
+  text-decoration: underline;
 }
 
 .side-menu-avatar {
@@ -94,9 +101,14 @@
   background: transparent;
   border: none;
   color: white;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  opacity: 0.85;
+}
+
+.side-menu-close:hover {
+  opacity: 1;
 }
 
 .side-menu-nav {

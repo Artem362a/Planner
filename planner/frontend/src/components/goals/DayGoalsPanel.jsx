@@ -36,6 +36,18 @@ export default function DayGoalsPanel({ selectedDay }) {
   const [loading, setLoading] = React.useState(false);
   const [quickTitle, setQuickTitle] = React.useState("");
   const [isQuickOpen, setIsQuickOpen] = React.useState(false);
+  // Свёрнутость блока переживает перезагрузку — на мобилках блок съедает
+  // много места, и раскрывать его каждый раз заново раздражает.
+  const [collapsed, setCollapsed] = React.useState(
+    () => localStorage.getItem("dayGoalsCollapsed") === "1"
+  );
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      localStorage.setItem("dayGoalsCollapsed", prev ? "0" : "1");
+      return !prev;
+    });
+  }
 
   async function loadItems() {
     try {
@@ -119,18 +131,44 @@ export default function DayGoalsPanel({ selectedDay }) {
   return (
     <section className="day-side-section day-goals-preview day-goals-panel">
       <div className="day-side-title-row">
-        <h3>Цели</h3>
         <button
           type="button"
-          className="day-goals-add-btn"
-          onClick={() => setIsQuickOpen((prev) => !prev)}
-          aria-label="Добавить цель на день"
+          className="day-goals-collapse-btn"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
         >
-          +
+          <span
+            className={
+              "day-goals-chevron" + (collapsed ? "" : " day-goals-chevron--open")
+            }
+          >
+            ▸
+          </span>
+          <span className="day-goals-collapse-title">Цели</span>
+          {collapsed && goals.length > 0 && (
+            <span className="day-goals-count">{goals.length}</span>
+          )}
         </button>
+
+        <div className="day-goals-header-actions">
+          <Link to="/goals" className="day-goals-open-link">
+            Управлять
+          </Link>
+          <button
+            type="button"
+            className="day-goals-add-btn"
+            onClick={() => {
+              setCollapsed(false);
+              setIsQuickOpen((prev) => !prev);
+            }}
+            aria-label="Добавить цель на день"
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      {isQuickOpen && (
+      {!collapsed && isQuickOpen && (
         <form className="day-goals-quick-form" onSubmit={handleQuickCreate}>
           <input
             type="text"
@@ -142,15 +180,17 @@ export default function DayGoalsPanel({ selectedDay }) {
         </form>
       )}
 
-      {loading && <div className="day-goals-placeholder">Загрузка...</div>}
+      {!collapsed && loading && (
+        <div className="day-goals-placeholder">Загрузка...</div>
+      )}
 
-      {!loading && goals.length === 0 && (
+      {!collapsed && !loading && goals.length === 0 && (
         <div className="day-goals-placeholder">
           На этот день нет целей
         </div>
       )}
 
-      {!loading && goals.length > 0 && (
+      {!collapsed && !loading && goals.length > 0 && (
         <div className="day-goals-list">
           {goals.map((goal) => {
             const stages = Array.isArray(goal.stages) ? goal.stages : [];
@@ -205,9 +245,6 @@ export default function DayGoalsPanel({ selectedDay }) {
         </div>
       )}
 
-      <Link to="/goals" className="day-goals-open-link">
-        Управлять целями
-      </Link>
     </section>
   );
 }

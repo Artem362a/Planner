@@ -651,6 +651,40 @@
   background: #fff;
 }
 
+/* Мобилки: модалки не должны разъезжаться при открытии клавиатуры.
+   dvh учитывает клавиатуру и панели браузера (vh — нет), бэкдроп скроллится
+   сам, если модалка выше вьюпорта. Модалка категорий на телефоне занимает
+   почти весь экран, а список внутри растягивается вместо фиксированных 62vh —
+   иначе полезная область получается крошечной. */
+@media (max-width: 640px) {
+  .task-modal-backdrop {
+    padding: 10px;
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .modal,
+  .task-modal {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .category-manager-modal {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 20px);
+    height: calc(100dvh - 20px);
+  }
+
+  .category-manager-list {
+    flex: 1 1 auto;
+    max-height: none;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding-right: 2px;
+  }
+}
+
 .category-manager-item input[type="color"] {
   width: 56px;
   height: 36px;
