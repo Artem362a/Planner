@@ -667,6 +667,11 @@
   .task-modal {
     max-height: calc(100vh - 20px);
     max-height: calc(100dvh - 20px);
+    /* margin: auto по вертикали центрирует модалку (до пальца ближе, чем у
+       верхнего края), но в отличие от align-items: center на бэкдропе не
+       обрезает верх у модалок выше экрана — они просто скроллятся. */
+    margin-top: auto;
+    margin-bottom: auto;
   }
 
 }
