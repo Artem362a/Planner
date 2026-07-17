@@ -69,6 +69,26 @@ def _sync_day_tasks_for_week_task(db: Session, week_task: Any, user_id: int) -> 
             ))
         d += timedelta(days=1)
 
+def _repeat_days_in_week(row: Any, week_start: date, week_end: date) -> list[date]:
+    """Даты повторяемых дней recurring-задачи, попадающие в неделю
+    (обрезаны диапазоном самой задачи)."""
+    repeat_set: set[int] = set()
+    for rd in (row.repeat_days or []):
+        try:
+            repeat_set.add(int(rd))
+        except (TypeError, ValueError):
+            pass
+
+    days: list[date] = []
+    d = max(row.start_date, week_start)
+    end = min(row.end_date, week_end)
+    while d <= end:
+        if not repeat_set or d.weekday() in repeat_set:
+            days.append(d)
+        d += timedelta(days=1)
+    return days
+
+
 @router.get("/week-tasks", response_model=list[WeekTaskOut])
 def api_list_week_tasks(
     week_start: date,
@@ -208,7 +228,42 @@ def api_list_important_week_tasks(
         .all()
     )
 
-    return [_week_task_model_to_out(row) for row in rows]
+    # Recurring-задача с полностью закрытой неделей пропадает из «важного»,
+    # как обычная выполненная (у той status=1 отфильтрован выше). День без
+    # созданной DayTask считается невыполненным.
+    recurring_rows = [
+        r for r in rows if (cast(Any, r).task_type or "").strip() == "recurring"
+    ]
+    done_week_ids: set[int] = set()
+    if recurring_rows:
+        day_rows = (
+            db.query(DayTask.source_week_task_id, DayTask.day, DayTask.status)
+            .filter(
+                DayTask.user_id == current_user_row.id,
+                DayTask.source_week_task_id.in_(
+                    [cast(Any, r).id for r in recurring_rows]
+                ),
+                DayTask.day >= week_start,
+                DayTask.day <= week_end,
+            )
+            .all()
+        )
+        status_by_task: dict[int, dict[date, int]] = {}
+        for source_id, day, status in day_rows:
+            status_by_task.setdefault(source_id, {})[day] = int(status)
+
+        for r in recurring_rows:
+            rr = cast(Any, r)
+            expected = _repeat_days_in_week(rr, week_start, week_end)
+            statuses = status_by_task.get(rr.id, {})
+            if expected and all(statuses.get(d) == 1 for d in expected):
+                done_week_ids.add(rr.id)
+
+    return [
+        _week_task_model_to_out(row)
+        for row in rows
+        if cast(Any, row).id not in done_week_ids
+    ]
 
 
 @router.put("/week-tasks/{task_id}/week-status", response_model=WeekTaskOut)
@@ -242,21 +297,8 @@ def api_set_week_task_week_status(
 
     new_status = 1 if body.status else 0
     week_end = body.week_start + timedelta(days=6)
-    range_start = max(row.start_date, body.week_start)
-    range_end = min(row.end_date, week_end)
 
-    repeat_set: set[int] = set()
-    for rd in (row.repeat_days or []):
-        try:
-            repeat_set.add(int(rd))
-        except (TypeError, ValueError):
-            pass
-
-    d = range_start
-    while d <= range_end:
-        if repeat_set and d.weekday() not in repeat_set:
-            d += timedelta(days=1)
-            continue
+    for d in _repeat_days_in_week(row, body.week_start, week_end):
         day_task = (
             db.query(DayTask)
             .filter(
@@ -284,7 +326,6 @@ def api_set_week_task_week_status(
             # Выполненная задача не должна оставить за собой живое напоминание
             # (и наоборот — снятая галочка возвращает его, если время впереди).
             _sync_task_reminder(db, current_user_row.id, cast(Any, day_task))
-        d += timedelta(days=1)
 
     db.commit()
 

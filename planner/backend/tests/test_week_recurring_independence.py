@@ -305,6 +305,39 @@ class TestWeekTasksDayStatus:
         )
         assert r.status_code == 400
 
+    def test_important_list_hides_recurring_with_week_fully_done(
+        self, client, db, user, auth_headers
+    ):
+        """Виджет «Расписание на неделю» показывает важные задачи; recurring
+        с полностью закрытой неделей должна из него пропадать."""
+        wt = _create_recurring_week_task(client, auth_headers, name="gym", important=True)
+
+        def important_ids():
+            r = client.get(
+                "/week-tasks/important",
+                headers=auth_headers,
+                params={"week_start": MONDAY.isoformat()},
+            )
+            assert r.status_code == 200
+            return [t["id"] for t in r.json()]
+
+        assert wt["id"] in important_ids()
+
+        client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        assert wt["id"] not in important_ids()
+
+        # Частично выполненная неделя — снова видна.
+        client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 0},
+        )
+        assert wt["id"] in important_ids()
+
     def test_day_status_empty_for_normal_tasks(self, client, auth_headers):
         payload = {
             "name": "normal task",
