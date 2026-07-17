@@ -355,8 +355,10 @@
   background: #fff;
   border-radius: 24px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
-  padding: 24px 32px;
   box-sizing: border-box;
+  /* padding здесь не задаём: этот блок идёт по каскаду ПОСЛЕ мобильного
+     @media выше и раньше перебивал его узкие отступы — на телефоне карточка
+     получала поля по 32px. Десктопный padding живёт в day-planner.css. */
 }
 
 .day-page-floating-actions {

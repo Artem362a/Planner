@@ -1,15 +1,29 @@
+/* Стрелка нарисована псевдоэлементом (как у кнопок листания дней в шапке):
+   текстовый глиф "←" в кружке вставал не по центру из-за метрик шрифта. */
 .back-link {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  font-size: 24px;
-  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.14);
+  color: transparent;
+  font-size: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.back-link::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid rgba(255, 255, 255, 0.92);
+  border-right: 2px solid rgba(255, 255, 255, 0.92);
+  transform: translate(-42%, -50%) rotate(-135deg);
 }
 
 .back-link:hover {
