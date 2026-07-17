@@ -28,7 +28,9 @@ jobs:
           git fetch origin main
           git checkout main
           git reset --hard origin/main
-          docker compose up -d --build backend bot
+          # Без списка сервисов: поднимает и приложение, и мониторинг
+          # (prometheus/grafana/loki/promtail/alertmanager/node-exporter).
+          docker compose up -d --build
       - name: Миграции
         run: cd ~/Planner && docker compose exec -T backend alembic upgrade head
       - name: Health check
