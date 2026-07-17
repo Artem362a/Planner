@@ -120,7 +120,7 @@ function CollapsibleSection({
   onSubmit,
   children,
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const Tag = as;
 
   return (

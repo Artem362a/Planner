@@ -672,12 +672,13 @@
   .category-manager-modal {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 20px);
-    height: calc(100dvh - 20px);
   }
 
+  /* Список подстраивается под содержимое, но при нехватке места сжимается
+     и скроллится внутри модалки (max-height у самой модалки выше). */
   .category-manager-list {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
+    min-height: 0;
     max-height: none;
     margin-top: 10px;
     margin-bottom: 10px;
