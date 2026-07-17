@@ -669,21 +669,6 @@
     max-height: calc(100dvh - 20px);
   }
 
-  .category-manager-modal {
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Список подстраивается под содержимое, но при нехватке места сжимается
-     и скроллится внутри модалки (max-height у самой модалки выше). */
-  .category-manager-list {
-    flex: 0 1 auto;
-    min-height: 0;
-    max-height: none;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    padding-right: 2px;
-  }
 }
 
 .category-manager-item input[type="color"] {
@@ -827,12 +812,16 @@
   .category-manager-modal {
     width: min(430px, calc(100vw - 24px));
     max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     overflow-y: auto;
     overflow-x: hidden;
   }
 
+  /* Никаких фикс-высот: список занимает столько, сколько влезает в модалку,
+     а скроллится она сама (правило выше). */
   .category-manager-list {
-    max-height: 34vh;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .category-manager-list--editing {
