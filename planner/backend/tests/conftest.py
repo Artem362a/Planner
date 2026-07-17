@@ -19,6 +19,10 @@ from pathlib import Path
 if os.environ.get("TEST_DATABASE_URL"):
     os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 
+# Rate limiting off by default: fixtures hammer /auth/* far above the real
+# limits. The dedicated rate-limit test re-enables the limiter at runtime.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "0")
+
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 

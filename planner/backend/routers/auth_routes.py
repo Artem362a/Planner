@@ -29,6 +29,7 @@ from db import (
     WeekTemplate,
 )
 from dependencies import get_current_user, get_db
+from rate_limit import limiter
 from reminder_rules import REMINDER_SETTINGS_LIMITS
 from schemas import *
 from serializers import *
@@ -93,6 +94,7 @@ def _parse_hhmm(value: str) -> _time:
 
 
 @router.post("/auth/register", response_model=TokenOut)
+@limiter.limit("5/minute")
 def register(
     body: UserRegisterIn,
     request: Request,
@@ -153,6 +155,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login", response_model=TokenOut)
+@limiter.limit("10/minute")
 def login(
     body: UserLoginIn,
     request: Request,

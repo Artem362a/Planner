@@ -1,0 +1,26 @@
+# Prometheus — собирает метрики бэкенда и хоста. Живёт на ноуте,
+# наружу не публикуется (порт 127.0.0.1), смотреть — через Grafana.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: backend
+    static_configs:
+      - targets: ["backend:8000"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

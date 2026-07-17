@@ -36,6 +36,8 @@ services:
       # The app stores naive local datetimes; keep container clocks on the
       # server's timezone (set TZ in the root .env, e.g. Europe/Samara).
       TZ: ${TZ:-Etc/UTC}
+      # JSON logs so promtail/Loki can parse level and request_id.
+      LOG_FORMAT: json
     ports:
       # 127.0.0.1 binding: only frpc/nginx on this host may reach the API,
       # not the whole LAN.
@@ -76,6 +78,142 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── Observability (всё локально на ноуте, наружу — только Grafana через FRP) ──
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: dayplan-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    container_name: dayplan-node-exporter
+    pid: host
+    command:
+      - --path.rootfs=/rootfs
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+    volumes:
+      - /:/rootfs:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: dayplan-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      # 127.0.0.1: доступ снаружи — через FRP-проброс, не напрямую из LAN.
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.5.0
+    container_name: dayplan-loki
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./deploy/monitoring/loki-config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:3.5.0
+    container_name: dayplan-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./deploy/monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/positions
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: dayplan-alertmanager
+    # Alertmanager не умеет env-переменные в конфиге, поэтому конфиг
+    # генерируется на старте из окружения (токен бота — из backend/.env).
+    # Без TELEGRAM_BOT_TOKEN + TELEGRAM_ALERT_CHAT_ID алерты просто не шлются
+    # (blackhole) — стек при этом поднимается и работает.
+    # NOTE прод: Telegram из RU заблокирован — нужен TELEGRAM_PROXY. xray
+    # слушает 127.0.0.1 хоста, из bridge-контейнера он недоступен: на ноуте
+    # docker-compose.override.yml переводит этот сервис на network_mode: host
+    # (как у бота); тогда prometheus достучится до алертменеджера через
+    # 127.0.0.1:9093 хоста — см. deploy-заметки в docs/RUNBOOK.md.
+    env_file:
+      - planner/backend/.env
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        CFG=/tmp/alertmanager.yml
+        if [ -n "$${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "$${TELEGRAM_ALERT_CHAT_ID:-}" ]; then
+          {
+            echo 'route:'
+            echo '  receiver: telegram'
+            echo '  group_by: [alertname]'
+            echo '  group_wait: 30s'
+            echo '  group_interval: 5m'
+            echo '  repeat_interval: 4h'
+            echo 'receivers:'
+            echo '  - name: telegram'
+            echo '    telegram_configs:'
+            echo "      - bot_token: $${TELEGRAM_BOT_TOKEN}"
+            echo "        chat_id: $${TELEGRAM_ALERT_CHAT_ID}"
+            echo '        parse_mode: HTML'
+          } > "$$CFG"
+          if [ -n "$${TELEGRAM_PROXY:-}" ]; then
+            # alertmanager принимает только схему socks5:// (не socks5h),
+            # при этом Go резолвит DNS через прокси в обоих случаях.
+            PROXY=$$(echo "$$TELEGRAM_PROXY" | sed 's|^socks5h://|socks5://|')
+            echo '        http_config:' >> "$$CFG"
+            echo "          proxy_url: $$PROXY" >> "$$CFG"
+          fi
+        else
+          {
+            echo 'route:'
+            echo '  receiver: blackhole'
+            echo 'receivers:'
+            echo '  - name: blackhole'
+          } > "$$CFG"
+        fi
+        exec /bin/alertmanager --config.file="$$CFG" --storage.path=/alertmanager
+    volumes:
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   backend_uploads:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  promtail_positions:
+  alertmanager_data:

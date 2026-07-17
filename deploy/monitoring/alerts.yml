@@ -1,0 +1,56 @@
+# Правила алертов. Порогам не хватает истории — после пары недель
+# реальных данных их стоит подкрутить (см. docs/RUNBOOK.md).
+groups:
+  - name: dayplan
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Бэкенд не отвечает"
+          description: "Prometheus не может снять метрики с backend:8000 уже минуту. Проверь: docker compose ps, docker logs dayplan-backend."
+
+      - alert: High5xxRate
+        # Больше 5 пятисоток за 5 минут — что-то системно сломалось,
+        # а не один случайный запрос.
+        expr: sum(increase(http_requests_total{job="backend", status="5xx"}[5m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Всплеск 5xx на API"
+          description: "{{ $value | printf \"%.0f\" }} ошибок 5xx за последние 5 минут. Смотри логи в Grafana (Loki, container=dayplan-backend, level=error)."
+
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="backend"}[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API тормозит"
+          description: "p95 латентности выше 1 секунды уже 10 минут (сейчас {{ $value | printf \"%.2f\" }}s)."
+
+      - alert: DiskAlmostFull
+        expr: >
+          (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay", mountpoint="/"}
+             / node_filesystem_size_bytes{fstype!~"tmpfs|overlay", mountpoint="/"}) > 0.8
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Диск заполнен больше чем на 80%"
+          description: "На корневом разделе занято {{ $value | humanizePercentage }}. Кандидаты на чистку: docker system prune, старые бэкапы БД."
+
+      - alert: HostOutOfMemory
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Почти кончилась память"
+          description: "Доступно меньше 10% RAM уже 10 минут."
