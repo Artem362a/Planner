@@ -211,6 +211,98 @@ def api_list_important_week_tasks(
     return [_week_task_model_to_out(row) for row in rows]
 
 
+@router.put("/week-tasks/{task_id}/week-status", response_model=WeekTaskOut)
+def api_set_week_task_week_status(
+    task_id: int,
+    body: WeekTaskWeekStatusIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Чекбокс recurring-задачи в плане недели: выполнить/снять сразу все её
+    дни в пределах недели. Статус самой WeekTask не трогаем — для recurring
+    он означает «повтор остановлен», а не «неделя закрыта»."""
+    from routers.day import _sync_task_reminder
+
+    current_user_row = cast(Any, current_user)
+
+    db_row = (
+        db.query(WeekTask)
+        .filter(
+            WeekTask.id == task_id,
+            WeekTask.user_id == current_user_row.id,
+        )
+        .first()
+    )
+    if db_row is None:
+        raise HTTPException(404, "Week task not found")
+
+    row = cast(Any, db_row)
+    if (row.task_type or "").strip() != "recurring":
+        raise HTTPException(400, "Week status is only for recurring tasks")
+
+    new_status = 1 if body.status else 0
+    week_end = body.week_start + timedelta(days=6)
+    range_start = max(row.start_date, body.week_start)
+    range_end = min(row.end_date, week_end)
+
+    repeat_set: set[int] = set()
+    for rd in (row.repeat_days or []):
+        try:
+            repeat_set.add(int(rd))
+        except (TypeError, ValueError):
+            pass
+
+    d = range_start
+    while d <= range_end:
+        if repeat_set and d.weekday() not in repeat_set:
+            d += timedelta(days=1)
+            continue
+        day_task = (
+            db.query(DayTask)
+            .filter(
+                DayTask.user_id == current_user_row.id,
+                DayTask.day == d,
+                DayTask.source_week_task_id == row.id,
+            )
+            .first()
+        )
+        if day_task is None:
+            db.add(DayTask(
+                user_id=current_user_row.id,
+                day=d,
+                title=row.name,
+                duration_min=None,
+                priority="high" if row.important else "medium",
+                category=row.category,
+                status=new_status,
+                subtasks=list(row.subtasks) if row.subtasks else [],
+                source_week_task_id=row.id,
+                order_index=_get_next_day_order(db, current_user_row.id, d),
+            ))
+        elif cast(Any, day_task).status != new_status:
+            cast(Any, day_task).status = new_status
+            # Выполненная задача не должна оставить за собой живое напоминание
+            # (и наоборот — снятая галочка возвращает его, если время впереди).
+            _sync_task_reminder(db, current_user_row.id, cast(Any, day_task))
+        d += timedelta(days=1)
+
+    db.commit()
+
+    day_rows = (
+        db.query(DayTask.day, DayTask.status)
+        .filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.source_week_task_id == row.id,
+            DayTask.day >= body.week_start,
+            DayTask.day <= week_end,
+        )
+        .all()
+    )
+    day_status = {day.isoformat(): int(status) for day, status in day_rows}
+
+    return _week_task_model_to_out(db_row, day_status)
+
+
 @router.post("/week-tasks/reorder")
 def api_reorder_week_tasks(
     body: WeekTaskReorderIn,

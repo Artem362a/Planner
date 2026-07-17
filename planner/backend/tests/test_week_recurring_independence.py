@@ -232,6 +232,79 @@ class TestWeekTasksDayStatus:
         assert row["day_status"][WEDNESDAY.isoformat()] == 1
         assert row["day_status"][FRIDAY.isoformat()] == 0
 
+    def test_week_status_marks_all_days_done(self, client, db, user, auth_headers):
+        """Чекбокс недели: один запрос закрывает все дни recurring-задачи."""
+        wt = _create_recurring_week_task(client, auth_headers, name="gym")
+
+        r = client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        assert r.status_code == 200
+        assert r.json()["day_status"] == {
+            MONDAY.isoformat(): 1,
+            WEDNESDAY.isoformat(): 1,
+            FRIDAY.isoformat(): 1,
+        }
+
+        # Статус самой недельной задачи не тронут: 1 значил бы «повтор остановлен».
+        from db import WeekTask
+        assert db.query(WeekTask).filter(WeekTask.id == wt["id"]).first().status == 0
+
+    def test_week_status_unmarks_all_days(self, client, db, user, auth_headers):
+        wt = _create_recurring_week_task(client, auth_headers, name="gym")
+
+        client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        r = client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 0},
+        )
+        assert r.status_code == 200
+        assert set(r.json()["day_status"].values()) == {0}
+
+    def test_week_status_creates_missing_day_tasks(self, client, db, user, auth_headers):
+        """Если DayTask какого-то дня ещё не создан, он появляется сразу выполненным."""
+        from db import DayTask
+
+        wt = _create_recurring_week_task(client, auth_headers, name="gym")
+        mon_id = _day_task_id(db, user.id, wt["id"], MONDAY)
+        db.query(DayTask).filter(DayTask.id == mon_id).delete()
+        db.commit()
+
+        r = client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        assert r.status_code == 200
+        assert r.json()["day_status"][MONDAY.isoformat()] == 1
+
+    def test_week_status_rejected_for_normal_tasks(self, client, auth_headers):
+        payload = {
+            "name": "normal task",
+            "start_date": MONDAY.isoformat(),
+            "end_date": SUNDAY.isoformat(),
+            "important": False,
+            "status": 0,
+            "task_type": "normal",
+            "repeat_days": [],
+            "subtasks": [],
+        }
+        wt = client.post("/week-tasks", headers=auth_headers, json=payload).json()
+
+        r = client.put(
+            f"/week-tasks/{wt['id']}/week-status",
+            headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        assert r.status_code == 400
+
     def test_day_status_empty_for_normal_tasks(self, client, auth_headers):
         payload = {
             "name": "normal task",

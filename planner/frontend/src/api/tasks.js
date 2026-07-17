@@ -299,6 +299,16 @@ export async function updateWeekTask(taskId, body) {
   return await handleResponse(res, "Failed to update week task");
 }
 
+export async function setWeekTaskWeekStatus(taskId, weekStart, status) {
+  const res = await fetch(`${API_URL}/week-tasks/${taskId}/week-status`, {
+    method: "PUT",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ week_start: weekStart, status }),
+  });
+
+  return await handleResponse(res, "Failed to set week task week status");
+}
+
 export async function fetchOverdueTasks() {
   const res = await fetch(`${API_URL}/day-tasks/overdue`, {
     headers: getAuthHeaders(),

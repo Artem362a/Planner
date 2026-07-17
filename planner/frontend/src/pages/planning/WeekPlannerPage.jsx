@@ -16,6 +16,7 @@ import {
   updateWeekTask,
   deleteWeekTask,
   reorderWeekTasks,
+  setWeekTaskWeekStatus,
 } from "../../api/tasks";
 
 
@@ -85,6 +86,36 @@ function isTaskOverdue(task) {
   end.setHours(0, 0, 0, 0);
 
   return end < startOfToday();
+}
+
+// «Выполнено» для строки недельного плана. Обычная задача — по своему статусу.
+// Recurring — когда закрыты все её дни этой недели (day_status): status=1 у
+// самой recurring-задачи означает «повтор остановлен», а не «неделя выполнена».
+function isWeekTaskDone(task, weekDays) {
+  if (Number(task.status) === 1) return true;
+  if ((task.task_type || "").trim() !== "recurring") return false;
+
+  const dayStatus = task.day_status || {};
+  const repeatDays = [...new Set((task.repeat_days || []).map(Number))].filter(
+    (n) => !Number.isNaN(n)
+  );
+  // Дни вне диапазона задачи в day_status не попадают — считаем только те,
+  // по которым реально созданы дневные задачи.
+  const trackedDays = repeatDays
+    .map((i) => weekDays[i]?.str)
+    .filter((str) => str && str in dayStatus);
+
+  return (
+    trackedDays.length > 0 && trackedDays.every((str) => dayStatus[str] === 1)
+  );
+}
+
+// PATCH /week-tasks не возвращает day_status — подхватываем его из прежнего
+// состояния, иначе выполненные дни recurring-задачи «гаснут» до перезагрузки.
+function mergeSavedWeekTask(prevTask, saved) {
+  if (!saved || !prevTask) return saved;
+  if (saved.day_status && Object.keys(saved.day_status).length > 0) return saved;
+  return { ...saved, day_status: prevTask.day_status || {} };
 }
 
 function WeekPlannerPage() {
@@ -245,8 +276,8 @@ function WeekPlannerPage() {
 
   const sortedTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
-      const aDone = Number(a.status) === 1;
-      const bDone = Number(b.status) === 1;
+      const aDone = isWeekTaskDone(a, weekDays);
+      const bDone = isWeekTaskDone(b, weekDays);
 
       if (aDone !== bDone) {
         return aDone ? 1 : -1;
@@ -277,7 +308,7 @@ function WeekPlannerPage() {
 
       return (a.id ?? 0) - (b.id ?? 0);
     });
-  }, [tasks, categories]);
+  }, [tasks, categories, weekDays]);
 
   function buildWeeklyTemplatePayload() {
     return {
@@ -467,12 +498,47 @@ function WeekPlannerPage() {
   }
 
   async function toggleWeekTaskStatus(task) {
+    // Recurring: чекбокс закрывает/открывает все дни этой недели разом.
+    // Остановка повтора (status=1) — отдельная кнопка в окне редактирования.
+    if (
+      !isTemplateMode &&
+      (task.task_type || "").trim() === "recurring" &&
+      Number(task.status) !== 1
+    ) {
+      const nextStatus = isWeekTaskDone(task, weekDays) ? 0 : 1;
+
+      try {
+        const saved = await setWeekTaskWeekStatus(
+          task.id,
+          weekDays[0].str,
+          nextStatus
+        );
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
+      } catch (e) {
+        console.error(e);
+      }
+      return;
+    }
+
     const nextStatus = Number(task.status) === 1 ? 0 : 1;
     const updated = { ...task, status: nextStatus };
 
     try {
       const saved = await persistUpdate(task.id, updated);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // status=1 у recurring-задачи = «повтор остановлен» (дни больше не создаются).
+  async function toggleRecurringArchived(task) {
+    const nextStatus = Number(task.status) === 1 ? 0 : 1;
+
+    try {
+      const saved = await persistUpdate(task.id, { ...task, status: nextStatus });
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
+      closeModal();
     } catch (e) {
       console.error(e);
     }
@@ -648,7 +714,9 @@ function WeekPlannerPage() {
           ...baseBody,
         });
         setTasks((prev) =>
-          prev.map((t) => (t.id === editingTask.id ? updated : t))
+          prev.map((t) =>
+            t.id === editingTask.id ? mergeSavedWeekTask(t, updated) : t
+          )
         );
       }
 
@@ -699,7 +767,7 @@ function WeekPlannerPage() {
 
     try {
       const saved = await persistUpdate(task.id, updatedTask);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
     } catch (e) {
       console.error(e);
     }
@@ -713,7 +781,7 @@ function WeekPlannerPage() {
 
     try {
       const saved = await persistUpdate(task.id, updatedTask);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
     } catch (e) {
       console.error(e);
     }
@@ -730,7 +798,7 @@ function WeekPlannerPage() {
 
     try {
       const saved = await persistUpdate(task.id, updatedTask);
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? saved : t)));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
     } catch (e) {
       console.error(e);
     }
@@ -1197,13 +1265,14 @@ async function handleDragEnd() {
                       const safeEnd = endIndex === -1 ? 6 : endIndex;
                       const color = categories[t.category]?.color || "#dcdcff";
                       const overdue = !isTemplateMode && isTaskOverdue(t);
+                      const done = isWeekTaskDone(t, weekDays);
 
                       return (
                         <div
                           key={t.id}
                           className={
                             "week-grid-row" +
-                            (Number(t.status) === 1 ? " week-grid-row--done" : "") +
+                            (done ? " week-grid-row--done" : "") +
                             (overdue ? " week-grid-row--overdue" : "")
                           }
                         >
@@ -1211,7 +1280,7 @@ async function handleDragEnd() {
                             className={
                               "week-grid-cell week-grid-cell--task-name" +
                               (t.important ? " week-grid-cell--task-name-important" : "") +
-                              (Number(t.status) === 1 ? " week-grid-cell--task-name-done" : "") +
+                              (done ? " week-grid-cell--task-name-done" : "") +
                               (overdue ? " week-grid-cell--task-name-overdue" : "")
                             }
                           >
@@ -1226,7 +1295,7 @@ async function handleDragEnd() {
                             </span>
 
                             <span className="week-task-name-text">
-                              {Number(t.status) === 1 ? "✓ " : ""}
+                              {done ? "✓ " : ""}
                               {t.name}
                             </span>
                           </div>
@@ -1264,12 +1333,12 @@ async function handleDragEnd() {
                       key={t.id}
                       className={
                         "day-task-item" +
-                        (Number(t.status) === 1 ? " done" : "")
+                        (isWeekTaskDone(t, weekDays) ? " done" : "")
                       }
                       style={{
                         "--task-list-tint": hexToRgba(
                           categories[t.category]?.color || "#BBBBBB",
-                          Number(t.status) === 1 ? 0.08 : 0.15
+                          isWeekTaskDone(t, weekDays) ? 0.08 : 0.15
                         ),
                       }}
                       draggable
@@ -1282,7 +1351,7 @@ async function handleDragEnd() {
                       <label className="day-task-checkbox">
                         <input
                           type="checkbox"
-                          checked={Number(t.status) === 1}
+                          checked={isWeekTaskDone(t, weekDays)}
                           onChange={() => toggleWeekTaskStatus(t)}
                         />
                         <span />
@@ -1731,6 +1800,22 @@ async function handleDragEnd() {
                         </ul>
                       )}
                     </div>
+
+                    {/* Остановка повтора раньше висела на чекбоксе в списке;
+                        теперь чекбокс закрывает дни недели, а архив живёт здесь. */}
+                    {!isTemplateMode &&
+                      editingTask &&
+                      (editingTask.task_type || "").trim() === "recurring" && (
+                        <button
+                          type="button"
+                          className="modal-cancel-btn"
+                          onClick={() => toggleRecurringArchived(editingTask)}
+                        >
+                          {Number(editingTask.status) === 1
+                            ? "Возобновить повтор"
+                            : "Остановить повтор"}
+                        </button>
+                      )}
 
                     <div className="modal-buttons">
                       <button

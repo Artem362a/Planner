@@ -278,6 +278,13 @@ class WeekTaskReorderIn(BaseModel):
     ordered_ids: list[int]
 
 
+class WeekTaskWeekStatusIn(BaseModel):
+    """Массовое «выполнено/не выполнено» для всех дней recurring-задачи
+    в пределах одной недели (чекбокс в плане недели)."""
+    week_start: date
+    status: int = 0
+
+
 class TemplateTask(BaseModel):
     title: str
     start_time: str | None = None
