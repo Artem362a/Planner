@@ -38,6 +38,15 @@ services:
       TZ: ${TZ:-Etc/UTC}
       # JSON logs so promtail/Loki can parse level and request_id.
       LOG_FORMAT: json
+      # Multiprocess mode for prometheus_client: with --workers > 1, each
+      # uvicorn worker keeps its own in-memory counters. Without this,
+      # Prometheus scrapes whichever worker's connection it gets, sees a
+      # non-monotonic counter, and misreads it as a reset — inflating rates
+      # (this is what caused the phantom 4xx/5xx spikes on the dashboard).
+      # The directory is wiped and recreated by the container's entrypoint
+      # on every start (see Dockerfile) — required by prometheus_client so
+      # stale files from a previous run don't leak into the aggregate.
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc
     ports:
       # 127.0.0.1 binding: only frpc/nginx on this host may reach the API,
       # not the whole LAN.

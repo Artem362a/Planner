@@ -38,4 +38,9 @@ RUN mkdir -p planner/backend/uploads && chown -R appuser:appuser /app
 USER appuser
 WORKDIR /app/planner/backend
 EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Shell form only for the backend's own CMD: prometheus_client's multiprocess
+# mode requires PROMETHEUS_MULTIPROC_DIR to point at an EMPTY directory before
+# any worker imports prometheus_client, otherwise leftover files from a prior
+# run of this same container get counted as live processes. The bot overrides
+# `command:` in docker-compose.yml and never touches this.
+CMD ["/bin/sh", "-c", "export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc}; rm -rf \"$PROMETHEUS_MULTIPROC_DIR\" && mkdir -p \"$PROMETHEUS_MULTIPROC_DIR\" && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"]
