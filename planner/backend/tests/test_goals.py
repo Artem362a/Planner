@@ -310,11 +310,13 @@ class TestGoalStages:
         db.refresh(a)
         db.refresh(b)
 
-        # Ставим "a" после "b", как это делает фронт после перетаскивания.
+        # Ставим "a" строго после "b" (order_index=2 > 1), как это делает
+        # фронт после перетаскивания. Значение больше, а не равное, чтобы не
+        # было ничьей по order_index (её порядок в SQLite/Postgres разный).
         r = client.patch(
             f"/goals/{g.id}/stages/{a.id}",
             headers=auth_headers,
-            json={"title": "a", "order_index": 1},
+            json={"title": "a", "order_index": 2},
         )
         assert r.status_code == 200
         # GoalOut отдаёт этапы в порядке order_index — "b" теперь первым.
