@@ -75,6 +75,14 @@
   cursor: pointer;
   font-size: 16px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.goal-action-btn--focus svg {
+  width: 17px;
+  height: 17px;
 }
 
 .goal-action-btn--success {
@@ -108,8 +116,8 @@
 }
 
 .goal-create-modal--expanded {
-  width: min(740px, calc(100vw - 24px)) !important;
-  max-width: 740px !important;
+  width: min(880px, calc(100vw - 24px)) !important;
+  max-width: 880px !important;
 }
 
 /* Two-column form layout for С этапами */
@@ -141,6 +149,553 @@
   max-height: 200px;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+/* ===== Stages timeline editor (create + edit) ===== */
+.goal-timeline-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goal-timeline-toolbar {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.goal-timeline-distribute {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2daf5;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: #fff;
+  color: #6f59d9;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.goal-timeline-distribute:hover,
+.goal-timeline-distribute.is-open {
+  border-color: #b7a6f0;
+  background: #f7f4ff;
+}
+
+.goal-timeline-distribute-caret {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.goal-timeline-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 220px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #e7e0f7;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(74, 58, 130, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.goal-timeline-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: #453c6e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goal-timeline-menu-item:hover:not(:disabled) {
+  background: #f4efff;
+}
+
+.goal-timeline-menu-item:disabled {
+  color: #a79ec4;
+  cursor: not-allowed;
+}
+
+.goal-timeline-menu-hint {
+  font-size: 11px;
+  color: #b0a6cc;
+}
+
+.goal-timeline-menu-nrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  margin-top: 2px;
+  border-top: 1px solid #f0ebfa;
+  font-size: 13px;
+  color: #453c6e;
+}
+
+/* Override the modal-wide `input { width:100% !important }` — otherwise the
+   number field eats the row and pushes "дней" and ОК off the menu. */
+.goal-timeline-menu-nrow input {
+  width: 52px !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+.goal-timeline-menu-apply {
+  margin-left: auto;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.goal-timeline-menu-apply:hover {
+  filter: brightness(1.05);
+}
+
+.goal-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  /* Reserve the scrollbar track so it never overlaps the × column */
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+/* No gap between items so the rail line stays continuous */
+.goal-timeline-item {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.goal-timeline-item.is-dragging {
+  opacity: 0.55;
+}
+
+/* Left rail: connector line + status dot */
+.goal-timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.goal-timeline-line {
+  width: 2px;
+  background: #e3dbf6;
+}
+
+.goal-timeline-line--top {
+  height: 8px;
+}
+
+.goal-timeline-line--bottom {
+  flex: 1;
+}
+
+.goal-timeline-item:first-child .goal-timeline-line--top,
+.goal-timeline-item:last-child .goal-timeline-line--bottom {
+  visibility: hidden;
+}
+
+.goal-timeline-dot {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #cabff0;
+  background: #fff;
+  color: #6f59d9;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.goal-timeline-item.is-done .goal-timeline-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Right body: title row + deadline row */
+.goal-timeline-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+}
+
+.goal-timeline-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.goal-timeline-handle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: #b6abd8;
+  cursor: grab;
+  padding: 0;
+  border-radius: 6px;
+  touch-action: none;
+}
+
+.goal-timeline-handle:hover {
+  color: #7d6fb8;
+  background: #f2edff;
+}
+
+.goal-timeline-handle:active {
+  cursor: grabbing;
+}
+
+.goal-timeline-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.goal-timeline-item.is-done .goal-timeline-title {
+  text-decoration: line-through;
+  color: #9a93b5;
+}
+
+/* × and + share one square footprint so every row's right edge lines up */
+.goal-timeline-remove,
+.goal-timeline-add-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.goal-timeline-remove {
+  color: #d59090;
+  font-size: 20px;
+}
+
+.goal-timeline-remove:hover {
+  color: #c15c5c;
+  background: #fbeeee;
+}
+
+.goal-timeline-add-btn {
+  color: #6f59d9;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.goal-timeline-add-btn:hover {
+  background: #efeaff;
+}
+
+/* Deadline sits under the title, same left indent (handle 22 + gap 6),
+   same right gutter as the × so title and date share both edges */
+.goal-timeline-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 28px;
+  padding-right: 30px;
+}
+
+.goal-timeline-date-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9089b0;
+}
+
+.goal-timeline-empty {
+  padding: 14px;
+  border: 1px dashed #ddd2f5;
+  border-radius: 12px;
+  color: #8a7fb5;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Add row mirrors a stage row: rail + body so the input lines up
+   exactly under the stage titles and the + sits in the × column */
+.goal-timeline-add {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.goal-timeline-add .goal-timeline-rail {
+  justify-content: center;
+}
+
+.goal-timeline-add-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px dashed #cabff0;
+  background: transparent;
+}
+
+.goal-timeline-add-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 28px;
+}
+
+.goal-timeline-add-body input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ===== Read mode (expanded goal card): progress rail + dated stages ===== */
+
+/* Filled rail segments / done dots use the goal's own colour */
+.goal-timeline-line.is-filled {
+  background: var(--goal-accent, #7c62e6);
+}
+
+.goal-timeline-item--read.is-done .goal-timeline-dot--check {
+  background: var(--goal-accent, #7c62e6);
+  border-color: var(--goal-accent, #7c62e6);
+  color: #fff;
+}
+
+.goal-timeline-dot--check {
+  transition: background 0.16s, border-color 0.16s, color 0.16s;
+}
+
+.goal-read-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.goal-read-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #3c3660;
+}
+
+.goal-timeline-item--read.is-done .goal-read-title {
+  color: #9a93b5;
+  text-decoration: line-through;
+  text-decoration-color: #c9c2de;
+}
+
+.goal-timeline-item--read.is-current .goal-read-title {
+  font-weight: 600;
+  color: #2d2c72;
+}
+
+.goal-read-now {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--goal-accent, #7c62e6) 16%, transparent);
+  color: var(--goal-accent, #7c62e6);
+}
+
+.goal-read-date {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.goal-read-date--future { color: #9089b0; }
+.goal-read-date--done { color: #b0a9c6; }
+.goal-read-date--soon { color: #c07f11; }
+.goal-read-date--overdue { color: #d1544f; font-weight: 600; }
+
+/* Stages sit directly in the card — no box, just a hairline separator */
+.goal-stages-plain {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #efeaf8;
+}
+
+/* ===== Horizontal stages roadmap (stepper) =====
+   Один акцентный цвет (цель) для пройденного пути + нейтральные серые для
+   остального; единственный тревожный цвет — красный для просрочки. */
+.ghs {
+  display: flex;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding: 10px 4px 6px;
+  scrollbar-gutter: stable;
+}
+
+.ghs-item {
+  flex: 1 0 100px;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ghs-rail {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.ghs-line {
+  flex: 1;
+  height: 3px;
+  border-radius: 3px;
+  background: #e8e3f2;
+}
+
+.ghs-line.is-filled {
+  background: var(--goal-accent, #7c62e6);
+}
+
+.ghs-item:first-child .ghs-line--left,
+.ghs-item:last-child .ghs-line--right {
+  visibility: hidden;
+}
+
+.ghs-dot {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #dcd5ee;
+  background: #fff;
+  color: #a49dbf;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s, box-shadow 0.16s;
+}
+
+.ghs-dot:hover {
+  border-color: var(--goal-accent, #7c62e6);
+}
+
+/* Completed: filled accent + check */
+.ghs-item.is-done .ghs-dot {
+  background: var(--goal-accent, #7c62e6);
+  border-color: var(--goal-accent, #7c62e6);
+  color: #fff;
+}
+
+/* Current: filled accent + number + soft halo ring */
+.ghs-item.is-current .ghs-dot {
+  background: var(--goal-accent, #7c62e6);
+  border-color: var(--goal-accent, #7c62e6);
+  color: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--goal-accent, #7c62e6) 20%, transparent);
+}
+
+.ghs-name {
+  margin-top: 9px;
+  max-width: 96px;
+  /* фиксируем высоту под 3 строки, чтобы даты под названиями были в ряд */
+  min-height: 3.9em;
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 500;
+  color: #6c6690;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.ghs-item.is-current .ghs-name {
+  color: #2d2c72;
+  font-weight: 600;
+}
+
+.ghs-item.is-done .ghs-name {
+  color: #9c96b3;
+}
+
+.ghs-date {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #a7a0bd;
+}
+
+.ghs-date--overdue {
+  color: #d9615c;
+}
+
+/* Collapsed-card summary chips */
+.goal-meta-chip--next {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #efeaff;
+  color: #6a53c9;
+}
+
+.goal-meta-chip--overdue {
+  background: #fbe6e5;
+  color: #c4463f;
 }
 
 /* Mobile: single column */
@@ -222,27 +777,31 @@
 }
 
 .goal-type-chip {
-  border: 2px solid #d4c8f8;
+  border: 1px solid #e2daf5;
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: #fff;
-  color: #6f54db;
+  color: #7c6fb0;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.16s, border-color 0.16s, color 0.16s;
 }
 
-.goal-type-chip:hover {
-  border-color: #9b82f5;
-  background: #f5f0ff;
+/* hover only on mouse devices and never over the active chip — otherwise a
+   tap on a touch screen leaves :hover stuck, whitening the active chip */
+@media (hover: hover) {
+  .goal-type-chip:hover:not(.goal-type-chip--active) {
+    border-color: #b7a6f0;
+    background: #f7f4ff;
+  }
 }
 
 .goal-type-chip--active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(111, 84, 219, 0.22);
+  font-weight: 600;
 }
 
 .goal-form-grid {
@@ -320,28 +879,30 @@
 
 /* Goal filter buttons — match week-add-btn style */
 .goal-filter-btn {
-  border: 2px solid #d4c8f8;
+  border: 1px solid #e2daf5;
   border-radius: 999px;
-  padding: 8px 18px;
+  padding: 6px 15px;
   background: #fff;
-  color: #6f54db;
-  font-weight: 700;
-  font-size: 14px;
+  color: #7c6fb0;
+  font-weight: 500;
+  font-size: 13px;
   cursor: pointer;
   transition: background 0.16s, border-color 0.16s, color 0.16s;
   white-space: nowrap;
 }
 
-.goal-filter-btn:hover {
-  border-color: #9b82f5;
-  background: #f5f0ff;
+@media (hover: hover) {
+  .goal-filter-btn:hover:not(.goal-filter-btn--active) {
+    border-color: #b7a6f0;
+    background: #f7f4ff;
+  }
 }
 
 .goal-filter-btn--active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(111, 84, 219, 0.22);
+  font-weight: 600;
 }
 
 /* FAB visible everywhere; on mobile switches to fixed */

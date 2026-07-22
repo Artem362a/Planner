@@ -378,6 +378,10 @@ class GoalStageIn(BaseModel):
     title: str
     done: bool = False
     planned_date: date | None = None
+    # Позиция этапа. None при создании → назначается как max+1 (в конец);
+    # при обновлении None → порядок не трогаем. Задаётся явно, когда фронт
+    # сохраняет перетащенный порядок этапов.
+    order_index: int | None = None
 
 
 class GoalStageOut(BaseModel):

@@ -278,6 +278,71 @@ class TestGoalStages:
         assert r.status_code == 200
         assert db.query(GoalStage).filter(GoalStage.goal_id == g.id).count() == 0
 
+    def test_create_stage_with_explicit_order_index(self, client, db, user, auth_headers):
+        from db import Goal, GoalStage
+
+        g = Goal(user_id=user.id, title="g", color="#fff", has_stages=True)
+        db.add(g)
+        db.commit()
+        db.refresh(g)
+
+        r = client.post(
+            f"/goals/{g.id}/stages",
+            headers=auth_headers,
+            json={"title": "s", "order_index": 5},
+        )
+        assert r.status_code == 200
+        stage = db.query(GoalStage).filter(GoalStage.goal_id == g.id).one()
+        assert stage.order_index == 5
+
+    def test_update_stage_order_index_reorders(self, client, db, user, auth_headers):
+        from db import Goal, GoalStage
+
+        g = Goal(user_id=user.id, title="g", color="#fff", has_stages=True)
+        db.add(g)
+        db.commit()
+        db.refresh(g)
+
+        a = GoalStage(goal_id=g.id, title="a", order_index=0)
+        b = GoalStage(goal_id=g.id, title="b", order_index=1)
+        db.add_all([a, b])
+        db.commit()
+        db.refresh(a)
+        db.refresh(b)
+
+        # Ставим "a" после "b", как это делает фронт после перетаскивания.
+        r = client.patch(
+            f"/goals/{g.id}/stages/{a.id}",
+            headers=auth_headers,
+            json={"title": "a", "order_index": 1},
+        )
+        assert r.status_code == 200
+        # GoalOut отдаёт этапы в порядке order_index — "b" теперь первым.
+        titles = [s["title"] for s in r.json()["stages"]]
+        assert titles == ["b", "a"]
+
+    def test_update_stage_without_order_index_keeps_position(self, client, db, user, auth_headers):
+        from db import Goal, GoalStage
+
+        g = Goal(user_id=user.id, title="g", color="#fff", has_stages=True)
+        db.add(g)
+        db.commit()
+        db.refresh(g)
+
+        s = GoalStage(goal_id=g.id, title="s", order_index=3)
+        db.add(s)
+        db.commit()
+        db.refresh(s)
+
+        r = client.patch(
+            f"/goals/{g.id}/stages/{s.id}",
+            headers=auth_headers,
+            json={"title": "renamed"},
+        )
+        assert r.status_code == 200
+        db.refresh(s)
+        assert s.order_index == 3
+
 
 class TestToggleGoalDayItem:
     def test_toggle_one_time_marks_done(self, client, db, user, auth_headers):

@@ -1795,9 +1795,11 @@
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
-:root[data-theme="dark"] .goal-type-chip:hover {
-  background: #232230 !important;
-  border-color: var(--accent) !important;
+@media (hover: hover) {
+  :root[data-theme="dark"] .goal-type-chip:hover:not(.goal-type-chip--active) {
+    background: #232230 !important;
+    border-color: var(--accent) !important;
+  }
 }
 :root[data-theme="dark"] .goal-type-chip--active {
   background: var(--accent) !important;
@@ -1851,10 +1853,12 @@
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
-:root[data-theme="dark"] .goal-filter-btn:hover {
-  background: #232230 !important;
-  border-color: var(--accent) !important;
-  color: #c8beff !important;
+@media (hover: hover) {
+  :root[data-theme="dark"] .goal-filter-btn:hover:not(.goal-filter-btn--active) {
+    background: #232230 !important;
+    border-color: var(--accent) !important;
+    color: #c8beff !important;
+  }
 }
 :root[data-theme="dark"] .goal-filter-btn--active {
   background: rgba(154, 134, 255, 0.24) !important;
@@ -1885,6 +1889,153 @@
 :root[data-theme="dark"] .goal-action-btn--focus.is-active {
   background: rgba(154, 134, 255, 0.24) !important;
   color: #c8beff !important;
+}
+
+:root[data-theme="dark"] .goal-timeline-line {
+  background: var(--line-strong) !important;
+}
+:root[data-theme="dark"] .goal-timeline-dot {
+  background: #131217 !important;
+  border-color: var(--line-strong) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-timeline-item.is-done .goal-timeline-dot {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #eae8f4 !important;
+}
+:root[data-theme="dark"] .goal-timeline-handle:hover {
+  background: rgba(154, 134, 255, 0.14) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-timeline-date-label {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .goal-timeline-item.is-done .goal-timeline-title {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .goal-timeline-empty {
+  border-color: var(--line-strong) !important;
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .goal-timeline-editor input {
+  background: #131217 !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .goal-timeline-distribute {
+  background: #1a1920 !important;
+  border-color: var(--line-strong) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-timeline-distribute:hover,
+:root[data-theme="dark"] .goal-timeline-distribute.is-open {
+  background: #232230 !important;
+  border-color: var(--accent) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu {
+  background: #17161d !important;
+  border-color: var(--line-strong) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu-item {
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu-item:hover:not(:disabled) {
+  background: rgba(154, 134, 255, 0.14) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu-item:disabled {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu-hint {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .goal-timeline-menu-nrow {
+  color: var(--text-soft) !important;
+  border-top-color: var(--line-strong) !important;
+}
+:root[data-theme="dark"] .goal-timeline-add-dot {
+  border-color: var(--line-strong) !important;
+}
+:root[data-theme="dark"] .goal-timeline-add-btn {
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-timeline-add-btn:hover {
+  background: rgba(154, 134, 255, 0.14) !important;
+}
+
+/* Read mode (expanded card) */
+:root[data-theme="dark"] .goal-timeline-line.is-filled {
+  background: var(--goal-accent, #9a86ff) !important;
+}
+:root[data-theme="dark"] .goal-timeline-item--read.is-done .goal-timeline-dot--check {
+  background: var(--goal-accent, #9a86ff) !important;
+  border-color: var(--goal-accent, #9a86ff) !important;
+  color: #17161d !important;
+}
+:root[data-theme="dark"] .goal-read-title {
+  color: var(--text-main) !important;
+}
+:root[data-theme="dark"] .goal-timeline-item--read.is-done .goal-read-title {
+  color: var(--text-muted) !important;
+  text-decoration-color: var(--line-strong) !important;
+}
+:root[data-theme="dark"] .goal-timeline-item--read.is-current .goal-read-title {
+  color: #dcd4ff !important;
+}
+:root[data-theme="dark"] .goal-read-date--future { color: var(--text-muted) !important; }
+:root[data-theme="dark"] .goal-read-date--done { color: var(--text-muted) !important; }
+:root[data-theme="dark"] .goal-read-date--soon { color: #dda24a !important; }
+:root[data-theme="dark"] .goal-read-date--overdue { color: #f09a95 !important; }
+:root[data-theme="dark"] .goal-meta-chip--next {
+  background: rgba(154, 134, 255, 0.18) !important;
+  color: #c8beff !important;
+}
+:root[data-theme="dark"] .goal-meta-chip--overdue {
+  background: rgba(240, 120, 120, 0.16) !important;
+  color: #f0a09b !important;
+}
+
+:root[data-theme="dark"] .goal-stages-plain {
+  border-top-color: var(--line-strong) !important;
+}
+
+/* Horizontal stages roadmap */
+:root[data-theme="dark"] .ghs-line {
+  background: var(--line-strong) !important;
+}
+:root[data-theme="dark"] .ghs-line.is-filled {
+  background: var(--goal-accent, #9a86ff) !important;
+}
+:root[data-theme="dark"] .ghs-dot {
+  background: #17161d !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .ghs-item.is-done .ghs-dot,
+:root[data-theme="dark"] .ghs-item.is-current .ghs-dot {
+  background: var(--goal-accent, #9a86ff) !important;
+  border-color: var(--goal-accent, #9a86ff) !important;
+  color: #17161d !important;
+}
+:root[data-theme="dark"] .ghs-name {
+  color: var(--text-soft) !important;
+}
+:root[data-theme="dark"] .ghs-item.is-current .ghs-name {
+  color: #dcd4ff !important;
+}
+:root[data-theme="dark"] .ghs-item.is-done .ghs-name {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .ghs-date {
+  color: var(--text-muted) !important;
+}
+:root[data-theme="dark"] .ghs-date--overdue {
+  color: #f09a95 !important;
+}
+
+:root[data-theme="dark"] .goal-timeline-remove:hover {
+  background: rgba(255, 122, 122, 0.12) !important;
 }
 
 /* --- Inbox page --- */

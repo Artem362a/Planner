@@ -112,6 +112,7 @@ export async function createGoalStage(goalId, body) {
       title: (body.title || "").trim(),
       done: Boolean(body.done),
       planned_date: body.planned_date || null,
+      ...(body.order_index != null ? { order_index: body.order_index } : {}),
     }),
   });
 
@@ -127,6 +128,7 @@ export async function updateGoalStage(goalId, stageId, body) {
       title: (body.title || "").trim(),
       done: Boolean(body.done),
       planned_date: body.planned_date || null,
+      ...(body.order_index != null ? { order_index: body.order_index } : {}),
     }),
   });
 

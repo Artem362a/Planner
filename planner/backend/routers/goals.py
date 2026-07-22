@@ -568,12 +568,15 @@ def create_goal_stage(
     if goal is None:
         raise HTTPException(404, "Goal not found")
 
-    max_order = (
-        db.query(func.max(GoalStage.order_index))
-        .filter(GoalStage.goal_id == goal_id)
-        .scalar()
-    )
-    next_order = (max_order if max_order is not None else -1) + 1
+    if body.order_index is not None:
+        next_order = body.order_index
+    else:
+        max_order = (
+            db.query(func.max(GoalStage.order_index))
+            .filter(GoalStage.goal_id == goal_id)
+            .scalar()
+        )
+        next_order = (max_order if max_order is not None else -1) + 1
 
     stage = GoalStage(
     goal_id=goal_id,
@@ -631,6 +634,8 @@ def update_goal_stage(
     stage.title = body.title.strip()
     stage.done = body.done
     stage.planned_date = body.planned_date
+    if body.order_index is not None:
+        stage.order_index = body.order_index
 
     db.flush()
     db.refresh(goal)
