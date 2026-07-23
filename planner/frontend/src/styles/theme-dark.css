@@ -666,6 +666,28 @@
 :root[data-theme="dark"] .day-goals-stage-list {
   border-top-color: var(--line);
 }
+:root[data-theme="dark"] .day-goals-upcoming-label {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .day-goals-upcoming-item {
+  background: #1a1920;
+  border-color: var(--line);
+}
+@media (hover: hover) {
+  :root[data-theme="dark"] .day-goals-upcoming-item:hover {
+    background: #232230;
+    border-color: var(--line-strong);
+  }
+}
+:root[data-theme="dark"] .day-goals-upcoming-title {
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .day-goals-upcoming-progress {
+  color: #b6a6f0;
+}
+:root[data-theme="dark"] .day-goals-upcoming-meta {
+  color: var(--text-muted);
+}
 
 /* Day task list view */
 
@@ -727,6 +749,14 @@
 }
 :root[data-theme="dark"] .od-close {
   color: var(--text-muted);
+}
+:root[data-theme="dark"] .od-section-title,
+:root[data-theme="dark"] .od-card-hint {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .od-section-count {
+  background: #232230;
+  color: #b6a6f0;
 }
 :root[data-theme="dark"] .od-close:hover {
   background: #232230;
@@ -921,6 +951,12 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .stats-goals-lbl {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stats-goals-stages-note {
+  color: var(--text-soft);
+}
+:root[data-theme="dark"] .stats-goals-subtitle {
   color: var(--text-muted);
 }
 
@@ -1587,6 +1623,26 @@
 :root[data-theme="dark"] .week-grid-row--done .week-grid-days-track {
   background: #141319;
 }
+:root[data-theme="dark"] .week-grid-cell--goals-sep-label {
+  background: #232230;
+  border-bottom-color: var(--line);
+  color: #b6a6f0;
+}
+:root[data-theme="dark"] .week-goal-marker {
+  background: #1a1920;
+}
+@media (hover: hover) {
+  :root[data-theme="dark"] .week-goal-marker:hover {
+    background: color-mix(in srgb, var(--goal-accent, #7ecf8a) 26%, #1a1920);
+  }
+}
+:root[data-theme="dark"] .week-goal-marker--done {
+  background: var(--goal-accent, #7ecf8a);
+  color: #16151c;
+}
+:root[data-theme="dark"] .week-goal-marker-label {
+  color: var(--text-muted);
+}
 :root[data-theme="dark"] .week-loading {
   color: var(--text-muted);
 }
@@ -1819,7 +1875,8 @@
 }
 
 /* Subtasks form inside modals */
-:root[data-theme="dark"] .subtasks-form-title {
+:root[data-theme="dark"] .subtasks-form-title,
+:root[data-theme="dark"] .goal-timeline-heading {
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .subtasks-form-input-row input {

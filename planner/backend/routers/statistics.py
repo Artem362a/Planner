@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from db import DayTask, Goal, TaskCategory
+from db import DayTask, Goal, GoalCheckin, GoalStage, TaskCategory
 from dependencies import get_current_user, get_db
 
 router = APIRouter()
@@ -132,6 +132,101 @@ def get_statistics(
         if g.status in goals_by_status:
             goals_by_status[g.status] += 1
 
+    # ── Goals: stages summary + per-active progress + recurring adherence ─────
+    goal_ids = [g.id for g in goals]
+    stages = (
+        db.query(GoalStage).filter(GoalStage.goal_id.in_(goal_ids)).all()
+        if goal_ids
+        else []
+    )
+    stages_by_goal: dict[int, list] = defaultdict(list)
+    for s in stages:
+        stages_by_goal[s.goal_id].append(s)
+
+    total_stages = len(stages)
+    done_stages = sum(1 for s in stages if s.done)
+
+    # Отметки регулярных целей за период (реальные даты — по ним серия и «X из N»).
+    checkins = (
+        db.query(GoalCheckin)
+        .filter(
+            GoalCheckin.user_id == current_user.id,
+            GoalCheckin.check_date >= start_date,
+            GoalCheckin.check_date <= end_date,
+        )
+        .all()
+        if goal_ids
+        else []
+    )
+    done_checkin_dates: dict[int, set] = defaultdict(set)
+    for c in checkins:
+        if c.done:
+            done_checkin_dates[c.goal_id].add(c.check_date)
+
+    def _recurring_applicable_dates(goal_row):
+        out = []
+        cur = start_date
+        while cur <= end_date:
+            hits = (
+                goal_row.repeat_unit == "day"
+                or (goal_row.repeat_unit == "week" and cur.weekday() == 0)
+                or (goal_row.repeat_unit == "month" and cur.day == 1)
+            )
+            within = goal_row.target_date is None or cur <= goal_row.target_date
+            if hits and within:
+                out.append(cur)
+            cur += timedelta(days=1)
+        return out
+
+    active_progress = []
+    recurring_progress = []
+    for g in goals:
+        if g.status != "active":
+            continue
+
+        if (g.goal_type or "one_time") == "recurring":
+            applicable = _recurring_applicable_dates(g)
+            done_set = done_checkin_dates.get(g.id, set())
+            done_count = sum(1 for d in applicable if d in done_set)
+            # Серия: сколько подряд применимых дат (от последней ≤ сегодня) отмечено.
+            streak = 0
+            for d in reversed(applicable):
+                if d in done_set:
+                    streak += 1
+                else:
+                    break
+            recurring_progress.append(
+                {
+                    "id": g.id,
+                    "title": g.title,
+                    "color": g.color,
+                    "category_key": g.category_key,
+                    "repeat_unit": g.repeat_unit,
+                    "done": done_count,
+                    "applicable": len(applicable),
+                    "streak": streak,
+                }
+            )
+        else:
+            gstages = stages_by_goal.get(g.id, [])
+            if not gstages:
+                continue
+            active_progress.append(
+                {
+                    "id": g.id,
+                    "title": g.title,
+                    "color": g.color,
+                    "category_key": g.category_key,
+                    "done": sum(1 for s in gstages if s.done),
+                    "total": len(gstages),
+                }
+            )
+
+    # Ближе к завершению — выше (по доле готовых этапов).
+    active_progress.sort(
+        key=lambda p: (p["done"] / p["total"] if p["total"] else 0), reverse=True
+    )
+
     return {
         "period": {
             "start": start_date.isoformat(),
@@ -147,7 +242,13 @@ def get_statistics(
             "by_priority": by_priority,
             "total_planned_min": total_planned_min,
         },
-        "goals": {"total": len(goals), **goals_by_status},
+        "goals": {
+            "total": len(goals),
+            **goals_by_status,
+            "stages": {"total": total_stages, "done": done_stages},
+            "active_progress": active_progress,
+            "recurring_progress": recurring_progress,
+        },
         "streak": {"current": current_streak, "best": best_streak},
         "best_day": best_day,
     }

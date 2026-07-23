@@ -488,3 +488,93 @@
   font-size: 12px;
   color: #6d6488;
 }
+
+/* ===== Цели строками в недельной сетке ===== */
+.week-grid-cell--goals-sep-label {
+  grid-column: 1 / -1;
+  padding: 6px 12px;
+  background: #f1ecfb;
+  border-bottom: 1px solid #dcd6eb;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6f59d9;
+}
+
+.week-grid-cell--goal-name {
+  align-items: center;
+  font-weight: 600;
+}
+
+.week-grid-row--goal .week-grid-cell--day-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 3px;
+}
+
+.week-goal-cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.week-goal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.week-goal-marker {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--goal-accent, #7ecf8a);
+  background: #fff;
+  color: var(--goal-accent, #7ecf8a);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, transform 0.1s;
+}
+
+@media (hover: hover) {
+  .week-goal-marker:hover {
+    background: color-mix(in srgb, var(--goal-accent, #7ecf8a) 16%, #fff);
+  }
+}
+
+.week-goal-marker:active {
+  transform: scale(0.92);
+}
+
+.week-goal-marker--done {
+  background: var(--goal-accent, #7ecf8a);
+  color: #fff;
+}
+
+.week-goal-marker-label {
+  max-width: 100%;
+  font-size: 10px;
+  line-height: 1.15;
+  font-weight: 600;
+  text-align: center;
+  color: #6d6488;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}

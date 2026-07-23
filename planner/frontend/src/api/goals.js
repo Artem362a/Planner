@@ -182,3 +182,14 @@ export async function toggleGoalWeekItem(body) {
 
   return await handleResponse(res, "Failed to toggle week goal item");
 }
+
+// Цели строками недельной сетки: [{ goal_id, title, color, markers: [{ date,
+// kind, stage_id, title, done }] }].
+export async function fetchGoalsWeekGrid(weekStart) {
+  const res = await fetch(`${API_URL}/goals/week-grid?week_start=${weekStart}`, {
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(res, "Failed to fetch goals week grid");
+  return Array.isArray(data) ? data : [];
+}

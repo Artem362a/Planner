@@ -395,14 +395,25 @@
 
 .account-section-chevron {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
   color: #8d69eb;
-  font-size: 14px;
-  line-height: 1;
-  transition: transform 0.15s ease;
+  transition: transform 0.18s ease, background 0.14s;
+}
+
+@media (hover: hover) {
+  .account-section-toggle:hover .account-section-chevron {
+    background: rgba(141, 105, 235, 0.12);
+  }
 }
 
 .account-section-chevron--open {
   transform: rotate(90deg);
+  background: rgba(141, 105, 235, 0.12);
 }
 
 .account-section--danger .account-section-chevron {

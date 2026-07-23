@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
-import WeekGoalsPanel from "../../components/goals/WeekGoalsPanel";
 import { CategoryIcon } from "../../components/icons";
+import {
+  fetchGoalsWeekGrid,
+  toggleGoalWeekItem,
+  toggleGoalDayItem,
+} from "../../api/goals";
 import {
   fetchCategories,
   createWeekTemplate,
@@ -157,7 +161,7 @@ function WeekPlannerPage() {
 
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
-  const [isWeekGoalsOpen, setIsWeekGoalsOpen] = useState(false);
+  const [goalRows, setGoalRows] = useState([]);
   const [templateName, setTemplateName] = useState("");
   const [templateColor, setTemplateColor] = useState(TEMPLATE_COLORS[0]);
   const [templates, setTemplates] = useState([]);
@@ -205,6 +209,47 @@ function WeekPlannerPage() {
     }
   }
 
+  async function loadGoalRows(currentWeekStart) {
+    try {
+      const data = await fetchGoalsWeekGrid(formatLocalDate(currentWeekStart));
+      setGoalRows(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setGoalRows([]);
+    }
+  }
+
+  // Отметить/снять отметку цели в конкретный день недели. Тип маркера решает,
+  // какую ручку дёргать; после — перечитываем строки целей.
+  async function toggleGoalMarker(row, marker) {
+    try {
+      if (marker.kind === "stage") {
+        await toggleGoalWeekItem({
+          kind: "stage",
+          goal_id: row.goal_id,
+          stage_id: marker.stage_id,
+          week_start: formatLocalDate(weekStart),
+        });
+      } else if (marker.kind === "recurring") {
+        await toggleGoalDayItem({
+          goal_id: row.goal_id,
+          stage_id: null,
+          day: marker.date,
+        });
+      } else {
+        await toggleGoalWeekItem({
+          kind: "goal",
+          goal_id: row.goal_id,
+          stage_id: null,
+          week_start: formatLocalDate(weekStart),
+        });
+      }
+      await loadGoalRows(weekStart);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   async function loadWeekTemplates() {
     try {
       const data = await fetchWeekTemplates();
@@ -222,6 +267,7 @@ function WeekPlannerPage() {
   useEffect(() => {
     if (isTemplateMode) return; // в режиме шаблона задачи засеяны локально
     loadTasks(weekStart);
+    loadGoalRows(weekStart);
   }, [weekStart, isTemplateMode]);
 
   // Вернулись на вкладку — обновляем список (задачи могли добавиться через бота).
@@ -232,6 +278,7 @@ function WeekPlannerPage() {
       if (document.visibilityState !== "visible") return;
       if (isModalOpen) return; // не сбрасываем состояние во время редактирования
       loadTasks(weekStart);
+      loadGoalRows(weekStart);
     };
 
     document.addEventListener("visibilitychange", onVisible);
@@ -1221,15 +1268,6 @@ async function handleDragEnd() {
                   >
                     Применить шаблон
                   </button>
-
-                  <button
-                    type="button"
-                    className="secondary-btn"
-                    disabled={isTemplateMode}
-                    onClick={() => setIsWeekGoalsOpen(true)}
-                  >
-                    Цели
-                  </button>
                 </div>
 
                 <div className="week-grid-excel">
@@ -1322,6 +1360,107 @@ async function handleDragEnd() {
                         </div>
                       );
                     })}
+
+                    {!isTemplateMode && goalRows.length > 0 && (
+                      <div className="week-grid-row week-grid-row--goals-sep">
+                        <div className="week-grid-cell week-grid-cell--goals-sep-label">
+                          Цели
+                        </div>
+                      </div>
+                    )}
+
+                    {!isTemplateMode &&
+                      goalRows.map((row) => {
+                        // В один день может попасть несколько этапов — группируем
+                        // в массив, иначе совпадающие даты затирают друг друга.
+                        const markersByDate = {};
+                        row.markers.forEach((m) => {
+                          (markersByDate[m.date] ||= []).push(m);
+                        });
+                        const cat = categories[row.category_key];
+                        const goalColor = cat?.color || row.color || "#7ECF8A";
+                        const goalIcon = cat?.icon || "target";
+
+                        return (
+                          <div
+                            key={`goal-${row.goal_id}`}
+                            className={
+                              "week-grid-row week-grid-row--goal" +
+                              (row.done ? " week-grid-row--done" : "")
+                            }
+                          >
+                            <div
+                              className={
+                                "week-grid-cell week-grid-cell--task-name week-grid-cell--goal-name" +
+                                (row.done
+                                  ? " week-grid-cell--task-name-done"
+                                  : "")
+                              }
+                            >
+                              <span
+                                className="week-task-category-icon"
+                                style={{
+                                  color: goalColor,
+                                  backgroundColor: hexToRgba(goalColor, 0.14),
+                                }}
+                              >
+                                <CategoryIcon name={goalIcon} />
+                              </span>
+                              <span className="week-task-name-text">
+                                {row.title}
+                              </span>
+                            </div>
+
+                            <div className="week-grid-days-track">
+                              {weekDays.map(({ str }) => {
+                                const dayMarkers = markersByDate[str] || [];
+                                return (
+                                  <div
+                                    key={str}
+                                    className="week-grid-cell week-grid-cell--day-box"
+                                  >
+                                    {dayMarkers.length > 0 && (
+                                      <div className="week-goal-cell-stack">
+                                        {dayMarkers.map((marker) => (
+                                          <div
+                                            key={
+                                              marker.stage_id ??
+                                              `${marker.kind}-${marker.date}`
+                                            }
+                                            className="week-goal-cell"
+                                          >
+                                            <button
+                                              type="button"
+                                              className={
+                                                "week-goal-marker" +
+                                                (marker.done
+                                                  ? " week-goal-marker--done"
+                                                  : "")
+                                              }
+                                              style={{ "--goal-accent": goalColor }}
+                                              onClick={() =>
+                                                toggleGoalMarker(row, marker)
+                                              }
+                                              title={marker.title}
+                                            >
+                                              {marker.done ? "✓" : ""}
+                                            </button>
+                                            {marker.kind === "stage" && (
+                                              <span className="week-goal-marker-label">
+                                                {marker.title}
+                                              </span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
 
@@ -1952,23 +2091,6 @@ async function handleDragEnd() {
                       Сохрани шаблон недели и используй его для похожих планов
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-
-            {isWeekGoalsOpen && (
-              <div
-                className="modal-overlay"
-                onClick={() => setIsWeekGoalsOpen(false)}
-              >
-                <div
-                  className="modal week-goals-modal"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <WeekGoalsPanel
-                    weekStart={formatLocalDate(weekStart)}
-                    className="week-goals-panel week-goals-panel--modal"
-                  />
                 </div>
               </div>
             )}

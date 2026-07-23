@@ -201,7 +201,8 @@
   }
 
   .card-header-row {
-    align-items: flex-start;
+    align-items: center;
+    margin-bottom: 8px;
   }
 
   .day-page-main {

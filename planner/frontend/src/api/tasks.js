@@ -71,6 +71,18 @@ export async function reorderDayTasks(dayString, orderedIds) {
   return data;
 }
 
+// Перенести все незакрытые задачи дня на следующий день. Возвращает { moved, target }.
+export async function carryOverUnfinished(dayString) {
+  const res = await fetch(`${API_URL}/day/${dayString}/carry-over`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await handleResponse(res, "Failed to carry over tasks");
+  notifyDayTasksChanged(dayString);
+  return data;
+}
+
 export async function fetchDaySettings(dayString) {
   const res = await fetch(`${API_URL}/day/${dayString}/settings`, {
     headers: getAuthHeaders(),

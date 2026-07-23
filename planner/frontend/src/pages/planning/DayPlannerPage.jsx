@@ -42,6 +42,13 @@ function DayPlannerPage({ user }) {
       .catch(() => {});
   }, []);
 
+  // Кнопка «Незакрытые» в тулбаре дня открывает ту же модалку.
+  useEffect(() => {
+    const open = () => setShowOverdueModal(true);
+    window.addEventListener("open-overdue-modal", open);
+    return () => window.removeEventListener("open-overdue-modal", open);
+  }, []);
+
   function changeDay(day) {
     setSearchParams({ date: day });
   }

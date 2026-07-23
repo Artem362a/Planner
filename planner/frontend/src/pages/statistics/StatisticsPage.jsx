@@ -429,6 +429,94 @@ export default function StatisticsPage() {
                       <div className="stats-goals-lbl">В архиве</div>
                     </div>
                   </div>
+
+                  {data.goals?.stages?.total > 0 && (
+                    <div className="stats-goals-stages-note">
+                      Этапы закрыто: {data.goals.stages.done} из{" "}
+                      {data.goals.stages.total}
+                    </div>
+                  )}
+
+                  {(data.goals?.active_progress || []).length > 0 && (
+                    <div className="stats-goals-sub">
+                      <div className="stats-goals-subtitle">Прогресс по целям</div>
+                      <div className="stats-category-list">
+                        {data.goals.active_progress.map((g) => {
+                          const pct = g.total
+                            ? Math.round((g.done / g.total) * 100)
+                            : 0;
+                          const color = g.color || "#7ECF8A";
+                          return (
+                            <div key={g.id} className="stats-cat-row">
+                              <div className="stats-cat-label">
+                                <span
+                                  className="stats-cat-dot"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="stats-cat-title">
+                                  {g.title}
+                                </span>
+                                <span className="stats-cat-count">
+                                  {g.done}/{g.total} · {pct}%
+                                </span>
+                              </div>
+                              <div className="stats-cat-track">
+                                <div
+                                  className="stats-cat-done"
+                                  style={{
+                                    width: `${pct}%`,
+                                    backgroundColor: color,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {(data.goals?.recurring_progress || []).length > 0 && (
+                    <div className="stats-goals-sub">
+                      <div className="stats-goals-subtitle">
+                        Регулярные за период
+                      </div>
+                      <div className="stats-category-list">
+                        {data.goals.recurring_progress.map((g) => {
+                          const pct = g.applicable
+                            ? Math.round((g.done / g.applicable) * 100)
+                            : 0;
+                          const color = g.color || "#7ECF8A";
+                          return (
+                            <div key={g.id} className="stats-cat-row">
+                              <div className="stats-cat-label">
+                                <span
+                                  className="stats-cat-dot"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="stats-cat-title">
+                                  {g.title}
+                                </span>
+                                <span className="stats-cat-count">
+                                  {g.done}/{g.applicable}
+                                  {g.streak > 0 ? ` · серия ${g.streak}` : ""}
+                                </span>
+                              </div>
+                              <div className="stats-cat-track">
+                                <div
+                                  className="stats-cat-done"
+                                  style={{
+                                    width: `${pct}%`,
+                                    backgroundColor: color,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             )}

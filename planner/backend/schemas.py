@@ -451,6 +451,27 @@ class GoalWeekItemToggleIn(BaseModel):
     week_start: date
 
 
+class GoalWeekMarkerOut(BaseModel):
+    # Одна отметка цели в конкретный день недели. kind:
+    #   "stage"     — этап цели (переключается toggle week-item, stage);
+    #   "recurring" — чек-ин регулярной цели за этот день (toggle day-item);
+    #   "deadline"  — дедлайн одноразовой цели (toggle week-item, goal).
+    date: date
+    kind: str
+    stage_id: int | None = None
+    title: str
+    done: bool
+
+
+class GoalWeekRowOut(BaseModel):
+    goal_id: int
+    title: str
+    color: str
+    category_key: str | None = None
+    done: bool = False
+    markers: list[GoalWeekMarkerOut]
+
+
 class DaySettingsRow(Protocol):
     id: int
     day: date

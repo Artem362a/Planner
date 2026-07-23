@@ -338,3 +338,90 @@ class TestReschedule:
             json={"new_date": (date.today() - timedelta(days=2)).isoformat()},
         )
         assert r.status_code == 400
+
+
+class TestCarryOver:
+    def test_moves_only_unfinished_to_next_day(self, client, db, user, auth_headers):
+        from db import DayTask
+
+        d = date.today()
+        nxt = d + timedelta(days=1)
+        db.add(DayTask(user_id=user.id, day=d, title="undone1", priority="medium", status=0, order_index=0))
+        db.add(DayTask(user_id=user.id, day=d, title="undone2", priority="medium", status=0, order_index=1))
+        db.add(DayTask(user_id=user.id, day=d, title="done", priority="medium", status=1, order_index=2))
+        db.commit()
+
+        r = client.post(f"/day/{d.isoformat()}/carry-over", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["moved"] == 2
+        assert r.json()["target"] == nxt.isoformat()
+
+        # На исходном дне остаётся только выполненная.
+        src = db.query(DayTask).filter(DayTask.user_id == user.id, DayTask.day == d).all()
+        assert [t.title for t in src] == ["done"]
+
+        # Незакрытые переехали на завтра, статус 0.
+        moved = db.query(DayTask).filter(DayTask.user_id == user.id, DayTask.day == nxt).all()
+        assert sorted(t.title for t in moved) == ["undone1", "undone2"]
+        assert all(t.status == 0 for t in moved)
+
+    def test_preserves_fields_and_appends(self, client, db, user, auth_headers):
+        from db import DayTask
+
+        d = date.today()
+        nxt = d + timedelta(days=1)
+        # На завтра уже есть задача — перенесённые должны встать в конец.
+        db.add(DayTask(user_id=user.id, day=nxt, title="existing", priority="medium", status=0, order_index=0))
+        db.add(DayTask(
+            user_id=user.id, day=d, title="carry", priority="high", status=0,
+            order_index=0, duration_min=45, category="work",
+        ))
+        db.commit()
+
+        r = client.post(f"/day/{d.isoformat()}/carry-over", headers=auth_headers)
+        assert r.json()["moved"] == 1
+
+        carried = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == user.id, DayTask.day == nxt, DayTask.title == "carry")
+            .one()
+        )
+        assert carried.priority == "high"
+        assert carried.duration_min == 45
+        assert carried.category == "work"
+        assert carried.order_index > 0
+
+    def test_empty_day_moves_nothing(self, client, auth_headers):
+        r = client.post(f"/day/{TODAY}/carry-over", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["moved"] == 0
+
+    def test_week_sourced_not_duplicated_if_target_has_instance(self, client, db, user, auth_headers):
+        from db import DayTask, WeekTask
+
+        d = date.today()
+        nxt = d + timedelta(days=1)
+        wt = WeekTask(
+            user_id=user.id, name="routine", start_date=d - timedelta(days=3),
+            end_date=d + timedelta(days=3), status=0, task_type="normal",
+            repeat_days=[], subtasks=[], order_index=0,
+        )
+        db.add(wt)
+        db.commit()
+        db.refresh(wt)
+
+        # Инстанс недельной задачи стоит и сегодня, и уже завтра.
+        db.add(DayTask(user_id=user.id, day=d, title="routine", priority="medium",
+                       status=0, order_index=0, source_week_task_id=wt.id))
+        db.add(DayTask(user_id=user.id, day=nxt, title="routine", priority="medium",
+                       status=0, order_index=0, source_week_task_id=wt.id))
+        db.commit()
+
+        r = client.post(f"/day/{d.isoformat()}/carry-over", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json()["moved"] == 0
+        assert r.json()["skipped"] == 1
+
+        # Завтра остаётся ровно один инстанс, сегодня — пусто.
+        assert db.query(DayTask).filter(DayTask.user_id == user.id, DayTask.day == nxt).count() == 1
+        assert db.query(DayTask).filter(DayTask.user_id == user.id, DayTask.day == d).count() == 0

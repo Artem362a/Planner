@@ -367,6 +367,7 @@
   gap: 10px;
 }
 
+
 /* Кнопка режима напоминаний (🔔) */
 .day-remind-mode-btn {
   width: 38px;
@@ -1248,6 +1249,81 @@
   border-top: 1px solid #eee8fb;
 }
 
+/* «Скоро» — ближайшие цели, когда на сегодня по целям делать нечего */
+.day-goals-upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-goals-upcoming-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9a92bb;
+}
+
+.day-goals-upcoming-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #faf9fe;
+  border: 1px solid #eee8fb;
+  text-decoration: none;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+@media (hover: hover) {
+  .day-goals-upcoming-item:hover {
+    background: #f4f0fe;
+    border-color: #e0d6f7;
+  }
+}
+
+.day-goals-upcoming-accent {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+}
+
+.day-goals-upcoming-content {
+  min-width: 0;
+}
+
+.day-goals-upcoming-title {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: #332c56;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.day-goals-upcoming-title > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.day-goals-upcoming-progress {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6f59d9;
+}
+
+.day-goals-upcoming-meta {
+  margin-top: 3px;
+  color: #827aa7;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .day-goals-stage {
   font-weight: 550;
 }
@@ -1694,6 +1770,50 @@
   cursor: default;
 }
 
+.od-section {
+  margin-bottom: 16px;
+}
+
+.od-section:last-child {
+  margin-bottom: 0;
+}
+
+.od-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 2px 8px;
+}
+
+.od-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9a8fc0;
+}
+
+.od-section-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.od-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #efe9fb;
+  color: #6f59d9;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .od-close {
   width: 28px;
   height: 28px;
@@ -1815,7 +1935,14 @@
 
 .od-card-actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
+}
+
+.od-card-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: #9a8fc0;
 }
 
 .od-btn {

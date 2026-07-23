@@ -158,6 +158,20 @@
   gap: 12px;
 }
 
+.goal-timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.goal-timeline-heading {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3f3858;
+}
+
 .goal-timeline-toolbar {
   position: relative;
   display: flex;

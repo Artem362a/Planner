@@ -146,8 +146,20 @@ function CollapsibleSection({
             "account-section-chevron" +
             (open ? " account-section-chevron--open" : "")
           }
+          aria-hidden="true"
         >
-          ▸
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 6l6 6-6 6" />
+          </svg>
         </span>
       </button>
 
@@ -534,13 +546,12 @@ function AccountPage({ user, onUserUpdate }) {
             </div>
 
             <div className="account-settings">
-              <form className="account-section" onSubmit={handleProfileSubmit}>
-                <div className="account-section-info">
-                  <h2>Ник и аватарка</h2>
-                  <p>{selectedPreset?.label || "Своё изображение"}</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                as="form"
+                onSubmit={handleProfileSubmit}
+                title="Ник и аватарка"
+                description={selectedPreset?.label || "Своё изображение"}
+              >
                   <label className="account-field">
                     <span>Ник</span>
                     <input
@@ -578,16 +589,12 @@ function AccountPage({ user, onUserUpdate }) {
                   </button>
 
                   {profileStatus && <div className="account-status">{profileStatus}</div>}
-                </div>
-              </form>
+              </CollapsibleSection>
 
-              <div className="account-section">
-                <div className="account-section-info">
-                  <h2>Тема оформления</h2>
-                  <p>Применяется ко всему интерфейсу и синхронизируется между устройствами</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                title="Тема оформления"
+                description="Применяется ко всему интерфейсу и синхронизируется между устройствами"
+              >
                   <div className="account-theme-row">
                     {THEME_OPTIONS.map((opt) => (
                       <button
@@ -604,16 +611,14 @@ function AccountPage({ user, onUserUpdate }) {
                     ))}
                   </div>
                   {themeStatus && <div className="account-status">{themeStatus}</div>}
-                </div>
-              </div>
+              </CollapsibleSection>
 
-              <form className="account-section" onSubmit={handleDayStartSubmit}>
-                <div className="account-section-info">
-                  <h2>Время начала дня</h2>
-                  <p>Используется по умолчанию для новых дней в плане. Каждый день можно править отдельно.</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                as="form"
+                onSubmit={handleDayStartSubmit}
+                title="Время начала дня"
+                description="Используется по умолчанию для новых дней в плане. Каждый день можно править отдельно."
+              >
                   <label className="account-field">
                     <span>Время</span>
                     <input
@@ -629,21 +634,21 @@ function AccountPage({ user, onUserUpdate }) {
                   </button>
 
                   {dayStartStatus && <div className="account-status">{dayStartStatus}</div>}
-                </div>
-              </form>
+              </CollapsibleSection>
 
-              <form className="account-section" onSubmit={handleReminderSettingsSubmit}>
-                <div className="account-section-info">
-                  <h2>Напоминания</h2>
-                  <p>
+              <CollapsibleSection
+                as="form"
+                onSubmit={handleReminderSettingsSubmit}
+                title="Напоминания"
+                description={
+                  <>
                     Дефолт «напомнить за N минут» для задач дня; повторная
                     отправка в Telegram, если не ответить на напоминание
                     (0 — выключить); предупреждение о дедлайне цели за N дней
                     (0 — выключить).
-                  </p>
-                </div>
-
-                <div className="account-section-controls">
+                  </>
+                }
+              >
                   <label className="account-field">
                     <span>Задача дня: за N минут</span>
                     <input
@@ -711,19 +716,12 @@ function AccountPage({ user, onUserUpdate }) {
                   {remSettingsStatus && (
                     <div className="account-status">{remSettingsStatus}</div>
                   )}
-                </div>
-              </form>
+              </CollapsibleSection>
 
-              <div className="account-section">
-                <div className="account-section-info">
-                  <h2>Категории задач</h2>
-                  <p>
-                    {Object.keys(categoriesMap).length} категорий. Управляй цветом, иконкой и
-                    названием.
-                  </p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                title="Категории задач"
+                description={`${Object.keys(categoriesMap).length} категорий. Управляй цветом, иконкой и названием.`}
+              >
                   <button
                     type="button"
                     className="account-primary-btn"
@@ -731,19 +729,12 @@ function AccountPage({ user, onUserUpdate }) {
                   >
                     Открыть управление категориями
                   </button>
-                </div>
-              </div>
+              </CollapsibleSection>
 
-              <div className="account-section">
-                <div className="account-section-info">
-                  <h2>Telegram-бот</h2>
-                  <p>
-                    Быстрый захват во «Входящие», план на день и уведомления
-                    прямо в Telegram.
-                  </p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                title="Telegram-бот"
+                description="Быстрый захват во «Входящие», план на день и уведомления прямо в Telegram."
+              >
                   {tgLinked ? (
                     <>
                       <div className="account-status">✅ Telegram подключён</div>
@@ -795,8 +786,7 @@ function AccountPage({ user, onUserUpdate }) {
                     </button>
                   )}
                   {tgStatus && <div className="account-status">{tgStatus}</div>}
-                </div>
-              </div>
+              </CollapsibleSection>
 
               <CollapsibleSection
                 as="form"
@@ -844,13 +834,10 @@ function AccountPage({ user, onUserUpdate }) {
               </CollapsibleSection>
 
               {isSamaraStudent && (
-                <div className="account-section">
-                  <div className="account-section-info">
-                    <h2>Импорт расписания</h2>
-                    <p>Студентам СНИУ им. Королёва — подтянуть пары из университетского расписания.</p>
-                  </div>
-
-                  <div className="account-section-controls">
+                <CollapsibleSection
+                  title="Импорт расписания"
+                  description="Студентам СНИУ им. Королёва — подтянуть пары из университетского расписания."
+                >
                     <button
                       type="button"
                       className="account-primary-btn"
@@ -859,23 +846,18 @@ function AccountPage({ user, onUserUpdate }) {
                       Импортировать расписание
                     </button>
                     {importStatus && <div className="account-status">{importStatus}</div>}
-                  </div>
-                </div>
+                </CollapsibleSection>
               )}
 
-              <div className="account-section">
-                <div className="account-section-info">
-                  <h2>Экспорт данных</h2>
-                  <p>Скачать архив со всеми задачами, целями, категориями и настройками — в JSON.</p>
-                </div>
-
-                <div className="account-section-controls">
+              <CollapsibleSection
+                title="Экспорт данных"
+                description="Скачать архив со всеми задачами, целями, категориями и настройками — в JSON."
+              >
                   <button type="button" className="account-primary-btn" onClick={handleExport}>
                     Скачать архив
                   </button>
                   {exportStatus && <div className="account-status">{exportStatus}</div>}
-                </div>
-              </div>
+              </CollapsibleSection>
 
               <CollapsibleSection
                 title="Активные сессии"

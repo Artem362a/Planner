@@ -132,6 +132,122 @@ def list_goals_for_week(
     return result
 
 
+@router.get("/goals/week-grid", response_model=list[GoalWeekRowOut])
+def list_goals_week_grid(
+    week_start: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Цели строками недельной сетки: у каждой цели — отметки по дням.
+
+    Одна строка = одна цель. markers несут дату (в какой день недели ставить
+    отметку), тип и done. Этап двигается через week-item/toggle (kind=stage),
+    регулярная — через day-item/toggle по дате дня, дедлайн одноразовой —
+    через week-item/toggle (kind=goal).
+    """
+    current_user_row = cast(Any, current_user)
+    week_end = week_start + timedelta(days=6)
+
+    # Завершённые цели НЕ отфильтровываем — пусть остаются в сетке зачёркнутыми
+    # (как выполненные задачи), а не исчезают. Прячем только архивные.
+    rows = (
+        db.query(Goal)
+        .filter(
+            Goal.user_id == current_user_row.id,
+            Goal.status != "archived",
+        )
+        .order_by(Goal.order_index.asc(), Goal.id.desc())
+        .all()
+    )
+
+    # Чек-ины регулярных целей за все дни недели — чтобы знать done по каждой дате.
+    checkins = (
+        db.query(GoalCheckin)
+        .filter(
+            GoalCheckin.user_id == current_user_row.id,
+            GoalCheckin.check_date >= week_start,
+            GoalCheckin.check_date <= week_end,
+        )
+        .all()
+    )
+    checkin_done = {
+        (cast(Any, c).goal_id, cast(Any, c).check_date): bool(cast(Any, c).done)
+        for c in checkins
+    }
+
+    result: list[GoalWeekRowOut] = []
+
+    for goal in rows:
+        goal_row = cast(Any, goal)
+        goal_type = goal_row.goal_type or "one_time"
+        target_date = getattr(goal_row, "target_date", None)
+        markers: list[GoalWeekMarkerOut] = []
+
+        if goal_type == "recurring":
+            cursor = week_start
+            while cursor <= week_end:
+                hits = (
+                    goal_row.repeat_unit == "day"
+                    or (goal_row.repeat_unit == "week" and cursor.weekday() == 0)
+                    or (goal_row.repeat_unit == "month" and cursor.day == 1)
+                )
+                within = target_date is None or cursor <= target_date
+                if hits and within:
+                    markers.append(
+                        GoalWeekMarkerOut(
+                            date=cursor,
+                            kind="recurring",
+                            stage_id=None,
+                            title=goal_row.title,
+                            done=checkin_done.get((goal_row.id, cursor), False),
+                        )
+                    )
+                cursor += timedelta(days=1)
+        else:
+            planned_stages = [
+                cast(Any, stage)
+                for stage in (goal_row.stages or [])
+                if getattr(stage, "planned_date", None) is not None
+                and week_start <= cast(Any, stage).planned_date <= week_end
+            ]
+            if planned_stages:
+                for stage_row in planned_stages:
+                    markers.append(
+                        GoalWeekMarkerOut(
+                            date=stage_row.planned_date,
+                            kind="stage",
+                            stage_id=stage_row.id,
+                            title=stage_row.title,
+                            done=bool(stage_row.done),
+                        )
+                    )
+            elif target_date is not None and week_start <= target_date <= week_end:
+                markers.append(
+                    GoalWeekMarkerOut(
+                        date=target_date,
+                        kind="deadline",
+                        stage_id=None,
+                        title=goal_row.title,
+                        done=goal_row.status == "done",
+                    )
+                )
+
+        if markers:
+            markers.sort(key=lambda m: m.date)
+            result.append(
+                GoalWeekRowOut(
+                    goal_id=goal_row.id,
+                    title=goal_row.title,
+                    color=goal_row.color,
+                    category_key=getattr(goal_row, "category_key", None),
+                    done=goal_row.status == "done",
+                    markers=markers,
+                )
+            )
+
+    return result
+
+
 @router.patch("/goals/week-item/toggle")
 def toggle_goal_week_item(
     body: GoalWeekItemToggleIn,
@@ -456,15 +572,10 @@ def list_goals_for_day(
     )
     checkins_by_goal_id = {cast(Any, row).goal_id: bool(cast(Any, row).done) for row in checkins}
 
-    # If any active goals are in focus — return only those
-    focus_goals = [cast(Any, g) for g in rows if bool(getattr(cast(Any, g), "is_focus", False))]
-    if focus_goals:
-        result: list[GoalOut] = []
-        for goal_row in focus_goals:
-            setattr(goal_row, "day_done", checkins_by_goal_id.get(goal_row.id, False))
-            result.append(_goal_to_out(goal_row))
-        return result
-
+    # Раньше здесь было focus-замыкание: если хоть одна цель «в фокусе» — день
+    # возвращал ТОЛЬКО её, целиком, с бесполезной галочкой на всю цель. Убрано:
+    # фокус — это про страницу «Цели», а в дне показываем то, что реально
+    # актуально сегодня (этап на сегодня / чек-ин регулярной / дедлайн).
     result: list[GoalOut] = []
 
     for goal in rows:

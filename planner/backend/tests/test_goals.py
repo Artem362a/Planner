@@ -404,3 +404,127 @@ class TestToggleGoalDayItem:
         )
         assert checkin is not None
         assert checkin.done is True
+
+
+class TestGoalsWeekGrid:
+    def _monday(self):
+        today = date.today()
+        return today - timedelta(days=today.weekday())
+
+    def test_staged_goal_returns_stage_markers(self, client, db, user, auth_headers):
+        from db import Goal, GoalStage
+
+        monday = self._monday()
+        g = Goal(
+            user_id=user.id,
+            title="Отпуск",
+            color="#fff",
+            goal_type="one_time",
+            target_date=monday + timedelta(days=10),
+            has_stages=True,
+        )
+        db.add(g)
+        db.commit()
+        db.refresh(g)
+
+        db.add(GoalStage(goal_id=g.id, title="Собрать", order_index=0,
+                         planned_date=monday + timedelta(days=1)))
+        db.add(GoalStage(goal_id=g.id, title="Ехать", order_index=1,
+                         planned_date=monday + timedelta(days=3)))
+        db.commit()
+
+        r = client.get(
+            f"/goals/week-grid?week_start={monday.isoformat()}", headers=auth_headers
+        )
+        assert r.status_code == 200
+        rows = r.json()
+        assert len(rows) == 1
+        markers = rows[0]["markers"]
+        assert [m["kind"] for m in markers] == ["stage", "stage"]
+        assert markers[0]["date"] == (monday + timedelta(days=1)).isoformat()
+        assert markers[0]["title"] == "Собрать"
+
+    def test_recurring_daily_marks_each_day(self, client, db, user, auth_headers):
+        from db import Goal
+
+        monday = self._monday()
+        db.add(Goal(
+            user_id=user.id,
+            title="Зарядка",
+            color="#fff",
+            goal_type="recurring",
+            repeat_unit="day",
+            target_date=monday + timedelta(days=365),
+        ))
+        db.commit()
+
+        r = client.get(
+            f"/goals/week-grid?week_start={monday.isoformat()}", headers=auth_headers
+        )
+        rows = r.json()
+        assert len(rows) == 1
+        assert len(rows[0]["markers"]) == 7
+        assert all(m["kind"] == "recurring" for m in rows[0]["markers"])
+
+    def test_deadline_goal_single_marker(self, client, db, user, auth_headers):
+        from db import Goal
+
+        monday = self._monday()
+        db.add(Goal(
+            user_id=user.id,
+            title="Сдать отчёт",
+            color="#fff",
+            goal_type="one_time",
+            target_date=monday + timedelta(days=2),
+        ))
+        db.commit()
+
+        r = client.get(
+            f"/goals/week-grid?week_start={monday.isoformat()}", headers=auth_headers
+        )
+        rows = r.json()
+        assert len(rows) == 1
+        assert len(rows[0]["markers"]) == 1
+        assert rows[0]["markers"][0]["kind"] == "deadline"
+        assert rows[0]["markers"][0]["date"] == (monday + timedelta(days=2)).isoformat()
+
+    def test_done_goal_stays_shaded(self, client, db, user, auth_headers):
+        # Завершённая цель не исчезает из сетки — остаётся строкой с done=True.
+        from db import Goal
+
+        monday = self._monday()
+        db.add(Goal(
+            user_id=user.id,
+            title="done",
+            color="#fff",
+            goal_type="one_time",
+            target_date=monday + timedelta(days=2),
+            status="done",
+        ))
+        db.commit()
+
+        r = client.get(
+            f"/goals/week-grid?week_start={monday.isoformat()}", headers=auth_headers
+        )
+        rows = r.json()
+        assert len(rows) == 1
+        assert rows[0]["done"] is True
+
+    def test_archived_goal_excluded(self, client, db, user, auth_headers):
+        from db import Goal
+
+        monday = self._monday()
+        db.add(Goal(
+            user_id=user.id,
+            title="archived",
+            color="#fff",
+            goal_type="one_time",
+            target_date=monday + timedelta(days=2),
+            status="archived",
+        ))
+        db.commit()
+
+        r = client.get(
+            f"/goals/week-grid?week_start={monday.isoformat()}", headers=auth_headers
+        )
+        assert r.json() == []

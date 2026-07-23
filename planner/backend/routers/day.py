@@ -643,6 +643,117 @@ def dismiss_overdue_task(
     return {"ok": True}
 
 
+def _week_instance_exists(
+    db: Session,
+    user_id: int,
+    source_week_task_id: int,
+    target_date: date,
+    exclude_id: int | None = None,
+):
+    """Есть ли на target_date инстанс той же недельной задачи (кроме exclude_id)."""
+    q = db.query(DayTask).filter(
+        DayTask.user_id == user_id,
+        DayTask.source_week_task_id == source_week_task_id,
+        DayTask.day == target_date,
+    )
+    if exclude_id is not None:
+        q = q.filter(DayTask.id != exclude_id)
+    return q.first()
+
+
+def _moved_task_row(user_id: int, t: Any, new_date: date, order_index: int) -> DayTask:
+    """Копия задачи на новую дату: сохраняем содержимое, статус сбрасываем в 0.
+
+    Общая заготовка для переноса одной задачи (reschedule) и массового
+    переноса незакрытых на следующий день (carry-over).
+    """
+    return DayTask(
+        user_id=user_id,
+        day=new_date,
+        title=t.title,
+        duration_min=t.duration_min,
+        start_time=t.start_time,
+        priority=t.priority,
+        category=t.category,
+        status=0,
+        subtasks=list(t.subtasks) if t.subtasks else [],
+        order_index=order_index,
+        # Сохраняем связь с источником при переносе: иначе выполнение
+        # перенесённой задачи не отметило бы исходное входящее/недельную задачу.
+        source_inbox_task_id=getattr(t, "source_inbox_task_id", None),
+        source_week_task_id=t.source_week_task_id,
+        remind_lead_min=getattr(t, "remind_lead_min", None),
+        remind_anchor_time=getattr(t, "remind_anchor_time", None),
+    )
+
+
+@router.post("/day/{day}/carry-over")
+def carry_over_unfinished(
+    day: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Перенести все незакрытые задачи дня на следующий день.
+
+    Задачи со статусом «не выполнено» переезжают на day+1 (в конец списка),
+    выполненные остаются на месте. Один коммит на всю пачку.
+    """
+    current_user_row = cast(Any, current_user)
+
+    try:
+        src_day = date.fromisoformat(day)
+    except ValueError:
+        raise HTTPException(400, "Bad date format, use YYYY-MM-DD")
+
+    target = src_day + timedelta(days=1)
+
+    tasks = (
+        db.query(DayTask)
+        .filter(
+            DayTask.user_id == current_user_row.id,
+            DayTask.day == src_day,
+            DayTask.status == 0,
+        )
+        .order_by(DayTask.order_index.asc(), DayTask.id.asc())
+        .all()
+    )
+
+    if not tasks:
+        return {"moved": 0, "target": target.isoformat()}
+
+    max_order = (
+        db.query(DayTask.order_index)
+        .filter(DayTask.user_id == current_user_row.id, DayTask.day == target)
+        .order_by(DayTask.order_index.desc())
+        .first()
+    )
+    next_order = (max_order[0] + 1) if max_order else 0
+
+    moved = 0
+    skipped = 0
+    for task in tasks:
+        t = cast(Any, task)
+        # Недельная задача уже стоит на завтрашней дате по расписанию — не плодим
+        # дубль: просто убираем сегодняшний незакрытый инстанс.
+        if t.source_week_task_id is not None and _week_instance_exists(
+            db, current_user_row.id, t.source_week_task_id, target, exclude_id=t.id
+        ):
+            db.delete(task)
+            skipped += 1
+            continue
+
+        new_task = _moved_task_row(current_user_row.id, t, target, next_order)
+        next_order += 1
+        db.add(new_task)
+        db.flush()
+        _sync_task_reminder(db, current_user_row.id, cast(Any, new_task))
+        db.delete(task)
+        moved += 1
+
+    db.commit()
+    return {"moved": moved, "skipped": skipped, "target": target.isoformat()}
+
+
 @router.post("/day-tasks/{task_id}/reschedule", response_model=TaskOut)
 def reschedule_task(
     task_id: int,
@@ -686,23 +797,11 @@ def reschedule_task(
         .first()
     )
 
-    new_task = DayTask(
-        user_id=current_user_row.id,
-        day=body.new_date,
-        title=t.title,
-        duration_min=t.duration_min,
-        start_time=t.start_time,
-        priority=t.priority,
-        category=t.category,
-        status=0,
-        subtasks=list(t.subtasks) if t.subtasks else [],
-        order_index=(max_order[0] + 1) if max_order else 0,
-        # Сохраняем связь с источником при переносе: иначе выполнение
-        # перенесённой задачи не отметило бы исходное входящее/недельную задачу.
-        source_inbox_task_id=getattr(t, "source_inbox_task_id", None),
-        source_week_task_id=t.source_week_task_id,
-        remind_lead_min=getattr(t, "remind_lead_min", None),
-        remind_anchor_time=getattr(t, "remind_anchor_time", None),
+    new_task = _moved_task_row(
+        current_user_row.id,
+        t,
+        body.new_date,
+        (max_order[0] + 1) if max_order else 0,
     )
 
     db.add(new_task)

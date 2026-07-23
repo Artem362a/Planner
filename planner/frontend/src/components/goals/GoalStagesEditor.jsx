@@ -89,7 +89,7 @@ function planByStep(count, kind, interval) {
   });
 }
 
-export default function GoalStagesEditor({ stages, onChange, targetDate }) {
+export default function GoalStagesEditor({ stages, onChange, targetDate, title }) {
   const [newTitle, setNewTitle] = useState("");
   const [dragIndex, setDragIndex] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -192,20 +192,23 @@ export default function GoalStagesEditor({ stages, onChange, targetDate }) {
 
   return (
     <div className="goal-timeline-editor">
-      {stages.length > 0 && (
-        <div className="goal-timeline-toolbar" ref={menuRef}>
-          <button
-            type="button"
-            className={
-              "goal-timeline-distribute" + (menuOpen ? " is-open" : "")
-            }
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            Распределить дедлайны
-            <span className="goal-timeline-distribute-caret">▾</span>
-          </button>
+      {(title || stages.length > 0) && (
+        <div className="goal-timeline-header">
+          {title && <span className="goal-timeline-heading">{title}</span>}
+          {stages.length > 0 && (
+            <div className="goal-timeline-toolbar" ref={menuRef}>
+              <button
+                type="button"
+                className={
+                  "goal-timeline-distribute" + (menuOpen ? " is-open" : "")
+                }
+                onClick={() => setMenuOpen((o) => !o)}
+              >
+                Распределить дедлайны
+                <span className="goal-timeline-distribute-caret">▾</span>
+              </button>
 
-          {menuOpen && (
+              {menuOpen && (
             <div className="goal-timeline-menu">
               <button
                 type="button"
@@ -253,6 +256,8 @@ export default function GoalStagesEditor({ stages, onChange, targetDate }) {
                   ОК
                 </button>
               </div>
+            </div>
+              )}
             </div>
           )}
         </div>

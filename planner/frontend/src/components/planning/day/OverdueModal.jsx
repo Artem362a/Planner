@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import {
+  carryOverUnfinished,
   dismissOverdueTask,
+  fetchCategories,
+  fetchDayTasks,
   fetchOverdueTasks,
   rescheduleTask,
 } from "../../../api/tasks";
@@ -32,7 +35,7 @@ function todayString() {
   return `${y}-${m}-${day}`;
 }
 
-function OverdueCard({ task, onDismiss, onReschedule }) {
+function OverdueCard({ task, onDismiss, onReschedule, hideDate = false, recurring = false }) {
   const [expanded, setExpanded] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [customDate, setCustomDate] = useState("");
@@ -58,7 +61,9 @@ function OverdueCard({ task, onDismiss, onReschedule }) {
 
   const dateLabel = task.week_start_date
     ? `${formatDateShort(task.week_start_date)} — ${formatDateShort(task.week_end_date)}`
-    : formatDateShort(task.day);
+    : task.day
+      ? formatDateShort(task.day)
+      : "";
 
   const borderColor = task.category_color || (
     task.priority === "high" ? "#e74c3c" :
@@ -76,19 +81,30 @@ function OverdueCard({ task, onDismiss, onReschedule }) {
           {task.category && (
             <span className="od-card-cat">{task.category}</span>
           )}
-          <span className="od-card-date">{dateLabel}</span>
+          {!hideDate && dateLabel && (
+            <span className="od-card-date">{dateLabel}</span>
+          )}
         </div>
       </div>
 
       {!expanded ? (
         <div className="od-card-actions">
-          <button
-            className="od-btn od-btn--move"
-            onClick={() => setExpanded(true)}
-            disabled={busy}
-          >
-            Перенести
-          </button>
+          {recurring ? (
+            <span
+              className="od-card-hint"
+              title="Задача из плана на неделю — повторяется по расписанию, отдельный перенос не нужен"
+            >
+              в расписании недели
+            </span>
+          ) : (
+            <button
+              className="od-btn od-btn--move"
+              onClick={() => setExpanded(true)}
+              disabled={busy}
+            >
+              Перенести
+            </button>
+          )}
           <button
             className="od-btn od-btn--ignore"
             onClick={doDismiss}
@@ -156,27 +172,68 @@ function OverdueCard({ task, onDismiss, onReschedule }) {
 }
 
 export default function OverdueModal({ onClose }) {
-  const [tasks, setTasks] = useState([]);
+  const [overdue, setOverdue] = useState([]);
+  const [todayTasks, setTodayTasks] = useState([]);
+  const [catMap, setCatMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [dismissingAll, setDismissingAll] = useState(false);
+  const [carrying, setCarrying] = useState(false);
 
   useEffect(() => {
-    fetchOverdueTasks()
-      .then(setTasks)
+    const today = todayString();
+    Promise.all([
+      fetchOverdueTasks().catch(() => []),
+      fetchDayTasks(today).catch(() => []),
+      fetchCategories().catch(() => []),
+    ])
+      .then(([overdueData, dayData, catData]) => {
+        const map = {};
+        (Array.isArray(catData) ? catData : []).forEach((c) => {
+          map[c.key] = c;
+        });
+        setCatMap(map);
+
+        setOverdue(Array.isArray(overdueData) ? overdueData : []);
+        const pending = (Array.isArray(dayData) ? dayData : [])
+          .filter((t) => Number(t.status) !== 1)
+          .map((t) => ({
+            id: t.id,
+            title: t.title,
+            category: t.category,
+            category_color: map[t.category]?.color,
+            priority: t.priority,
+            day: today,
+            source_week_task_id: t.source_week_task_id,
+            subtasks: t.subtasks || [],
+          }));
+        setTodayTasks(pending);
+      })
       .finally(() => setLoading(false));
   }, []);
 
+  // Показать название категории вместо ключа и подтянуть цвет.
+  function withCategory(task) {
+    const cat = catMap[task.category];
+    return {
+      ...task,
+      category: cat?.title || task.category,
+      category_color: task.category_color || cat?.color,
+    };
+  }
+
+  // Убираем задачу из обоих списков (в просроченных — с учётом группировки
+  // по недельной задаче, в сегодняшних — просто по id).
   function removeTask(taskId) {
-    setTasks((prev) => {
+    setOverdue((prev) => {
       const target = prev.find((t) => t.id === taskId);
-      if (!target) return prev;
-      if (target.source_week_task_id) {
+      if (target && target.source_week_task_id) {
         return prev.filter(
           (t) => t.source_week_task_id !== target.source_week_task_id
         );
       }
       return prev.filter((t) => t.id !== taskId);
     });
+    setTodayTasks((prev) => prev.filter((t) => t.id !== taskId));
   }
 
   async function handleDismiss(taskId) {
@@ -189,15 +246,28 @@ export default function OverdueModal({ onClose }) {
     removeTask(taskId);
   }
 
-  async function handleDismissAll() {
+  async function handleDismissAllOverdue() {
     setDismissingAll(true);
     try {
-      await Promise.all(tasks.map((t) => dismissOverdueTask(t.id)));
-      setTasks([]);
+      await Promise.all(overdue.map((t) => dismissOverdueTask(t.id)));
+      setOverdue([]);
     } finally {
       setDismissingAll(false);
     }
   }
+
+  async function handleCarryAllToday() {
+    setCarrying(true);
+    try {
+      await carryOverUnfinished(todayString());
+      setTodayTasks([]);
+    } finally {
+      setCarrying(false);
+    }
+  }
+
+  const total = overdue.length + todayTasks.length;
+  const allClear = !loading && total === 0;
 
   return (
     <div className="task-modal-backdrop" onClick={onClose}>
@@ -208,21 +278,10 @@ export default function OverdueModal({ onClose }) {
         {/* Header */}
         <div className="od-header">
           <div className="od-header-left">
-            <span className="od-header-title">Просроченные задачи</span>
-            {tasks.length > 0 && (
-              <span className="od-header-badge">{tasks.length}</span>
-            )}
+            <span className="od-header-title">Незакрытые задачи</span>
+            {total > 0 && <span className="od-header-badge">{total}</span>}
           </div>
           <div className="od-header-right">
-            {tasks.length > 1 && (
-              <button
-                className="od-dismiss-all"
-                onClick={handleDismissAll}
-                disabled={dismissingAll}
-              >
-                Игнорировать все
-              </button>
-            )}
             <button className="od-close" onClick={onClose} aria-label="Закрыть">
               ✕
             </button>
@@ -231,23 +290,72 @@ export default function OverdueModal({ onClose }) {
 
         {/* Body */}
         <div className="od-list">
-          {loading && (
-            <p className="od-empty">Загрузка…</p>
-          )}
-          {!loading && tasks.length === 0 && (
+          {loading && <p className="od-empty">Загрузка…</p>}
+
+          {allClear && (
             <div className="od-all-clear">
               <span className="od-all-clear-icon">✓</span>
-              <span>Просроченных задач нет</span>
+              <span>Всё разобрано</span>
             </div>
           )}
-          {!loading && tasks.map((task) => (
-            <OverdueCard
-              key={task.source_week_task_id ?? task.id}
-              task={task}
-              onDismiss={handleDismiss}
-              onReschedule={handleReschedule}
-            />
-          ))}
+
+          {!loading && overdue.length > 0 && (
+            <section className="od-section">
+              <div className="od-section-head">
+                <span className="od-section-title">Просрочено</span>
+                <div className="od-section-head-right">
+                  <span className="od-section-count">{overdue.length}</span>
+                  {overdue.length > 1 && (
+                    <button
+                      className="od-dismiss-all"
+                      onClick={handleDismissAllOverdue}
+                      disabled={dismissingAll}
+                    >
+                      Игнорировать все
+                    </button>
+                  )}
+                </div>
+              </div>
+              {overdue.map((task) => (
+                <OverdueCard
+                  key={task.source_week_task_id ?? task.id}
+                  task={withCategory(task)}
+                  onDismiss={handleDismiss}
+                  onReschedule={handleReschedule}
+                />
+              ))}
+            </section>
+          )}
+
+          {!loading && todayTasks.length > 0 && (
+            <section className="od-section">
+              <div className="od-section-head">
+                <span className="od-section-title">Сегодня не выполнено</span>
+                <div className="od-section-head-right">
+                  <span className="od-section-count">{todayTasks.length}</span>
+                  {todayTasks.length > 1 && (
+                    <button
+                      className="od-dismiss-all"
+                      onClick={handleCarryAllToday}
+                      disabled={carrying}
+                    >
+                      {carrying ? "Переношу…" : "Все на завтра"}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {todayTasks.map((task) => (
+                <OverdueCard
+                  key={task.id}
+                  task={withCategory(task)}
+                  onDismiss={handleDismiss}
+                  onReschedule={handleReschedule}
+                  hideDate
+                  recurring={!!task.source_week_task_id}
+                />
+              ))}
+            </section>
+          )}
         </div>
       </div>
     </div>

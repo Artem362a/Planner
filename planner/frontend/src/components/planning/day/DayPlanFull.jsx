@@ -397,6 +397,8 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     onTemplateModeChange?.(tpl);
   };
 
+  const unfinishedCount = tasks.filter((t) => Number(t.status) !== 1).length;
+
   const exitTemplateEdit = () => {
     setEditingTemplate(null);
     onTemplateModeChange?.(null);
@@ -1849,6 +1851,21 @@ const overdueImportCandidates = useMemo(
             >
               Применить шаблон
             </button>
+
+            {!isTemplateMode &&
+              dayString === formatLocalDate(currentTime) &&
+              unfinishedCount > 0 && (
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() =>
+                    window.dispatchEvent(new CustomEvent("open-overdue-modal"))
+                  }
+                  title="Разобрать незакрытые задачи: перенести или отметить"
+                >
+                  Незакрытые ({unfinishedCount})
+                </button>
+              )}
           </div>
 
           <div className="day-toolbar-right">

@@ -347,6 +347,26 @@
   font-weight: 500;
 }
 
+.stats-goals-stages-note {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6a5fa0;
+}
+
+.stats-goals-sub {
+  margin-top: 16px;
+}
+
+.stats-goals-subtitle {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #9a92bb;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .stats-cards-row {

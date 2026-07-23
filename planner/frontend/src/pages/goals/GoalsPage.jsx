@@ -787,8 +787,8 @@ export default function GoalsPage() {
                       {createForm.has_stages && (
                         <div className="goal-form-col-aside">
                           <div className="subtasks-form-block subtasks-form-block--soft">
-                            <div className="subtasks-form-title">Этапы</div>
                             <GoalStagesEditor
+                              title="Этапы"
                               stages={createForm.stages}
                               targetDate={createForm.target_date}
                               onChange={(nextStages) =>
