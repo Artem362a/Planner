@@ -295,6 +295,32 @@ class TestDismiss:
         r = client.delete("/day-tasks/9999/dismiss", headers=auth_headers)
         assert r.status_code == 404
 
+    def test_dismiss_today_week_sourced_marks_itself(self, client, db, user, auth_headers):
+        # Регресс: раньше week-ветка помечала только day < today, и сегодняшний
+        # инстанс недельной задачи оставался неотмеченным (dismiss был no-op).
+        from db import DayTask, WeekTask
+
+        d = date.today()
+        wt = WeekTask(
+            user_id=user.id, name="routine", start_date=d,
+            end_date=d + timedelta(days=2), status=0, task_type="normal",
+            repeat_days=[], subtasks=[], order_index=0,
+        )
+        db.add(wt)
+        db.commit()
+        db.refresh(wt)
+
+        task = DayTask(user_id=user.id, day=d, title="routine", priority="medium",
+                       status=0, order_index=0, source_week_task_id=wt.id)
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+
+        r = client.delete(f"/day-tasks/{task.id}/dismiss", headers=auth_headers)
+        assert r.status_code == 200
+        db.refresh(task)
+        assert task.dismissed is True
+
 
 class TestReschedule:
     def test_reschedule_moves_task_to_new_date(self, client, db, user, auth_headers):

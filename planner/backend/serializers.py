@@ -159,6 +159,7 @@ def _task_to_out(t: DayTaskRow) -> TaskOut:
         order_index=t.order_index,
         source_week_task_id=t.source_week_task_id,
         remind_lead_min=getattr(t, "remind_lead_min", None),
+        dismissed=bool(getattr(t, "dismissed", False)),
     )
 
 def _template_to_out(tmpl: DayTemplateRow) -> DayTemplateOut:

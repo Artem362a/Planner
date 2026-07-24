@@ -302,6 +302,20 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [dayString, isTemplateMode, isModalOpen, dragIndex]);
 
+  // Задачи изменились в другом месте (модалка «Незакрытые»: перенос/игнор) —
+  // подтягиваем свежий день, чтобы таймлайн не остался со старыми задачами.
+  useEffect(() => {
+    if (isTemplateMode) return;
+
+    const onChange = () => {
+      if (isModalOpen || dragIndex !== null) return;
+      fetchDayTasks(dayString).then(setTasks).catch(console.error);
+    };
+
+    window.addEventListener("day-tasks-changed", onChange);
+    return () => window.removeEventListener("day-tasks-changed", onChange);
+  }, [dayString, isTemplateMode, isModalOpen, dragIndex]);
+
   useLayoutEffect(() => {
     const currentOrder = tasks.map((t) => t.id);
     const prevOrder = previousTaskOrderRef.current;

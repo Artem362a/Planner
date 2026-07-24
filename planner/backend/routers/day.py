@@ -630,14 +630,17 @@ def dismiss_overdue_task(
     t = cast(Any, task)
 
     if t.source_week_task_id is not None:
+        # Прошлые незакрытые инстансы этой недельной задачи — тоже скрываем.
         db.query(DayTask).filter(
             DayTask.user_id == current_user_row.id,
             DayTask.source_week_task_id == t.source_week_task_id,
             DayTask.day < today,
             DayTask.status == 0,
         ).update({"dismissed": True}, synchronize_session=False)
-    else:
-        t.dismissed = True
+
+    # Саму задачу помечаем всегда (в т.ч. сегодняшний инстанс недельной —
+    # прошлая ветка его не покрывала, «Игнорировать» был no-op).
+    t.dismissed = True
 
     db.commit()
     return {"ok": True}
@@ -713,6 +716,7 @@ def carry_over_unfinished(
             DayTask.user_id == current_user_row.id,
             DayTask.day == src_day,
             DayTask.status == 0,
+            DayTask.dismissed.isnot(True),
         )
         .order_by(DayTask.order_index.asc(), DayTask.id.asc())
         .all()

@@ -143,8 +143,12 @@ def get_statistics(
     for s in stages:
         stages_by_goal[s.goal_id].append(s)
 
-    total_stages = len(stages)
-    done_stages = sum(1 for s in stages if s.done)
+    # Сводка «этапов закрыто» — только по активным целям (завершённые и
+    # архивные не должны раздувать число).
+    active_goal_ids = {g.id for g in goals if g.status == "active"}
+    active_stages = [s for s in stages if s.goal_id in active_goal_ids]
+    total_stages = len(active_stages)
+    done_stages = sum(1 for s in active_stages if s.done)
 
     # Отметки регулярных целей за период (реальные даты — по ним серия и «X из N»).
     checkins = (
@@ -188,9 +192,14 @@ def get_statistics(
             applicable = _recurring_applicable_dates(g)
             done_set = done_checkin_dates.get(g.id, set())
             done_count = sum(1 for d in applicable if d in done_set)
-            # Серия: сколько подряд применимых дат (от последней ≤ сегодня) отмечено.
+            # Серия: сколько подряд применимых дат (от последней ≤ сегодня)
+            # отмечено. Сегодняшний день ещё не завершён — если он применим и
+            # пока не отмечен, не рвём им серию (прощаем текущий день).
+            streak_seq = applicable
+            if streak_seq and streak_seq[-1] == end_date and end_date not in done_set:
+                streak_seq = streak_seq[:-1]
             streak = 0
-            for d in reversed(applicable):
+            for d in reversed(streak_seq):
                 if d in done_set:
                     streak += 1
                 else:

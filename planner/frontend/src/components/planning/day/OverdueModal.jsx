@@ -195,7 +195,7 @@ export default function OverdueModal({ onClose }) {
 
         setOverdue(Array.isArray(overdueData) ? overdueData : []);
         const pending = (Array.isArray(dayData) ? dayData : [])
-          .filter((t) => Number(t.status) !== 1)
+          .filter((t) => Number(t.status) !== 1 && !t.dismissed)
           .map((t) => ({
             id: t.id,
             title: t.title,

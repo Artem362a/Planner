@@ -333,7 +333,10 @@ export async function dismissOverdueTask(taskId) {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
-  return await handleResponse(res, "Failed to dismiss task");
+  const data = await handleResponse(res, "Failed to dismiss task");
+  // День мог измениться (задача скрыта) — уведомляем открытые представления.
+  notifyDayTasksChanged();
+  return data;
 }
 
 export async function rescheduleTask(taskId, newDate) {
@@ -342,7 +345,10 @@ export async function rescheduleTask(taskId, newDate) {
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ new_date: newDate }),
   });
-  return await handleResponse(res, "Failed to reschedule task");
+  const data = await handleResponse(res, "Failed to reschedule task");
+  // Затрагивает и исходный, и целевой день — уведомляем открытые представления.
+  notifyDayTasksChanged();
+  return data;
 }
 
 export async function fetchDayNote(day) {

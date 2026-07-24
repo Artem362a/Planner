@@ -52,42 +52,6 @@
   }
 }
 
-/* Week goals and category icons */
-.week-goals-panel {
-  margin: 0 0 14px;
-  padding: 14px;
-  border: 1px solid #e7e1f3;
-  border-radius: 14px;
-  background: #fbfaff;
-}
-
-.week-goals-modal {
-  width: min(620px, calc(100vw - 32px)) !important;
-  max-height: min(720px, calc(100vh - 48px));
-  overflow-y: auto !important;
-}
-
-.week-goals-panel--modal {
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.week-goals-panel .day-side-title-row {
-  margin-bottom: 10px;
-}
-
-.week-goals-panel .day-goals-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
-}
-
-.week-goals-panel--modal .day-goals-list {
-  grid-template-columns: 1fr;
-}
-
 .day-goals-item {
   display: grid;
   grid-template-columns: 18px 5px minmax(0, 1fr);
@@ -180,24 +144,6 @@
   height: 12px;
 }
 
-/* Hard reset for weekly goals inside modal */
-.week-goals-modal {
-  padding: 18px !important;
-}
-
-.week-goals-modal .week-goals-panel {
-  width: 100% !important;
-}
-
-.week-goals-modal .day-side-title-row {
-  margin-bottom: 14px !important;
-}
-
-.week-goals-modal .day-goals-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-}
 
 .week-goals-modal .day-goals-item {
   display: grid !important;

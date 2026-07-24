@@ -206,6 +206,7 @@ class TaskOut(TaskIn):
     id: int
     day: date
     order_index: int = 0
+    dismissed: bool = False
 
 
 class DayTaskReorderIn(BaseModel):
