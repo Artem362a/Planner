@@ -688,6 +688,22 @@
 :root[data-theme="dark"] .day-goals-upcoming-meta {
   color: var(--text-muted);
 }
+:root[data-theme="dark"] .day-goals-upcoming-label--overdue {
+  color: #f0a0ab;
+}
+:root[data-theme="dark"] .day-goals-upcoming-item--overdue {
+  background: rgba(230, 90, 110, 0.09);
+  border-color: rgba(230, 90, 110, 0.32);
+}
+@media (hover: hover) {
+  :root[data-theme="dark"] .day-goals-upcoming-item--overdue:hover {
+    background: rgba(230, 90, 110, 0.15);
+    border-color: rgba(230, 90, 110, 0.45);
+  }
+}
+:root[data-theme="dark"] .day-goals-upcoming-meta--overdue {
+  color: #f0a0ab;
+}
 
 /* Day task list view */
 
@@ -1569,6 +1585,12 @@
 }
 :root[data-theme="dark"] .template-item {
   color: var(--text-main);
+}
+:root[data-theme="dark"] .template-item:hover {
+  background: rgba(154, 134, 255, 0.13);
+}
+:root[data-theme="dark"] .template-item--editing {
+  background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .template-name {
   color: var(--text-main);

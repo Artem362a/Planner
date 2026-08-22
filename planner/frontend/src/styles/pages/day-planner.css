@@ -1324,6 +1324,27 @@
   font-weight: 500;
 }
 
+.day-goals-upcoming-label--overdue {
+  color: #c15467;
+}
+
+.day-goals-upcoming-item--overdue {
+  background: #fdf1f3;
+  border-color: #f3d0d8;
+}
+
+@media (hover: hover) {
+  .day-goals-upcoming-item--overdue:hover {
+    background: #fce7eb;
+    border-color: #ecbcc7;
+  }
+}
+
+.day-goals-upcoming-meta--overdue {
+  color: #c15467;
+  font-weight: 600;
+}
+
 .day-goals-stage {
   font-weight: 550;
 }

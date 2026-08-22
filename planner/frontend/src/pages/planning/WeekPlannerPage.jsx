@@ -578,19 +578,6 @@ function WeekPlannerPage() {
     }
   }
 
-  // status=1 у recurring-задачи = «повтор остановлен» (дни больше не создаются).
-  async function toggleRecurringArchived(task) {
-    const nextStatus = Number(task.status) === 1 ? 0 : 1;
-
-    try {
-      const saved = await persistUpdate(task.id, { ...task, status: nextStatus });
-      setTasks((prev) => prev.map((t) => (t.id === task.id ? mergeSavedWeekTask(t, saved) : t)));
-      closeModal();
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
   function openCreateModal() {
     setEditingTask(null);
     setForm({
@@ -1939,22 +1926,6 @@ async function handleDragEnd() {
                         </ul>
                       )}
                     </div>
-
-                    {/* Остановка повтора раньше висела на чекбоксе в списке;
-                        теперь чекбокс закрывает дни недели, а архив живёт здесь. */}
-                    {!isTemplateMode &&
-                      editingTask &&
-                      (editingTask.task_type || "").trim() === "recurring" && (
-                        <button
-                          type="button"
-                          className="modal-cancel-btn"
-                          onClick={() => toggleRecurringArchived(editingTask)}
-                        >
-                          {Number(editingTask.status) === 1
-                            ? "Возобновить повтор"
-                            : "Остановить повтор"}
-                        </button>
-                      )}
 
                     <div className="modal-buttons">
                       <button

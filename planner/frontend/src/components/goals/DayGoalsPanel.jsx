@@ -6,6 +6,7 @@ import {
   fetchGoalsForDay,
   toggleGoalDayItem,
 } from "../../api/goals";
+import { summarizeStages } from "./GoalStagesStrip";
 
 function formatShortDate(dateStr) {
   if (!dateStr) return "";
@@ -14,10 +15,37 @@ function formatShortDate(dateStr) {
   return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+// ISO-строка сегодняшнего дня (YYYY-MM-DD) для лексикографического сравнения с
+// planned_date/target_date — та же логика, что и в остальном виджете.
+function todayISO() {
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function daysOverdue(dateStr, ref) {
+  const from = new Date(`${dateStr}T00:00:00`);
+  const to = new Date(`${ref}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return 0;
+  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function plural(n, forms) {
+  const abs = Math.abs(n) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) return forms[2];
+  if (last > 1 && last < 5) return forms[1];
+  if (last === 1) return forms[0];
+  return forms[2];
+}
+
 // Ближайшие активные цели для «пустого» дня: у каждой считаем ближайшую веху
 // (следующий невыполненный этап / дедлайн), сортируем по дате, берём топ-3.
+// Если веха уже в прошлом — цель просрочена, и подпись говорит об этом честно,
+// а не «дальше: … 25 июл» под заголовком «Скоро».
 function computeUpcomingGoals(allGoals) {
   const items = [];
+  const today = todayISO();
 
   for (const goal of allGoals) {
     if (goal.status !== "active") continue;
@@ -26,6 +54,7 @@ function computeUpcomingGoals(allGoals) {
     let sortDate = null;
     let meta = "";
     let progress = "";
+    let overdue = false;
 
     if (goal.goal_type === "recurring") {
       meta = "регулярная цель";
@@ -35,26 +64,40 @@ function computeUpcomingGoals(allGoals) {
       const nextStage = stages.find((s) => !s.done);
       if (nextStage) {
         sortDate = nextStage.planned_date || null;
-        meta = nextStage.planned_date
-          ? `дальше: ${nextStage.title} · ${formatShortDate(nextStage.planned_date)}`
-          : `дальше: ${nextStage.title}`;
+        overdue = !!sortDate && sortDate < today;
+        if (overdue) {
+          const { overdueCount } = summarizeStages(stages);
+          meta = `дальше: ${nextStage.title} · просрочено ${overdueCount} ${plural(
+            overdueCount,
+            ["этап", "этапа", "этапов"]
+          )}`;
+        } else {
+          meta = sortDate
+            ? `дальше: ${nextStage.title} · ${formatShortDate(sortDate)}`
+            : `дальше: ${nextStage.title}`;
+        }
       } else {
         sortDate = goal.target_date || null;
-        meta = goal.target_date
-          ? `дедлайн ${formatShortDate(goal.target_date)}`
+        meta = sortDate
+          ? `дедлайн ${formatShortDate(sortDate)}`
           : "этапы выполнены";
       }
     } else {
       sortDate = goal.target_date || null;
-      meta = goal.target_date
-        ? `дедлайн ${formatShortDate(goal.target_date)}`
-        : "без срока";
+      overdue = !!sortDate && sortDate < today;
+      if (overdue) {
+        const n = daysOverdue(sortDate, today);
+        meta = `дедлайн просрочен на ${n} ${plural(n, ["день", "дня", "дней"])}`;
+      } else {
+        meta = sortDate ? `дедлайн ${formatShortDate(sortDate)}` : "без срока";
+      }
     }
 
-    items.push({ goal, sortDate, meta, progress });
+    items.push({ goal, sortDate, meta, progress, overdue });
   }
 
   // sortDate — ISO-строка YYYY-MM-DD, лексикографическое сравнение = по дате.
+  // Просроченные (даты в прошлом) естественно оказываются в начале списка.
   items.sort((a, b) => {
     if (a.sortDate && b.sortDate) return a.sortDate.localeCompare(b.sortDate);
     if (a.sortDate) return -1;
@@ -63,6 +106,42 @@ function computeUpcomingGoals(allGoals) {
   });
 
   return items.slice(0, 3);
+}
+
+function renderUpcomingItem(u, overdue) {
+  return (
+    <Link
+      to="/goals"
+      key={u.goal.id}
+      className={
+        "day-goals-upcoming-item" +
+        (overdue ? " day-goals-upcoming-item--overdue" : "")
+      }
+    >
+      <span
+        className="day-goals-upcoming-accent"
+        style={{ backgroundColor: u.goal.color || "#7ECF8A" }}
+      />
+      <div className="day-goals-upcoming-content">
+        <div className="day-goals-upcoming-title">
+          <span>{u.goal.title}</span>
+          {u.progress && (
+            <span className="day-goals-upcoming-progress">{u.progress}</span>
+          )}
+        </div>
+        {u.meta && (
+          <div
+            className={
+              "day-goals-upcoming-meta" +
+              (overdue ? " day-goals-upcoming-meta--overdue" : "")
+            }
+          >
+            {u.meta}
+          </div>
+        )}
+      </div>
+    </Link>
+  );
 }
 
 function goalIsDoneForDay(goal) {
@@ -257,32 +336,24 @@ export default function DayGoalsPanel({ selectedDay }) {
       {!collapsed && !loading && goals.length === 0 && (
         upcomingGoals.length > 0 ? (
           <div className="day-goals-upcoming">
-            <div className="day-goals-upcoming-label">Скоро</div>
-            {upcomingGoals.map((u) => (
-              <Link
-                to="/goals"
-                key={u.goal.id}
-                className="day-goals-upcoming-item"
-              >
-                <span
-                  className="day-goals-upcoming-accent"
-                  style={{ backgroundColor: u.goal.color || "#7ECF8A" }}
-                />
-                <div className="day-goals-upcoming-content">
-                  <div className="day-goals-upcoming-title">
-                    <span>{u.goal.title}</span>
-                    {u.progress && (
-                      <span className="day-goals-upcoming-progress">
-                        {u.progress}
-                      </span>
-                    )}
-                  </div>
-                  {u.meta && (
-                    <div className="day-goals-upcoming-meta">{u.meta}</div>
-                  )}
+            {upcomingGoals.some((u) => u.overdue) && (
+              <>
+                <div className="day-goals-upcoming-label day-goals-upcoming-label--overdue">
+                  Просрочено
                 </div>
-              </Link>
-            ))}
+                {upcomingGoals
+                  .filter((u) => u.overdue)
+                  .map((u) => renderUpcomingItem(u, true))}
+              </>
+            )}
+            {upcomingGoals.some((u) => !u.overdue) && (
+              <>
+                <div className="day-goals-upcoming-label">Скоро</div>
+                {upcomingGoals
+                  .filter((u) => !u.overdue)
+                  .map((u) => renderUpcomingItem(u, false))}
+              </>
+            )}
           </div>
         ) : (
           <div className="day-goals-placeholder">Целей пока нет</div>
