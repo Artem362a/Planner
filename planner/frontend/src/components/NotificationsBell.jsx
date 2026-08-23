@@ -172,7 +172,7 @@ function saveVirtualReadIds(ids) {
       VIRTUAL_READ_STORAGE_KEY,
       JSON.stringify(Array.from(ids))
     );
-  } catch {}
+  } catch { /* localStorage недоступен — не критично */ }
 }
 
 function loadVirtualDeletedIds() {
@@ -192,7 +192,7 @@ function saveVirtualDeletedIds(ids) {
       VIRTUAL_DELETED_STORAGE_KEY,
       JSON.stringify(Array.from(ids))
     );
-  } catch {}
+  } catch { /* localStorage недоступен — не критично */ }
 }
 
 const RU_WEEKDAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];

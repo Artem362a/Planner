@@ -215,7 +215,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   const [templates, setTemplates] = useState([]);
   const [templateName, setTemplateName] = useState("");
   const [templateColor, setTemplateColor] = useState("#9B7BE8");
-  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [, setEditingTemplateId] = useState(null);
   const [editingTemplateName, setEditingTemplateName] = useState("");
   const [editingTemplateColor, setEditingTemplateColor] = useState("#9B7BE8");
   const [applyTemplateError, setApplyTemplateError] = useState("");
@@ -987,7 +987,7 @@ const overdueImportCandidates = useMemo(
       const rect = card.getBoundingClientRect();
       e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
       e.dataTransfer.effectAllowed = "move";
-      try { e.dataTransfer.setData("text/plain", String(index)); } catch (_) {}
+      try { e.dataTransfer.setData("text/plain", String(index)); } catch { /* setData может бросить в некоторых браузерах */ }
     }
   };
 

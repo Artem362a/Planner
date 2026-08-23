@@ -180,7 +180,6 @@ function ImportantToday({ selectedDay }) {
 
   const timelineLayouts = useMemo(() => {
     const smallTaskMinutes = 20;
-    const maxAttachedSmallGroupMinutes = 30;
     const minTaskHeight = 46;
     const attachedRowHeight = 14;
     const expandedGroupRowHeight = 20;
@@ -271,10 +270,6 @@ function ImportantToday({ selectedDay }) {
       const nextTask = visibleTimelineTasks[cursor];
       const nextIsLarge = nextTask && !isSmallTask(nextTask);
       const standaloneTask = run.length > 1 ? makeSmallGroup(run) : run[0];
-      const runDuration = run.reduce(
-        (total, smallTask) => total + (smallTask.duration_min || 0),
-        0
-      );
       // Группа из 2+ мелких задач — отдельный раскрываемый блок (как на
       // странице таймлайна). Одиночная мелкая задача остаётся превью-строкой.
       const shouldAttachRun = run.length === 1;
@@ -519,7 +514,6 @@ function ImportantToday({ selectedDay }) {
 
               {timelineLayouts.items.map(({ task: t, before = [], after = [], top, height }) => {
                 const categoryColor = categories[t.category]?.color || "#BBBBBB";
-                const categoryTitle = categories[t.category]?.title || t.category;
                 const isDone = Number(t.status) === 1;
                 const isImportant = t.priority === "high";
                 const attachedCount = before.length + after.length;

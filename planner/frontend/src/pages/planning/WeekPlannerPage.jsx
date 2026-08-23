@@ -842,49 +842,6 @@ function WeekPlannerPage() {
     setExpandedTaskId((prev) => (prev === taskId ? null : taskId));
   }
 
-  function handleDragStart(taskId) {
-    setDragTaskId(taskId);
-  }
-
-  function handleDragOver(e, overTaskId) {
-    e.preventDefault();
-
-    if (dragTaskId === null || dragTaskId === overTaskId) return;
-
-    setTasks((prev) => {
-      const ordered = [...prev].sort((a, b) => {
-        const aDone = Number(a.status) === 1;
-        const bDone = Number(b.status) === 1;
-
-        if (aDone !== bDone) {
-          return aDone ? 1 : -1;
-        }
-
-        if (!!a.important !== !!b.important) {
-          return a.important ? -1 : 1;
-        }
-
-        return (a.order_index ?? 0) - (b.order_index ?? 0);
-      });
-
-      const fromIndex = ordered.findIndex((t) => t.id === dragTaskId);
-      const toIndex = ordered.findIndex((t) => t.id === overTaskId);
-
-      if (fromIndex === -1 || toIndex === -1) return prev;
-
-      const next = [...ordered];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-
-      return next.map((task, index) => ({
-        ...task,
-        order_index: index,
-      }));
-    });
-
-    setDragTaskId(overTaskId);
-  }
-
 function getTaskProgressMeta(task) {
   const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
   const total = subtasks.length;
