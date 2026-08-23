@@ -792,7 +792,7 @@ function AccountPage({ user, onUserUpdate }) {
                 as="form"
                 onSubmit={handlePasswordSubmit}
                 title="Смена пароля"
-                description="Новый пароль должен быть не короче 6 символов"
+                description="Новый пароль должен быть не короче 8 символов"
               >
                   <label className="account-field">
                     <span>Текущий пароль</span>
