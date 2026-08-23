@@ -21,6 +21,35 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Политика пароля. Нижняя граница — актуальный минимум; верхняя защищает от
+# DoS мегабайтными паролями (bcrypt всё равно усекает до 72 байт).
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 128
+
+# Небольшой локальный блоклист самых частых слабых паролей. Не заменяет проверку
+# по утечкам, но отсекает очевидный мусор без внешних сетевых вызовов.
+_COMMON_PASSWORDS = {
+    "password", "passw0rd", "password1", "password123", "qwerty", "qwerty123",
+    "qwertyuiop", "123456", "1234567", "12345678", "123456789", "1234567890",
+    "111111", "000000", "654321", "123123", "666666", "888888", "121212",
+    "112233", "iloveyou", "admin", "welcome", "monkey", "dragon", "letmein",
+    "abc123", "football", "princess", "sunshine", "master", "shadow",
+    "superman", "batman", "trustno1", "whatever", "zaq12wsx", "1q2w3e4r",
+    "1qaz2wsx", "asdfghjkl", "qazwsx", "changeme", "secret", "starwars",
+    "computer", "michael", "пароль", "йцукен", "любовь", "привет",
+}
+
+
+def validate_password_strength(password: str) -> str | None:
+    """Проверяет политику пароля. Возвращает текст ошибки или None, если ок."""
+    if len(password) < PASSWORD_MIN_LENGTH:
+        return f"Пароль слишком короткий — минимум {PASSWORD_MIN_LENGTH} символов"
+    if len(password) > PASSWORD_MAX_LENGTH:
+        return f"Пароль слишком длинный — максимум {PASSWORD_MAX_LENGTH} символов"
+    if password.lower() in _COMMON_PASSWORDS:
+        return "Этот пароль слишком распространён — придумайте другой"
+    return None
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)

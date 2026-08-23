@@ -22,6 +22,15 @@ class TestCreate:
         r = _create(client, auth_headers, message="   ")
         assert r.status_code == 400
 
+    def test_create_rejects_too_long_message(self, client, auth_headers):
+        r = _create(client, auth_headers, message="x" * 5001)
+        assert r.status_code == 400
+
+    def test_create_strips_control_chars(self, client, auth_headers):
+        r = _create(client, auth_headers, message="привет\x00\x07мир")
+        assert r.status_code == 200
+        assert r.json()["message"] == "приветмир"
+
     def test_create_rejects_non_image_screenshot(self, client, auth_headers):
         r = client.post(
             "/feedback",

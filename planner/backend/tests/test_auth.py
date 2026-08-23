@@ -40,6 +40,20 @@ class TestRegister:
         assert r.status_code == 400
         assert "Username" in r.json()["detail"]
 
+    def test_register_rejects_short_password(self, client):
+        r = client.post(
+            "/auth/register",
+            json={"email": "short@test.com", "username": "shorty", "password": "pass12"},
+        )
+        assert r.status_code == 400
+
+    def test_register_rejects_common_password(self, client):
+        r = client.post(
+            "/auth/register",
+            json={"email": "common@test.com", "username": "commoner", "password": "password123"},
+        )
+        assert r.status_code == 400
+
     def test_register_rejects_empty_email(self, client):
         r = client.post(
             "/auth/register",

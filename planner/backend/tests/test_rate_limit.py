@@ -35,7 +35,7 @@ class TestRateLimit:
                 json={
                     "email": f"user{i}@test.com",
                     "username": f"user{i}",
-                    "password": "password123",
+                    "password": "pass1234",
                 },
             )
             statuses.append(r.status_code)

@@ -9,7 +9,13 @@ from typing import Any, cast
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
-from auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, hash_password, verify_password
+from auth import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    create_access_token,
+    hash_password,
+    validate_password_strength,
+    verify_password,
+)
 from bootstrap import ensure_default_categories_for_user
 from db import (
     DaySettings,
@@ -110,8 +116,9 @@ def register(
         raise HTTPException(status_code=400, detail="Username is required")
     if not password:
         raise HTTPException(status_code=400, detail="Password is required")
-    if len(password) < 6:
-        raise HTTPException(status_code=400, detail="Password is too short")
+    password_error = validate_password_strength(password)
+    if password_error:
+        raise HTTPException(status_code=400, detail=password_error)
 
     existing_email = db.query(User).filter(User.email == email).first()
     if existing_email:
@@ -313,8 +320,9 @@ def update_password(
     if not verify_password(current_password, str(current_user_row.password_hash)):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password is too short")
+    password_error = validate_password_strength(new_password)
+    if password_error:
+        raise HTTPException(status_code=400, detail=password_error)
 
     current_user_row.password_hash = hash_password(new_password)
     db.commit()

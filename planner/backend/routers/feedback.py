@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional, cast
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from db import FeedbackMessage, User
 from dependencies import get_current_developer, get_current_user, get_db
+from rate_limit import limiter
 from schemas import FeedbackOut, FeedbackReplyIn, FeedbackStatusUpdateIn
 
 router = APIRouter()
@@ -21,6 +23,22 @@ MAX_SCREENSHOTS = 5
 MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+# Лимиты длины текстовых полей — защита от раздувания БД и мусорных пейлоадов.
+MAX_NAME_LENGTH = 100
+MAX_CONTACT_LENGTH = 200
+MAX_MESSAGE_LENGTH = 5000
+
+# Управляющие ASCII-символы (кроме \t \n \r) — вырезаем из пользовательского
+# ввода. XSS гасится на выводе (React + CSP), экранировать здесь не нужно.
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _clean_text(value: str, *, single_line: bool = False) -> str:
+    cleaned = _CONTROL_CHARS_RE.sub("", value)
+    if single_line:
+        cleaned = cleaned.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+    return cleaned.strip()
 
 
 def _serialize(row: Any) -> FeedbackOut:
@@ -44,7 +62,9 @@ def _serialize(row: Any) -> FeedbackOut:
 
 
 @router.post("/feedback", response_model=FeedbackOut)
+@limiter.limit("10/minute")
 async def create_feedback(
+    request: Request,
     category: str = Form(...),
     type: str = Form(...),
     name: Optional[str] = Form(None),
@@ -56,9 +76,14 @@ async def create_feedback(
 ):
     current_user_row = cast(Any, current_user)
 
-    message_text = message.strip()
+    message_text = _clean_text(message)
     if not message_text:
         raise HTTPException(status_code=400, detail="Сообщение не может быть пустым")
+    if len(message_text) > MAX_MESSAGE_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Сообщение слишком длинное — максимум {MAX_MESSAGE_LENGTH} символов",
+        )
 
     category_val = category.strip()
     type_val = type.strip()
@@ -67,6 +92,19 @@ async def create_feedback(
         raise HTTPException(status_code=400, detail="Категория обязательна")
     if not type_val:
         raise HTTPException(status_code=400, detail="Тип обязателен")
+
+    name_val = _clean_text(name or "", single_line=True) or None
+    contact_val = _clean_text(contact or "", single_line=True) or None
+    if name_val and len(name_val) > MAX_NAME_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Имя слишком длинное — максимум {MAX_NAME_LENGTH} символов",
+        )
+    if contact_val and len(contact_val) > MAX_CONTACT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Контакт слишком длинный — максимум {MAX_CONTACT_LENGTH} символов",
+        )
 
     real_files = [f for f in screenshots if f.filename]
 
@@ -104,8 +142,8 @@ async def create_feedback(
         user_id=current_user_row.id,
         category=category_val,
         feedback_type=type_val,
-        name=(name or "").strip() or None,
-        contact=(contact or "").strip() or None,
+        name=name_val,
+        contact=contact_val,
         message=message_text,
         status="new",
         screenshots=saved_paths if saved_paths else None,
