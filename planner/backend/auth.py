@@ -25,6 +25,23 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # DoS мегабайтными паролями (bcrypt всё равно усекает до 72 байт).
 PASSWORD_MIN_LENGTH = 8
 PASSWORD_MAX_LENGTH = 128
+# Минимум разных символов — отсекает «мусор» вроде 12341234 / aaaaaaaa,
+# не требуя при этом спецсимволов и заглавных.
+PASSWORD_MIN_UNIQUE = 5
+
+# Ряды клавиатуры/цифр/алфавита (RU+EN). Пароль, целиком являющийся куском
+# такого ряда (в прямом или обратном порядке), считаем предсказуемым.
+_SEQUENCE_ROWS = (
+    "1234567890",
+    "abcdefghijklmnopqrstuvwxyz",
+    "qwertyuiop", "asdfghjkl", "zxcvbnm",
+    "йцукенгшщзхъ", "фывапролджэ", "ячсмитьбю",
+)
+
+
+def _looks_sequential(password: str) -> bool:
+    low = password.lower()
+    return any(low in row or low in row[::-1] for row in _SEQUENCE_ROWS)
 
 # Небольшой локальный блоклист самых частых слабых паролей. Не заменяет проверку
 # по утечкам, но отсекает очевидный мусор без внешних сетевых вызовов.
@@ -48,6 +65,12 @@ def validate_password_strength(password: str) -> str | None:
         return f"Пароль слишком длинный — максимум {PASSWORD_MAX_LENGTH} символов"
     if password.lower() in _COMMON_PASSWORDS:
         return "Этот пароль слишком распространён — придумайте другой"
+    if password.isdigit():
+        return "Пароль не может состоять из одних цифр"
+    if len(set(password)) < PASSWORD_MIN_UNIQUE:
+        return "Слишком мало разных символов — такой пароль легко подобрать"
+    if _looks_sequential(password):
+        return "Пароль похож на простую последовательность — придумайте другой"
     return None
 
 

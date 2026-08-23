@@ -382,3 +382,17 @@ class TestRevokeSingleSession:
 
         r = client.delete(f"/auth/sessions/{row.id}", headers=auth_headers)
         assert r.status_code == 404
+
+
+class TestPasswordPolicy:
+    def test_accepts_reasonable_passwords(self):
+        from auth import validate_password_strength
+        for good in ["pass1234", "newpass99", "tanya-cat-2019", "Zima2026!",
+                     "correcthorsebattery"]:
+            assert validate_password_strength(good) is None, good
+
+    def test_rejects_junk_passwords(self):
+        from auth import validate_password_strength
+        for bad in ["short", "123412341234", "12345678", "aaaaaaaa", "aabbccdd",
+                    "qwertyui", "abcdefgh", "password123", "x" * 129]:
+            assert validate_password_strength(bad) is not None, bad
