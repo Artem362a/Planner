@@ -20,3 +20,32 @@ export function addMinutesToTime(timeStr, minutesToAdd) {
   const m = total % 60;
   return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
+
+export function clockAndDayOffsetToMinutes(timeStr, dayOffset = 0) {
+  return timeStringToMinutes(timeStr) + Math.max(0, Number(dayOffset) || 0) * 1440;
+}
+
+export function splitExtendedMinutes(value) {
+  const total = Math.max(0, Math.floor(Number(value) || 0));
+  const dayOffset = Math.floor(total / 1440);
+  const clockMinutes = total % 1440;
+  const hours = Math.floor(clockMinutes / 60);
+  const minutes = clockMinutes % 60;
+
+  return {
+    clock: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`,
+    dayOffset,
+  };
+}
+
+export function splitExtendedTime(timeStr) {
+  return splitExtendedMinutes(timeStringToMinutes(timeStr));
+}
+
+export function formatPlanTime(value) {
+  const total = typeof value === "number" ? value : timeStringToMinutes(value);
+  const { clock, dayOffset } = splitExtendedMinutes(total);
+  if (dayOffset === 0) return clock;
+  if (dayOffset === 1) return `${clock} · +1 день`;
+  return `${clock} · +${dayOffset} дня`;
+}

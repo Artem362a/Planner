@@ -166,15 +166,6 @@ export async function deleteAccount(password) {
   return await handleResponse(res, "Failed to delete account", { skipAuthRedirect: true });
 }
 
-export async function importSchedule() {
-  const res = await fetch(`${API_URL}/auth/import-schedule`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-  });
-
-  return await handleResponse(res, "Failed to import schedule");
-}
-
 export async function fetchTelegramStatus() {
   const res = await fetch(`${API_URL}/telegram/status`, {
     headers: getAuthHeaders(),

@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     Time,
+    UniqueConstraint,
     create_engine,
 )
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship, sessionmaker
@@ -317,6 +318,72 @@ class FeedbackMessage(Base):
     screenshots = Column(JSON, nullable=True)
 
 
+class ScheduleSubscription(Base):
+    """Обновляемая ICS-подписка пользователя на расписание SSAU."""
+
+    __tablename__ = "schedule_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_schedule_subscriptions_user_id"),
+        {"schema": "planning"},
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    feed_url = Column(Text, nullable=False)
+    subgroup = Column(String, nullable=False, default="all", server_default="all")
+    last_synced_at = Column(DateTime, nullable=True)
+    last_attempt_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+    last_content_hash = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ScheduleEvent(Base):
+    """Последний полученный снимок одной пары из ICS-подписки."""
+
+    __tablename__ = "schedule_events"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "event_key", name="uq_schedule_events_subscription_key"),
+        {"schema": "planning"},
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    subscription_id = Column(
+        Integer,
+        ForeignKey("planning.schedule_subscriptions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    event_key = Column(String, nullable=False)
+    event_hash = Column(String, nullable=False)
+    uid = Column(Text, nullable=True)
+    day = Column(Date, nullable=False, index=True)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+    duration_min = Column(Integer, nullable=False)
+    subject = Column(String, nullable=False)
+    teacher = Column(Text, nullable=True)
+    location = Column(String, nullable=True)
+    lesson_type = Column(String, nullable=False, default="other", server_default="other")
+    subgroup = Column(String, nullable=True)
+    conference_url = Column(Text, nullable=True)
+
+
+class ScheduleSyncAlert(Base):
+    """Очередь Telegram-уведомлений об изменениях защищённых планов."""
+
+    __tablename__ = "schedule_sync_alerts"
+    __table_args__ = {"schema": "planning"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    telegram_sent_at = Column(DateTime, nullable=True, index=True)
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
+
+
 class TaskCategory(Base):
     __tablename__ = "task_categories"
     __table_args__ = {"schema": "planning"}
@@ -372,6 +439,9 @@ class DayTask(Base):
 
     title = Column(String, nullable=False)
     start_time = Column(Time, nullable=True)
+    # 0 = selected calendar date, 1 = the following calendar date. Keeping
+    # this separate from start_time makes 00:30 today and tomorrow unambiguous.
+    start_day_offset = Column(Integer, nullable=False, default=0, server_default="0")
     duration_min = Column(Integer, nullable=True)
 
     priority = Column(String, default="medium")
@@ -382,6 +452,16 @@ class DayTask(Base):
     order_index = Column(Integer, nullable=False, default=0, index=True)
     source_week_task_id = Column(Integer, ForeignKey("planning.week_tasks.id"), nullable=True, index=True)
     source_inbox_task_id = Column(Integer, ForeignKey("planning.inbox_tasks.id"), nullable=True, index=True)
+    # Техническая связь с ICS-подпиской. Задача остаётся обычной и полностью
+    # редактируемой; поля нужны только для безопасного обновления пустых дней.
+    schedule_subscription_id = Column(
+        Integer,
+        ForeignKey("planning.schedule_subscriptions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    schedule_event_key = Column(String, nullable=True, index=True)
+    schedule_lesson_type = Column(String, nullable=True)
     dismissed = Column(Boolean, default=False, nullable=False)
     # За сколько минут до начала напомнить (null = не напоминать).
     # Связанный Reminder(kind='task') синхронизирует routers/day.py.
@@ -393,6 +473,9 @@ class DayTask(Base):
     # явным действием (тумблер/чекбокс), чтобы случайные PATCH других полей
     # (статус, подзадачи) не затирали и не «плавали».
     remind_anchor_time = Column(Time, nullable=True)
+    # Sequential tasks can acquire a reminder anchor after midnight even
+    # though they have no fixed start_time.
+    remind_anchor_day_offset = Column(Integer, nullable=False, default=0, server_default="0")
 
 
 class DayNote(Base):
@@ -414,6 +497,8 @@ class DaySettings(Base):
 
     day = Column(Date, index=True)
     start_time = Column(Time, nullable=False, default=time(6, 0))
+    # Синхронизация расписания не изменяет день после первого ручного действия.
+    plan_locked = Column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class WeekTask(Base):

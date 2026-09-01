@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { addMinutesToTime, timeStringToMinutes } from "./time";
+import {
+  addMinutesToTime,
+  clockAndDayOffsetToMinutes,
+  formatPlanTime,
+  splitExtendedMinutes,
+  timeStringToMinutes,
+} from "./time";
 
 describe("timeStringToMinutes", () => {
   it("converts HH:MM to minutes from midnight", () => {
@@ -54,5 +60,24 @@ describe("addMinutesToTime", () => {
     const start = "06:00";
     const end = addMinutesToTime(start, 1200); // 20h later
     expect(timeStringToMinutes(end)).toBeGreaterThan(timeStringToMinutes(start));
+  });
+});
+
+describe("after-midnight plan time", () => {
+  it("distinguishes the same clock time on consecutive calendar days", () => {
+    expect(clockAndDayOffsetToMinutes("00:30", 0)).toBe(30);
+    expect(clockAndDayOffsetToMinutes("00:30", 1)).toBe(1470);
+  });
+
+  it("normalizes extended minutes for API storage", () => {
+    expect(splitExtendedMinutes(1470)).toEqual({
+      clock: "00:30",
+      dayOffset: 1,
+    });
+  });
+
+  it("renders a clock time with a clear following-day suffix", () => {
+    expect(formatPlanTime("25:30")).toBe("01:30 · +1 день");
+    expect(formatPlanTime(2940)).toBe("01:00 · +2 дня");
   });
 });

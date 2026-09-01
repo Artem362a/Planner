@@ -558,6 +558,31 @@
   border-top-color: #e3dcf2;
 }
 
+.day-timeline-midnight {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px dashed #a98be8;
+  pointer-events: none;
+}
+
+.day-timeline-midnight span {
+  position: absolute;
+  left: 12px;
+  top: 0;
+  transform: translateY(-50%);
+  padding: 3px 9px;
+  border: 1px solid #d8c9f4;
+  border-radius: 999px;
+  background: #faf7ff;
+  color: #694eb6;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .day-timeline-task {
   position: absolute;
   left: 1px;

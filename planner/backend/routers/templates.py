@@ -17,6 +17,7 @@ from db import (
     WeekTemplate,
 )
 from dependencies import get_current_user, get_db
+from schedule_sync import lock_day_plan
 from schemas import *
 from serializers import *
 
@@ -152,8 +153,8 @@ def apply_template(
     template_tasks = cast(list[dict[str, Any]], tmpl.tasks_json or [])
     template_total = sum(int(t.get("duration_min") or 0) for t in template_tasks)
 
-    if existing_total + template_total > 1440:
-        raise HTTPException(400, "День не может превышать 24 часа.")
+    if existing_total + template_total > 48 * 60:
+        raise HTTPException(400, "План не может продолжаться более 48 часов.")
 
     created_tasks: list[DayTask] = []
 
@@ -181,6 +182,7 @@ def apply_template(
             day=d,
             title=t["title"],
             start_time=start_time,
+            start_day_offset=int(t.get("start_day_offset") or 0),
             duration_min=t.get("duration_min"),
             priority=t.get("priority", "medium"),
             category=t.get("category"),
@@ -190,6 +192,8 @@ def apply_template(
         )
         db.add(task)
         created_tasks.append(task)
+
+    lock_day_plan(db, current_user_row.id, d)
 
     # Если в шаблоне задано начало дня — применяем его к настройкам этого дня.
     tmpl_day_start = getattr(tmpl, "day_start", None)
@@ -217,6 +221,10 @@ def apply_template(
             else:
                 cast(Any, settings).start_time = parsed_start
 
+    db.flush()
+    from routers.day import _validate_day_timeline_limit
+
+    _validate_day_timeline_limit(db, current_user_row, d)
     db.commit()
     for task in created_tasks:
         db.refresh(task)

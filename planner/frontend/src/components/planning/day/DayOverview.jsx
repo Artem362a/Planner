@@ -6,13 +6,23 @@ import {
   updateDayTask,
 } from "../../../api/tasks";
 import { CategoryIcon } from "../../icons";
-import { addMinutesToTime, timeStringToMinutes } from "../../../utils/time";
+import {
+  addMinutesToTime,
+  clockAndDayOffsetToMinutes,
+  formatPlanTime,
+  splitExtendedMinutes,
+  timeStringToMinutes,
+} from "../../../utils/time";
 
-function formatLocalDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function parseLocalDate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function calendarDayDiff(fromDate, toDate) {
+  const fromUtc = Date.UTC(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const toUtc = Date.UTC(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  return Math.round((toUtc - fromUtc) / 86_400_000);
 }
 
 function categoriesArrayToMap(items) {
@@ -115,28 +125,29 @@ function ImportantToday({ selectedDay }) {
 
   const tasksWithComputedTime = useMemo(() => {
     const dayStartMinutes = timeStringToMinutes(dayStartTime);
-    let offset = 0;
-
-    return tasks.map((t) => {
+    return tasks.reduce((acc, t) => {
       const duration = t.duration_min || 0;
-
-      if (t.start_time) {
-        offset = timeStringToMinutes(t.start_time) - dayStartMinutes;
-      }
-
+      const offset = t.start_time
+        ? clockAndDayOffsetToMinutes(t.start_time, t.start_day_offset) -
+          dayStartMinutes
+        : acc.offset;
       const start = addMinutesToTime(dayStartTime, offset);
       const end = addMinutesToTime(start, duration);
 
-      offset += duration;
-
       return {
-        ...t,
-        computed_start_time: start,
-        computed_end_time: end,
-        timeline_start_min: timeStringToMinutes(start),
-        timeline_end_min: timeStringToMinutes(end),
+        offset: offset + duration,
+        items: [
+          ...acc.items,
+          {
+            ...t,
+            computed_start_time: start,
+            computed_end_time: end,
+            timeline_start_min: timeStringToMinutes(start),
+            timeline_end_min: timeStringToMinutes(end),
+          },
+        ],
       };
-    });
+    }, { offset: 0, items: [] }).items;
   }, [tasks, dayStartTime]);
 
   const importantTasks = useMemo(
@@ -147,7 +158,7 @@ function ImportantToday({ selectedDay }) {
   const visibleTimelineTasks = useMemo(() => {
     const dayStartMinutes = timeStringToMinutes(dayStartTime);
     return tasksWithComputedTime.filter(
-      (t) => t.timeline_start_min < dayStartMinutes + 1440
+      (t) => t.timeline_start_min < dayStartMinutes + 48 * 60
     );
   }, [tasksWithComputedTime, dayStartTime]);
 
@@ -349,13 +360,14 @@ function ImportantToday({ selectedDay }) {
   }, [visibleTimelineTasks, timelineData, expandedGroupId]);
 
   const timelineNowMarker = useMemo(() => {
-    if (dayString !== formatLocalDate(currentTime)) {
-      return null;
-    }
+    const realDayOffset = calendarDayDiff(parseLocalDate(dayString), currentTime);
+    const currentMinute =
+      realDayOffset * 1440 + currentTime.getHours() * 60 + currentTime.getMinutes();
 
-    const currentMinute = currentTime.getHours() * 60 + currentTime.getMinutes();
-
-    if (currentMinute < timelineData.startMinute) {
+    if (
+      currentMinute < timelineData.startMinute ||
+      currentMinute > timelineData.endMinute
+    ) {
       return null;
     }
 
@@ -432,7 +444,7 @@ function ImportantToday({ selectedDay }) {
       <div key={task.id} className="day-overview-timeline-attached">
         <span>{task.tasks.length} коротких задач</span>
         <em>
-          {task.computed_start_time} - {task.computed_end_time}
+          {formatPlanTime(task.computed_start_time)} - {formatPlanTime(task.computed_end_time)}
         </em>
       </div>
     ) : (
@@ -456,8 +468,8 @@ function ImportantToday({ selectedDay }) {
         </label>
         <span className="day-overview-attached-title">{task.title}</span>
         <em>
-          {task.computed_start_time}
-          {task.duration_min ? ` - ${task.computed_end_time}` : ""}
+          {formatPlanTime(task.computed_start_time)}
+          {task.duration_min ? ` - ${formatPlanTime(task.computed_end_time)}` : ""}
         </em>
       </div>
     )
@@ -483,7 +495,7 @@ function ImportantToday({ selectedDay }) {
                     className="day-overview-timeline-hour"
                     style={{ top: `${Math.max(6, timelineLayouts.minuteToY(minute))}px` }}
                   >
-                    {`${String(Math.floor(minute / 60)).padStart(2, "0")}:00`}
+                    {splitExtendedMinutes(minute).clock}
                   </div>
                 ))}
               </div>
@@ -511,6 +523,20 @@ function ImportantToday({ selectedDay }) {
                     style={{ top: `${Math.max(0, timelineLayouts.minuteToY(minute))}px` }}
                   />
                 ))}
+
+                {timelineData.hours
+                  .filter((minute) => minute > timelineData.startMinute && minute % 1440 === 0)
+                  .map((minute) => (
+                    <div
+                      key={`boundary-${minute}`}
+                      className="day-overview-midnight"
+                      style={{ top: `${Math.max(0, timelineLayouts.minuteToY(minute))}px` }}
+                    >
+                      <span>
+                        {minute === 1440 ? "Следующий день" : `+${minute / 1440} дня`}
+                      </span>
+                    </div>
+                  ))}
 
               {timelineLayouts.items.map(({ task: t, before = [], after = [], top, height }) => {
                 const categoryColor = categories[t.category]?.color || "#BBBBBB";
@@ -578,7 +604,7 @@ function ImportantToday({ selectedDay }) {
                             </button>
                           </div>
                           <div className="day-overview-timeline-meta">
-                            <span>{t.computed_start_time} – {t.computed_end_time}</span>
+                            <span>{formatPlanTime(t.computed_start_time)} – {formatPlanTime(t.computed_end_time)}</span>
                           </div>
                           {expandedGroupId === t.id && (
                             <div className="day-overview-sg-list">
@@ -607,8 +633,8 @@ function ImportantToday({ selectedDay }) {
                                       {smallTask.title}
                                     </span>
                                     <em>
-                                      {smallTask.computed_start_time}
-                                      {smallTask.duration_min ? ` – ${smallTask.computed_end_time}` : ""}
+                                      {formatPlanTime(smallTask.computed_start_time)}
+                                      {smallTask.duration_min ? ` – ${formatPlanTime(smallTask.computed_end_time)}` : ""}
                                     </em>
                                   </div>
                                 );
@@ -621,8 +647,8 @@ function ImportantToday({ selectedDay }) {
                           <div className="day-overview-timeline-title">{t.title}</div>
                           <div className="day-overview-timeline-time-row">
                             <span className="day-overview-timeline-meta-time">
-                              {t.computed_start_time}
-                              {t.duration_min ? ` – ${t.computed_end_time}` : ""}
+                              {formatPlanTime(t.computed_start_time)}
+                              {t.duration_min ? ` – ${formatPlanTime(t.computed_end_time)}` : ""}
                             </span>
                             {t.subtasks?.length > 0 && (
                               <button
@@ -748,8 +774,8 @@ function ImportantToday({ selectedDay }) {
                       )}
 
                       <span className="important-time">
-                        {t.computed_start_time}
-                        {t.duration_min ? `–${t.computed_end_time}` : null}
+                        {formatPlanTime(t.computed_start_time)}
+                        {t.duration_min ? `–${formatPlanTime(t.computed_end_time)}` : null}
                       </span>
                     </div>
                   </div>

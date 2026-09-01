@@ -4,7 +4,6 @@ import {
   deleteAccount,
   exportAccountData,
   fetchSessions,
-  importSchedule,
   removeToken,
   revokeOtherSessions,
   revokeSession,
@@ -20,6 +19,7 @@ import {
 } from "../../api/auth";
 import { fetchCategories } from "../../api/tasks";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
+import ScheduleSettings from "../../components/schedule/ScheduleSettings";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
 
@@ -201,7 +201,6 @@ function AccountPage({ user, onUserUpdate }) {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   const [exportStatus, setExportStatus] = useState("");
-  const [importStatus, setImportStatus] = useState("");
 
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -223,12 +222,6 @@ function AccountPage({ user, onUserUpdate }) {
     () => PRESET_AVATARS.find((item) => item.value === avatar),
     [avatar]
   );
-
-  const isSamaraStudent = useMemo(() => {
-    const email = (user?.email || "").toLowerCase();
-    // Самарский университет им. Королёва — почта на @ssau.ru.
-    return email.endsWith("@ssau.ru");
-  }, [user?.email]);
 
   useEffect(() => {
     setUsername(user?.username || "");
@@ -469,16 +462,6 @@ function AccountPage({ user, onUserUpdate }) {
       setExportStatus("Архив сохранён");
     } catch (err) {
       setExportStatus(err.message || "Не удалось экспортировать данные");
-    }
-  }
-
-  async function handleImport() {
-    setImportStatus("");
-    try {
-      await importSchedule();
-      setImportStatus("Готово");
-    } catch (err) {
-      setImportStatus(err.message || "Не удалось импортировать");
     }
   }
 
@@ -833,21 +816,12 @@ function AccountPage({ user, onUserUpdate }) {
                   {passwordStatus && <div className="account-status">{passwordStatus}</div>}
               </CollapsibleSection>
 
-              {isSamaraStudent && (
-                <CollapsibleSection
-                  title="Импорт расписания"
-                  description="Студентам СНИУ им. Королёва — подтянуть пары из университетского расписания."
-                >
-                    <button
-                      type="button"
-                      className="account-primary-btn"
-                      onClick={handleImport}
-                    >
-                      Импортировать расписание
-                    </button>
-                    {importStatus && <div className="account-status">{importStatus}</div>}
-                </CollapsibleSection>
-              )}
+              <CollapsibleSection
+                title="Импорт расписания"
+                description="Только для студентов SSAU — пары из университета в плане на день и отдельном расписании недели."
+              >
+                <ScheduleSettings />
+              </CollapsibleSection>
 
               <CollapsibleSection
                 title="Экспорт данных"

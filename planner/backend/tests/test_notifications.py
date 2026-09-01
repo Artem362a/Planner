@@ -290,6 +290,30 @@ class TestOverdueReminder:
         r = client.post("/notifications/overdue-reminder", headers=auth_headers)
         assert r.json()["count"] == 0
 
+    def test_does_not_count_yesterdays_task_scheduled_for_today(
+        self, client, db, user, auth_headers
+    ):
+        from datetime import time as _time
+        from db import DayTask
+
+        yesterday = date.today() - timedelta(days=1)
+        db.add(
+            DayTask(
+                user_id=user.id,
+                day=yesterday,
+                title="after midnight",
+                start_time=_time(0, 30),
+                start_day_offset=1,
+                priority="medium",
+                status=0,
+                order_index=0,
+            )
+        )
+        db.commit()
+
+        r = client.post("/notifications/overdue-reminder", headers=auth_headers)
+        assert r.json()["count"] == 0
+
     def test_second_call_updates_existing_notification(self, client, db, user, auth_headers):
         from db import DayTask, Notification
 

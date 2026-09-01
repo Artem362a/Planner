@@ -11,7 +11,7 @@
 Deploy (`.github/workflows/deploy.yml`):
 
 - **backend** — на self-hosted раннере ноута: бэкап БД → `git reset --hard
-  origin/main` в `~/Planner` → `docker compose up -d --build backend bot` →
+  origin/main` в `~/Planner` → `docker compose up -d --build` (включая `schedule-sync`) →
   `alembic upgrade head` → health check на `127.0.0.1:8000/docs`.
 - **frontend** — на облачном раннере: Vite-билд → scp на VDS →
   подмена /var/www/planner (старая версия остаётся рядом,
@@ -37,9 +37,9 @@ Deploy (`.github/workflows/deploy.yml`):
 # посмотреть бэкапы
 ls -lt ~/backups | head
 # восстановить (СНАЧАЛА остановить писателей!)
-docker compose stop backend bot
+docker compose stop backend bot schedule-sync
 gunzip -c ~/backups/<файл>.sql.gz | docker compose exec -T postgres psql -U dayplan_user -d dayplan
-docker compose start backend bot
+docker compose start backend bot schedule-sync
 ```
 
 ## Если сайт лежит

@@ -22,6 +22,51 @@ class NotificationOut(BaseModel):
 class NotificationCountOut(BaseModel):
     unread_count: int
 
+
+class ScheduleSubscriptionIn(BaseModel):
+    feed_url: str | None = None
+    subgroup: Literal["1", "2", "all"] = "all"
+
+
+class ScheduleSubscriptionOut(BaseModel):
+    connected: bool
+    feed_url_masked: str | None = None
+    subgroup: Literal["1", "2", "all"] = "all"
+    last_synced_at: str | None = None
+    last_attempt_at: str | None = None
+    last_error: str | None = None
+    auto_sync_times: list[str] = ["08:00", "20:00"]
+
+
+class ScheduleSyncResultOut(BaseModel):
+    unchanged: bool = False
+    added: int = 0
+    updated: int = 0
+    removed: int = 0
+    protected_days: int = 0
+    events: int = 0
+
+
+class ScheduleEventOut(BaseModel):
+    id: int
+    day: date
+    start_time: str
+    end_time: str
+    duration_min: int
+    subject: str
+    teacher: str | None = None
+    location: str | None = None
+    lesson_type: Literal["lecture", "practice", "lab", "other"]
+    subgroup: str | None = None
+    conference_url: str | None = None
+
+
+class ScheduleWeekOut(BaseModel):
+    connected: bool
+    subgroup: Literal["1", "2", "all"] = "all"
+    events: list[ScheduleEventOut] = []
+
+
 class ReminderIn(BaseModel):
     text: str
     remind_at: str  # "YYYY-MM-DDTHH:MM" (локальное время)
@@ -188,6 +233,7 @@ class SubTask(BaseModel):
 class TaskIn(BaseModel):
     title: str
     start_time: str | None = None
+    start_day_offset: int | None = None
     duration_min: int | None = None
     priority: str = "medium"
     category: str | None = None
@@ -201,10 +247,12 @@ class TaskIn(BaseModel):
     # Якорь для задач без start_time (режим «Длительность»): "HH:MM",
     # снимок текущего computed_start_time с фронта. None = не менять.
     remind_anchor_time: str | None = None
+    remind_anchor_day_offset: int | None = None
 
 class TaskOut(TaskIn):
     id: int
     day: date
+    start_day_offset: int = 0
     order_index: int = 0
     dismissed: bool = False
 
@@ -289,6 +337,7 @@ class WeekTaskWeekStatusIn(BaseModel):
 class TemplateTask(BaseModel):
     title: str
     start_time: str | None = None
+    start_day_offset: int = 0
     duration_min: int | None = None
     priority: str = "medium"
     category: str | None = None
@@ -492,6 +541,7 @@ class DayTaskRow(Protocol):
     day: date
     title: str
     start_time: _time | None
+    start_day_offset: int
     duration_min: int | None
     priority: str
     category: str | None
@@ -501,6 +551,7 @@ class DayTaskRow(Protocol):
     source_week_task_id: int | None
     remind_lead_min: int | None
     remind_anchor_time: Any | None
+    remind_anchor_day_offset: int
 
 
 

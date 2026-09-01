@@ -547,16 +547,3 @@ def delete_account(
     db.query(User).filter(User.id == uid).delete(synchronize_session=False)
     db.commit()
     return MessageOut(message="Account deleted")
-
-
-# ---- Import schedule (СНИУ им. Королёва) — stub ----
-
-@router.post("/auth/import-schedule", response_model=MessageOut)
-def import_schedule_stub(
-    current_user: User = Depends(get_current_user),
-):
-    """Stub for importing the university schedule. Implementation TBD."""
-    raise HTTPException(
-        status_code=501,
-        detail="Импорт расписания пока не реализован. Скажи, в каком виде приходят данные.",
-    )

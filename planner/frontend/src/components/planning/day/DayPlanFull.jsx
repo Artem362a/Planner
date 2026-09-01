@@ -22,6 +22,14 @@ import PrioritySelect from "../../forms/PrioritySelect";
 import CategorySelect from "../../forms/CategorySelect";
 import CategoryManagerModal from "../../categories/CategoryManagerModal";
 import { CategoryIcon } from "../../icons";
+import {
+  addMinutesToTime,
+  clockAndDayOffsetToMinutes,
+  formatPlanTime,
+  splitExtendedMinutes,
+  splitExtendedTime,
+  timeStringToMinutes,
+} from "../../../utils/time";
 
 import DayGoalsPanel from "../../goals/DayGoalsPanel";
 
@@ -76,6 +84,33 @@ function formatLocalDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function addLocalDays(date, days) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function formatFollowingDayLabel(date) {
+  return addLocalDays(date, 1).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function calendarDayDiff(fromDate, toDate) {
+  const fromUtc = Date.UTC(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const toUtc = Date.UTC(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  return Math.round((toUtc - fromUtc) / 86_400_000);
+}
+
+function formatTimelineBoundary(date, dayOffset) {
+  const label = addLocalDays(date, dayOffset).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+  return dayOffset === 1
+    ? `Следующий день — ${label}`
+    : `+${dayOffset} дня — ${label}`;
+}
+
 function formatShortWeekdayDate(dateStr) {
   const d = new Date(dateStr);
 
@@ -121,21 +156,6 @@ function durationStringToMinutes(value) {
   if (minutes < 0 || minutes > 59) return null;
 
   return hours * 60 + minutes;
-}
-
-function addMinutesToTime(timeStr, minutesToAdd) {
-  const [hh, mm] = timeStr.split(":").map(Number);
-  const base = hh * 60 + mm + (minutesToAdd || 0);
-  const total = Math.max(base, 0);
-  const h = Math.floor(total / 60) % 24;
-  const m = total % 60;
-  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-}
-
-function timeStringToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  const [hh, mm] = timeStr.split(":").map(Number);
-  return (hh || 0) * 60 + (mm || 0);
 }
 
 function categoriesArrayToMap(items) {
@@ -187,6 +207,8 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   const dragHoverTimerRef = useRef(null);
   const dragHoverTargetRef = useRef(null);
   const [dayStartTime, setDayStartTime] = useState("06:00");
+  const [nextDayTasks, setNextDayTasks] = useState([]);
+  const [nextDayStartTime, setNextDayStartTime] = useState("06:00");
 
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -199,6 +221,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     category: "home",
     subtasks: [],
     start_time: "",
+    start_day_offset: 0,
     end_time: "",
     remind: false,
     remind_lead: 10,
@@ -257,6 +280,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   }, []);
 
   const dayString = formatLocalDate(selectedDate);
+  const nextDayString = formatLocalDate(addLocalDays(selectedDate, 1));
   const notesSaveTimerRef = useRef(null);
 
   const taskItemRefs = useRef(new Map());
@@ -375,7 +399,21 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
         console.error(err);
         setDayStartTime("06:00");
       });
-  }, [dayString]);
+  }, [dayString, isTemplateMode]);
+
+  useEffect(() => {
+    if (isTemplateMode) return;
+    Promise.all([fetchDayTasks(nextDayString), fetchDaySettings(nextDayString)])
+      .then(([nextTasks, nextSettings]) => {
+        setNextDayTasks(nextTasks || []);
+        setNextDayStartTime(nextSettings?.start_time || "06:00");
+      })
+      .catch((error) => {
+        console.error(error);
+        setNextDayTasks([]);
+        setNextDayStartTime("06:00");
+      });
+  }, [nextDayString, isTemplateMode]);
 
   useEffect(() => {
     if (isTemplateMode) return;
@@ -389,6 +427,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     id: templateTaskIdRef.current--,
     title: t.title || "",
     start_time: t.start_time || null,
+    start_day_offset: Number(t.start_day_offset) || 0,
     duration_min: t.duration_min ?? null,
     priority: t.priority || "medium",
     category: t.category ?? null,
@@ -431,6 +470,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     const cleaned = tasks.map((t) => ({
       title: t.title || "",
       start_time: t.start_time ? t.start_time.slice(0, 5) : null,
+      start_day_offset: Number(t.start_day_offset) || 0,
       duration_min: t.duration_min ?? null,
       priority: t.priority || "medium",
       category: t.category ?? null,
@@ -501,7 +541,9 @@ const overdueImportCandidates = useMemo(
       const duration = t.duration_min || 0;
 
       if (t.start_time) {
-        offset = timeStringToMinutes(t.start_time) - dayStartMinutes;
+        offset =
+          clockAndDayOffsetToMinutes(t.start_time, t.start_day_offset) -
+          dayStartMinutes;
       }
 
       const start = addMinutesToTime(dayStartTime, offset);
@@ -533,6 +575,89 @@ const overdueImportCandidates = useMemo(
     });
   }, [tasks, dayStartTime]);
 
+  const nextDayTasksWithComputedTime = useMemo(() => {
+    let cursor = 1440 + timeStringToMinutes(nextDayStartTime);
+    return nextDayTasks.map((task) => {
+      const duration = Number(task.duration_min) || 0;
+      if (task.start_time) {
+        cursor =
+          1440 +
+          clockAndDayOffsetToMinutes(task.start_time, task.start_day_offset);
+      }
+      const result = {
+        ...task,
+        timeline_start_min: cursor,
+        timeline_end_min: cursor + duration,
+      };
+      cursor += duration;
+      return result;
+    });
+  }, [nextDayTasks, nextDayStartTime]);
+
+  const formTimePreview = useMemo(() => {
+    let duration = null;
+    let start = null;
+
+    if (timeMode === "range") {
+      if (!form.start_time || !form.end_time) return null;
+      start = clockAndDayOffsetToMinutes(
+        form.start_time,
+        form.start_day_offset
+      );
+      let end =
+        (Number(form.start_day_offset) || 0) * 1440 +
+        timeStringToMinutes(form.end_time);
+      if (end <= start) end += 1440;
+      duration = end - start;
+    } else {
+      duration = durationStringToMinutes(form.duration);
+      if (duration === null) return null;
+
+      if (editingTaskId !== null) {
+        start =
+          tasksWithComputedTime.find((task) => task.id === editingTaskId)
+            ?.timeline_start_min ?? timeStringToMinutes(dayStartTime);
+      } else if (insertBeforeId !== null) {
+        const index = tasksWithComputedTime.findIndex(
+          (task) => task.id === insertBeforeId
+        );
+        start =
+          index <= 0
+            ? timeStringToMinutes(dayStartTime)
+            : tasksWithComputedTime[index - 1].timeline_end_min;
+      } else {
+        start =
+          tasksWithComputedTime[tasksWithComputedTime.length - 1]
+            ?.timeline_end_min ?? timeStringToMinutes(dayStartTime);
+      }
+    }
+
+    const end = start + duration;
+    const nextDayConflicts = nextDayTasksWithComputedTime.filter(
+      (task) => start < task.timeline_end_min && task.timeline_start_min < end
+    );
+
+    return {
+      start,
+      end,
+      duration,
+      crossesMidnight: start >= 1440 || end > 1440,
+      exceedsLimit: end > timeStringToMinutes(dayStartTime) + 48 * 60,
+      nextDayConflicts,
+    };
+  }, [
+    dayStartTime,
+    editingTaskId,
+    form.duration,
+    form.end_time,
+    form.start_day_offset,
+    form.start_time,
+    insertBeforeId,
+    nextDayTasksWithComputedTime,
+    tasksWithComputedTime,
+    timeMode,
+  ]);
+
   const timelineHours = useMemo(() => {
     const dayStartMinutes = timeStringToMinutes(dayStartTime);
     // Start hour labels at the first full hour at or after dayStart — no empty pre-day space
@@ -554,6 +679,14 @@ const overdueImportCandidates = useMemo(
   const timelineStartMinute = timeStringToMinutes(dayStartTime);
   const timelineEndMinute =
     timelineHours[timelineHours.length - 1] || timelineStartMinute + 60;
+  const timelineDayBoundaries = useMemo(() => {
+    const result = [];
+    const firstBoundary = Math.ceil((timelineStartMinute + 1) / 1440) * 1440;
+    for (let minute = firstBoundary; minute <= timelineEndMinute; minute += 1440) {
+      result.push({ minute, dayOffset: Math.floor(minute / 1440) });
+    }
+    return result;
+  }, [timelineStartMinute, timelineEndMinute]);
   const timelineHourHeight = 88;
   const timelineMinTaskHeight = 48;
   const timelineSmallTaskMinutes = 20;
@@ -701,9 +834,9 @@ const overdueImportCandidates = useMemo(
   // текущее время попадает в диапазон таймлайна.
   const timelineNowMarker = (() => {
     if (isTemplateMode) return null;
-    if (dayString !== formatLocalDate(currentTime)) return null;
-
-    const nowMinute = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const realDayOffset = calendarDayDiff(selectedDate, currentTime);
+    const nowMinute =
+      realDayOffset * 1440 + currentTime.getHours() * 60 + currentTime.getMinutes();
     if (nowMinute < timelineStartMinute || nowMinute > timelineEndMinute) {
       return null;
     }
@@ -884,6 +1017,7 @@ const overdueImportCandidates = useMemo(
     tasksWithComputedTime.map((t) => ({
       title: t.title,
       start_time: t.start_time ? t.start_time.slice(0, 5) : null,
+      start_day_offset: Number(t.start_day_offset) || 0,
       duration_min: t.duration_min,
       priority: t.priority,
       category: t.category,
@@ -1158,6 +1292,7 @@ const overdueImportCandidates = useMemo(
       category: categories.home ? "home" : Object.keys(categories)[0] || "",
       subtasks: [],
       start_time: "",
+      start_day_offset: 0,
       end_time: "",
       remind: false,
       remind_lead: defaultRemindLead,
@@ -1177,7 +1312,7 @@ const overdueImportCandidates = useMemo(
     const hasRange = !!task.start_time;
     const startSliced = hasRange ? task.start_time.slice(0, 5) : "";
     const endTime = hasRange && task.duration_min
-      ? addMinutesToTime(startSliced, task.duration_min)
+      ? splitExtendedTime(addMinutesToTime(startSliced, task.duration_min)).clock
       : "";
 
     setForm({
@@ -1189,6 +1324,7 @@ const overdueImportCandidates = useMemo(
         (categories.home ? "home" : Object.keys(categories)[0] || ""),
       subtasks: task.subtasks || [],
       start_time: startSliced,
+      start_day_offset: Number(task.start_day_offset) || 0,
       end_time: endTime,
       remind: task.remind_lead_min != null,
       remind_lead:
@@ -1265,7 +1401,11 @@ const overdueImportCandidates = useMemo(
 
     const withMin = taskList.map((t, i) => {
       if (t.start_time) {
-        offset = timeStringToMinutes(t.start_time.slice(0, 5)) - dayStartMinutes;
+        offset =
+          clockAndDayOffsetToMinutes(
+            t.start_time.slice(0, 5),
+            t.start_day_offset
+          ) - dayStartMinutes;
       }
       const startMin = dayStartMinutes + offset;
       offset += t.duration_min || 0;
@@ -1283,7 +1423,12 @@ const overdueImportCandidates = useMemo(
       .map(({ task }) => task);
   };
 
-  const doCreateOrUpdate = async (body, conflictTask, newFixedStart) => {
+  const doCreateOrUpdate = async (
+    body,
+    conflictTask,
+    newFixedStart,
+    newFixedStartDayOffset = 0
+  ) => {
     if (isSaving) return;
     setIsSaving(true);
     try {
@@ -1305,6 +1450,7 @@ const overdueImportCandidates = useMemo(
           const updatedConflict = await persistUpdate(conflictTask.id, {
             ...conflictTask,
             start_time: newFixedStart,
+            start_day_offset: newFixedStartDayOffset,
           });
           newTasks = newTasks.map((t) => (t.id === conflictTask.id ? updatedConflict : t));
         }
@@ -1326,6 +1472,8 @@ const overdueImportCandidates = useMemo(
       closeModal();
     } catch (err) {
       console.error(err);
+      setFormError(err?.message || "Не удалось сохранить задачу.");
+      setIsModalOpen(true);
     } finally {
       setIsSaving(false);
     }
@@ -1333,9 +1481,9 @@ const overdueImportCandidates = useMemo(
 
   const handleForceSubmit = () => {
     if (!conflictState) return;
-    const { body, conflictTask, newFixedStart } = conflictState;
+    const { body, conflictTask, newFixedStart, newFixedStartDayOffset } = conflictState;
     setConflictState(null);
-    doCreateOrUpdate(body, conflictTask, newFixedStart);
+    doCreateOrUpdate(body, conflictTask, newFixedStart, newFixedStartDayOffset);
   };
 
   // Применение шаблона. Если расписание (с учётом начала дня и уже
@@ -1355,9 +1503,9 @@ const overdueImportCandidates = useMemo(
     // Бэк жёстко запрещает, когда суммарная длительность задач > 24ч —
     // такое в сутки не влезает в принципе. Показываем запрет сразу, без
     // бессмысленного «Применить».
-    if (existingDuration + tplDuration > 1440) {
+    if (existingDuration + tplDuration > 48 * 60) {
       setApplyTemplateError(
-        "Суммарная длительность задач превышает 24 часа — шаблон не помещается в день."
+        "Суммарная длительность задач превышает 48 часов — шаблон не помещается в план."
       );
       setTemplateOverflowConfirm(null);
       return;
@@ -1371,10 +1519,16 @@ const overdueImportCandidates = useMemo(
     );
     const projectedEndMin = currentEndMin + tplDuration;
 
+    if (projectedEndMin > dayStartMin + 48 * 60) {
+      setApplyTemplateError("План не может продолжаться более 48 часов от начала дня.");
+      setTemplateOverflowConfirm(null);
+      return;
+    }
+
     if (!force && projectedEndMin > 1440) {
       setTemplateOverflowConfirm({
         tpl,
-        endTime: addMinutesToTime("00:00", projectedEndMin % 1440),
+        endTime: formatPlanTime(projectedEndMin),
       });
       return;
     }
@@ -1397,8 +1551,8 @@ const overdueImportCandidates = useMemo(
     } catch (e) {
       const msg = e?.message || "";
       setApplyTemplateError(
-        msg.includes("24")
-          ? "Суммарная длительность задач превышает 24 часа — шаблон не помещается в день."
+        msg.includes("48")
+          ? "План не может продолжаться более 48 часов от начала дня."
           : "Не удалось применить шаблон."
       );
       setTemplateOverflowConfirm(null);
@@ -1414,6 +1568,7 @@ const overdueImportCandidates = useMemo(
 
     let durationMin;
     let startTime;
+    let startDayOffset = 0;
 
     if (timeMode === "duration") {
       durationMin = durationStringToMinutes(form.duration);
@@ -1427,14 +1582,17 @@ const overdueImportCandidates = useMemo(
         setFormError("Укажите время начала и конца");
         return;
       }
-      const startMin = timeStringToMinutes(form.start_time);
-      const endMin = timeStringToMinutes(form.end_time);
-      if (endMin <= startMin) {
-        setFormError("Время окончания должно быть позже времени начала");
-        return;
-      }
+      const startMin = clockAndDayOffsetToMinutes(
+        form.start_time,
+        form.start_day_offset
+      );
+      let endMin =
+        (Number(form.start_day_offset) || 0) * 1440 +
+        timeStringToMinutes(form.end_time);
+      if (endMin <= startMin) endMin += 1440;
       durationMin = endMin - startMin;
       startTime = form.start_time;
+      startDayOffset = Number(form.start_day_offset) || 0;
     }
 
     if (durationMin) {
@@ -1442,15 +1600,21 @@ const overdueImportCandidates = useMemo(
         (sum, t) => sum + (editingTaskId !== null && t.id === editingTaskId ? 0 : t.duration_min || 0),
         0
       );
-      if (currentTotal + durationMin > 1440) {
-        setFormError("День не может превышать 24 часа.");
+      if (currentTotal + durationMin > 48 * 60) {
+        setFormError("План не может продолжаться более 48 часов.");
         return;
       }
+    }
+
+    if (formTimePreview?.exceedsLimit) {
+      setFormError("План не может продолжаться более 48 часов от начала дня.");
+      return;
     }
 
     const body = {
       title: form.title,
       start_time: startTime,
+      start_day_offset: startDayOffset,
       duration_min: durationMin,
       priority: form.priority,
       category: form.category,
@@ -1466,37 +1630,44 @@ const overdueImportCandidates = useMemo(
     // Без фиксированного времени (режим «Длительность») серверу нужен
     // якорь — текущее вычисленное время начала этой задачи в плане.
     if (form.remind && !startTime) {
+      let anchorTime;
       if (editingTaskId !== null) {
         const current = tasksWithComputedTime.find((t) => t.id === editingTaskId);
-        body.remind_anchor_time = current ? current.computed_start_time : dayStartTime;
+        anchorTime = current ? current.computed_start_time : dayStartTime;
       } else if (insertBeforeId != null) {
         const insertIdx = tasksWithComputedTime.findIndex((t) => t.id === insertBeforeId);
-        body.remind_anchor_time =
+        anchorTime =
           insertIdx <= 0
             ? dayStartTime
             : tasksWithComputedTime[insertIdx - 1].computed_end_time;
       } else {
         const last = tasksWithComputedTime[tasksWithComputedTime.length - 1];
-        body.remind_anchor_time = last ? last.computed_end_time : dayStartTime;
+        anchorTime = last ? last.computed_end_time : dayStartTime;
       }
+      const normalizedAnchor = splitExtendedTime(anchorTime);
+      body.remind_anchor_time = normalizedAnchor.clock;
+      body.remind_anchor_day_offset = normalizedAnchor.dayOffset;
     }
 
     if (startTime) {
-      const newStart = timeStringToMinutes(startTime);
+      const newStart = clockAndDayOffsetToMinutes(startTime, startDayOffset);
       const newEnd = newStart + (durationMin || 0);
 
       for (const t of tasksWithComputedTime) {
         if (!t.start_time) continue;
         if (editingTaskId !== null && t.id === editingTaskId) continue;
 
-        const existStart = timeStringToMinutes(t.start_time);
+        const existStart = clockAndDayOffsetToMinutes(
+          t.start_time,
+          t.start_day_offset
+        );
         const existEnd = existStart + (t.duration_min || 0);
         const overlaps = newStart === existStart || (newStart < existEnd && existStart < newEnd);
 
 
         if (overlaps) {
           setFormError(
-            `Нельзя создать задачу с временем начала ${startTime} — в это время уже есть задача «${t.title}»`
+            `Нельзя создать задачу с временем начала ${formatPlanTime(newStart)} — в это время уже есть задача «${t.title}»`
           );
           return;
         }
@@ -1515,11 +1686,25 @@ const overdueImportCandidates = useMemo(
         for (let j = insertIdx; j < tasksWithComputedTime.length; j++) {
           const ct = tasksWithComputedTime[j];
           if (ct.start_time) {
-            const fixedMin = timeStringToMinutes(ct.start_time);
+            const fixedMin = clockAndDayOffsetToMinutes(
+              ct.start_time,
+              ct.start_day_offset
+            );
             if (taskBEndMin > fixedMin) {
-              const newFixedStart = addMinutesToTime("00:00", taskBEndMin);
+              const shiftedStart = splitExtendedMinutes(taskBEndMin);
+              if (shiftedStart.dayOffset > 1) {
+                setFormError(
+                  "Зафиксированную задачу нельзя автоматически сдвинуть дальше следующего дня."
+                );
+                return;
+              }
               setIsModalOpen(false);
-              setConflictState({ body, conflictTask: ct, newFixedStart });
+              setConflictState({
+                body,
+                conflictTask: ct,
+                newFixedStart: shiftedStart.clock,
+                newFixedStartDayOffset: shiftedStart.dayOffset,
+              });
               return;
             }
             break;
@@ -1539,7 +1724,9 @@ const overdueImportCandidates = useMemo(
     // Без фиксированного времени (режим «Длительность») серверу нужен
     // якорь — снимок текущего вычисленного времени начала задачи.
     if (!task.start_time) {
-      body.remind_anchor_time = task.computed_start_time;
+      const normalizedAnchor = splitExtendedTime(task.computed_start_time);
+      body.remind_anchor_time = normalizedAnchor.clock;
+      body.remind_anchor_day_offset = normalizedAnchor.dayOffset;
     }
     try {
       const updated = await persistUpdate(task.id, body);
@@ -1716,8 +1903,8 @@ const overdueImportCandidates = useMemo(
           )}
         </span>
         <em>
-          {task.computed_start_time}
-          {task.duration_min ? ` – ${task.computed_end_time}` : ""}
+          {formatPlanTime(task.computed_start_time)}
+          {task.duration_min ? ` – ${formatPlanTime(task.computed_end_time)}` : ""}
         </em>
       </div>
     );
@@ -1741,7 +1928,7 @@ const overdueImportCandidates = useMemo(
           >
             <span>{item.title}</span>
             <em>
-              {item.computed_start_time} – {item.computed_end_time}
+              {formatPlanTime(item.computed_start_time)} – {formatPlanTime(item.computed_end_time)}
             </em>
             <strong>{isExpanded ? "▲" : "▼"}</strong>
           </button>
@@ -2160,8 +2347,8 @@ const overdueImportCandidates = useMemo(
                   )}
 
                   <div className={`day-task-time${t.start_time ? " day-task-time--fixed" : ""}`}>
-                    {t.computed_start_time}
-                    {t.duration_min ? `–${t.computed_end_time}` : null}
+                    {formatPlanTime(t.computed_start_time)}
+                    {t.duration_min ? `–${formatPlanTime(t.computed_end_time)}` : null}
                   </div>
 
                   <div
@@ -2232,7 +2419,7 @@ const overdueImportCandidates = useMemo(
                     className="day-timeline-hour-label"
                     style={{ top: `${minuteToTimelineY(minute)}px` }}
                   >
-                    {addMinutesToTime("00:00", minute)}
+                    {splitExtendedMinutes(minute).clock}
                   </div>
                 ))}
               </div>
@@ -2256,6 +2443,16 @@ const overdueImportCandidates = useMemo(
                     className="day-timeline-grid-line"
                     style={{ top: `${minuteToTimelineY(minute)}px` }}
                   />
+                ))}
+
+                {timelineDayBoundaries.map(({ minute, dayOffset }) => (
+                  <div
+                    key={`day-boundary-${minute}`}
+                    className="day-timeline-midnight"
+                    style={{ top: `${minuteToTimelineY(minute)}px` }}
+                  >
+                    <span>{formatTimelineBoundary(selectedDate, dayOffset)}</span>
+                  </div>
                 ))}
 
                 {timelineTaskLayouts.map((item) => {
@@ -2312,7 +2509,7 @@ const overdueImportCandidates = useMemo(
                             Небольшие задачи
                           </div>
                           <div className="day-timeline-time">
-                            {item.tasks.length} задачи · {item.startTime} – {item.endTime}
+                            {item.tasks.length} задачи · {formatPlanTime(item.startTime)} – {formatPlanTime(item.endTime)}
                           </div>
                         </div>
 
@@ -2386,8 +2583,8 @@ const overdueImportCandidates = useMemo(
                         </div>
                         <div className="day-timeline-time-row">
                           <span className="day-timeline-time">
-                            {task.computed_start_time}
-                            {task.duration_min ? ` – ${task.computed_end_time}` : ""}
+                            {formatPlanTime(task.computed_start_time)}
+                            {task.duration_min ? ` – ${formatPlanTime(task.computed_end_time)}` : ""}
                           </span>
                           {task.remind_lead_min != null && !isDone && (
                             <span
@@ -2552,6 +2749,23 @@ const overdueImportCandidates = useMemo(
                 </div>
               )}
 
+              {formTimePreview?.crossesMidnight && !formTimePreview.exceedsLimit && (
+                <div className="task-time-warning" role="status">
+                  <strong>Задача закончится на следующий день.</strong>{" "}
+                  Интервал будет сохранён как{" "}
+                  {formatPlanTime(formTimePreview.start)} – {formatPlanTime(formTimePreview.end)},
+                  а задача останется в текущем плане.
+                </div>
+              )}
+
+              {formTimePreview?.nextDayConflicts.length > 0 && (
+                <div className="task-time-warning task-time-warning--overlap" role="status">
+                  На это время в плане на {formatFollowingDayLabel(selectedDate)} уже есть:{" "}
+                  {formTimePreview.nextDayConflicts.map((task) => `«${task.title}»`).join(", ")}.
+                  Сохранение разрешено — задачи не будут изменены.
+                </div>
+              )}
+
               {!isTemplateMode && (
                 <div
                   className="task-remind-row"
@@ -2697,9 +2911,23 @@ const overdueImportCandidates = useMemo(
             <h3>Конфликт времени</h3>
             <p className="conflict-modal-text">
               Задача <strong>«{conflictState.conflictTask.title}»</strong> зафиксирована на{" "}
-              <strong>{conflictState.conflictTask.start_time.slice(0, 5)}</strong>. Новая задача займёт это
+              <strong>
+                {formatPlanTime(
+                  clockAndDayOffsetToMinutes(
+                    conflictState.conflictTask.start_time,
+                    conflictState.conflictTask.start_day_offset
+                  )
+                )}
+              </strong>. Новая задача займёт это
               время, и начало зафиксированной задачи сдвинется на{" "}
-              <strong>{conflictState.newFixedStart}</strong>.
+              <strong>
+                {formatPlanTime(
+                  clockAndDayOffsetToMinutes(
+                    conflictState.newFixedStart,
+                    conflictState.newFixedStartDayOffset
+                  )
+                )}
+              </strong>.
             </p>
             <div className="task-modal-buttons">
               <button type="button" className="primary-btn" onClick={handleForceSubmit}>
@@ -2874,8 +3102,8 @@ const overdueImportCandidates = useMemo(
             <p className="conflict-modal-text">
               После применения шаблона{" "}
               <strong>«{templateOverflowConfirm.tpl.name}»</strong> расписание
-              закончится в <strong>{templateOverflowConfirm.endTime}</strong>{" "}
-              следующего дня — это уже после 24:00. Всё равно применить?
+              закончится в <strong>{templateOverflowConfirm.endTime}</strong> —
+              это уже за границей выбранного дня. Всё равно применить?
             </p>
             <div className="task-modal-buttons">
               <button

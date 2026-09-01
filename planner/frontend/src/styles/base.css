@@ -11,7 +11,8 @@
 :root {
   --bg-dark: #4a3c6f;
   --bg-app: #6f5ca7;
-  --panel-bg: linear-gradient(180deg, #6f5ca7 0%, #6f5ca7 3%, #ece7f6 8%, #ddd5ec 100%);
+  /* Keep the transition below the header visually stable when page content grows. */
+  --panel-bg: linear-gradient(180deg, #6f5ca7 0 24px, #ece7f6 64px, #ddd5ec 100%);
   --header-bg: linear-gradient(90deg, #7b5ecf 0%, #546aa8 100%);
   --card-bg: #ffffff;
   --text-main: #2d2545;

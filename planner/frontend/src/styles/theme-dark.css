@@ -198,6 +198,15 @@
   border-top-color: var(--line);
 }
 
+:root[data-theme="dark"] .day-overview-midnight {
+  border-top-color: rgba(174, 151, 255, 0.62);
+}
+
+:root[data-theme="dark"] .day-overview-midnight span {
+  background: #18171d;
+  color: #c9bcff;
+}
+
 :root[data-theme="dark"] .day-overview-timeline-item {
   background: #1a1920;
   border-color: var(--line);
@@ -552,6 +561,16 @@
 
 :root[data-theme="dark"] .day-timeline-grid-line:first-child {
   border-top-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .day-timeline-midnight {
+  border-top-color: rgba(174, 151, 255, 0.72);
+}
+
+:root[data-theme="dark"] .day-timeline-midnight span {
+  border-color: rgba(174, 151, 255, 0.34);
+  background: #211d31;
+  color: #c9bcff;
 }
 
 :root[data-theme="dark"] .day-timeline-task {
@@ -1819,6 +1838,12 @@
   color: #eae8f4;
 }
 
+:root[data-theme="dark"] .task-time-warning {
+  border-color: rgba(224, 181, 88, 0.38);
+  background: rgba(123, 91, 24, 0.2);
+  color: #ead49e;
+}
+
 /* Week task type chips (Обычная / Повторяющаяся / Объёмная) */
 :root[data-theme="dark"] .week-task-type-option {
   background: #131217 !important;
@@ -2238,4 +2263,165 @@
 }
 :root[data-theme="dark"] .legal-checkbox input[type="checkbox"] {
   accent-color: var(--accent);
+}
+
+/* --- SSAU schedule sync and timetable --- */
+
+:root[data-theme="dark"] .schedule-note,
+:root[data-theme="dark"] .schedule-connection-card {
+  border-color: var(--line-strong);
+  background: #1a1821;
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .schedule-note strong,
+:root[data-theme="dark"] .schedule-connection-card strong,
+:root[data-theme="dark"] .schedule-subgroup legend {
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .schedule-segmented {
+  background: #131217;
+}
+
+:root[data-theme="dark"] .schedule-segmented label {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .schedule-segmented label.is-active {
+  background: #282430;
+  color: #c8beff;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .schedule-protection-copy {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .schedule-disconnect-modal {
+  border-color: var(--line-strong);
+  background: #1a1920;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="dark"] .schedule-disconnect-modal h3 {
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .schedule-disconnect-modal > p,
+:root[data-theme="dark"] .schedule-disconnect-choices span,
+:root[data-theme="dark"] .schedule-disconnect-cancel {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .schedule-disconnect-choices button {
+  border-color: var(--line-strong);
+  background: #222028;
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .schedule-disconnect-choices button:hover {
+  border-color: var(--accent);
+  background: #282430;
+}
+
+:root[data-theme="dark"] .schedule-disconnect-choices .schedule-disconnect-choice--remove {
+  border-color: #613c42;
+  background: #2b2024;
+  color: #ffaaaa;
+}
+
+:root[data-theme="dark"] .schedule-disconnect-choices .schedule-disconnect-choice--remove:hover {
+  border-color: #965762;
+  background: #35252a;
+}
+
+:root[data-theme="dark"] .schedule-modal {
+  border-color: var(--line-strong);
+  background: #121116;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="dark"] .schedule-modal-header h2,
+:root[data-theme="dark"] .schedule-modal-state strong,
+:root[data-theme="dark"] .schedule-agenda-day h3 {
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .schedule-week-navigation span,
+:root[data-theme="dark"] .schedule-modal-state {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .schedule-modal-close {
+  background: #282430;
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .schedule-modal-body {
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .schedule-week-navigation button {
+  border-color: var(--line-strong);
+  background: #1a1920;
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .schedule-week-navigation button:hover {
+  border-color: var(--accent);
+  background: #282430;
+}
+
+:root[data-theme="dark"] .schedule-timetable {
+  border-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .schedule-timetable-head,
+:root[data-theme="dark"] .schedule-timetable-slot,
+:root[data-theme="dark"] .schedule-timetable-cell {
+  border-color: var(--line-strong);
+}
+
+:root[data-theme="dark"] .schedule-timetable-head,
+:root[data-theme="dark"] .schedule-timetable-slot {
+  background: #1a1920;
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .schedule-timetable-slot strong,
+:root[data-theme="dark"] .schedule-agenda-time strong {
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .schedule-timetable-cell {
+  background: #131217;
+}
+
+:root[data-theme="dark"] .schedule-event {
+  background: #1e1c24;
+  color: var(--text-main);
+}
+
+:root[data-theme="dark"] .schedule-event--lecture {
+  background: rgba(42, 170, 145, 0.12);
+}
+
+:root[data-theme="dark"] .schedule-event--practice {
+  background: rgba(90, 168, 239, 0.12);
+}
+
+:root[data-theme="dark"] .schedule-event--lab {
+  background: rgba(196, 91, 227, 0.12);
+}
+
+:root[data-theme="dark"] .schedule-event--other {
+  background: rgba(114, 147, 217, 0.12);
+}
+
+:root[data-theme="dark"] .schedule-event-teacher,
+:root[data-theme="dark"] .schedule-event-location,
+:root[data-theme="dark"] .schedule-event-topline,
+:root[data-theme="dark"] .schedule-agenda-time {
+  color: var(--text-muted);
 }

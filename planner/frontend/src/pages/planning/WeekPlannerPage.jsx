@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
 import { CategoryIcon } from "../../components/icons";
+import WeekScheduleModal from "../../components/schedule/WeekScheduleModal";
+import { fetchScheduleSubscription } from "../../api/schedule";
 import {
   fetchGoalsWeekGrid,
   toggleGoalWeekItem,
@@ -161,6 +163,8 @@ function WeekPlannerPage() {
 
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
   const [isApplyTemplateOpen, setIsApplyTemplateOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleConnected, setScheduleConnected] = useState(false);
   const [goalRows, setGoalRows] = useState([]);
   const [templateName, setTemplateName] = useState("");
   const [templateColor, setTemplateColor] = useState(TEMPLATE_COLORS[0]);
@@ -262,6 +266,36 @@ function WeekPlannerPage() {
 
   useEffect(() => {
     loadCategories();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    function refreshScheduleConnection() {
+      fetchScheduleSubscription()
+        .then((value) => {
+          if (!active) return;
+          const connected = Boolean(value?.connected);
+          setScheduleConnected(connected);
+          if (!connected) setIsScheduleOpen(false);
+        })
+        .catch(() => {
+          if (active) setScheduleConnected(false);
+        });
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === "visible") refreshScheduleConnection();
+    }
+
+    refreshScheduleConnection();
+    window.addEventListener("focus", refreshScheduleConnection);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refreshScheduleConnection);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -1212,6 +1246,17 @@ async function handleDragEnd() {
                   >
                     Применить шаблон
                   </button>
+
+                  {scheduleConnected && (
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      disabled={isTemplateMode}
+                      onClick={() => setIsScheduleOpen(true)}
+                    >
+                      Расписание
+                    </button>
+                  )}
                 </div>
 
                 <div className="week-grid-excel">
@@ -2028,6 +2073,13 @@ async function handleDragEnd() {
                 categories={categories}
                 onClose={() => setIsCategoryManagerOpen(false)}
                 onCategoriesChanged={reloadCategories}
+              />
+            )}
+
+            {isScheduleOpen && (
+              <WeekScheduleModal
+                weekStart={formatLocalDate(weekStart)}
+                onClose={() => setIsScheduleOpen(false)}
               />
             )}
           </div>

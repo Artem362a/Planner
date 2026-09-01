@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from dependencies import get_current_user, get_db
 from db import DayNote, User
+from schedule_sync import lock_day_plan
 from schemas import DayNoteIn, DayNoteOut
 
 router = APIRouter()
@@ -38,6 +39,7 @@ def upsert_day_note(
     current_user: User = Depends(get_current_user),
 ):
     d = _parse_date(day)
+    lock_day_plan(db, current_user.id, d)
     note = db.query(DayNote).filter(DayNote.user_id == current_user.id, DayNote.day == d).first()
     if note:
         note.text = body.text

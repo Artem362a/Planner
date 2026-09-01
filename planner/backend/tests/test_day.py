@@ -69,6 +69,31 @@ class TestCreateTask:
         assert body["start_time"].startswith("07:30")
         assert body["duration_min"] == 45
 
+    def test_create_at_same_clock_on_following_day(self, client, auth_headers):
+        r = client.post(
+            f"/day/{TODAY}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "After midnight",
+                "start_time": "00:30",
+                "start_day_offset": 1,
+                "duration_min": 45,
+            },
+        )
+        assert r.status_code == 200
+        assert r.json()["start_time"].startswith("00:30")
+        assert r.json()["start_day_offset"] == 1
+
+    def test_rejects_plan_beyond_48_hours(self, client, auth_headers):
+        target = (date.today() + timedelta(days=2)).isoformat()
+        r = client.post(
+            f"/day/{target}/tasks",
+            headers=auth_headers,
+            json={"title": "Too long", "duration_min": 48 * 60 + 1},
+        )
+        assert r.status_code == 400
+        assert "48" in r.json()["detail"]
+
     def test_create_appends_to_end(self, client, auth_headers):
         for title in ("a", "b", "c"):
             client.post(f"/day/{TODAY}/tasks", headers=auth_headers, json={"title": title})
@@ -104,6 +129,20 @@ class TestUpdateTask:
         )
         assert r.status_code == 200
         assert r.json()["title"] == "new"
+
+    def test_partial_update_preserves_following_day(self, client, auth_headers):
+        created = client.post(
+            f"/day/{TODAY}/tasks",
+            headers=auth_headers,
+            json={"title": "old", "start_time": "00:30", "start_day_offset": 1},
+        ).json()
+        r = client.patch(
+            f"/day/{TODAY}/tasks/{created['id']}",
+            headers=auth_headers,
+            json={"title": "new"},
+        )
+        assert r.status_code == 200
+        assert r.json()["start_day_offset"] == 1
 
     def test_update_status_to_done(self, client, auth_headers):
         created = client.post(f"/day/{TODAY}/tasks", headers=auth_headers, json={"title": "t"}).json()
@@ -242,6 +281,67 @@ class TestOverdueTasks:
         assert r.status_code == 200
         assert len(r.json()) == 1
         assert r.json()[0]["title"] == "late"
+
+    def test_following_day_task_is_not_overdue_early(self, client, db, user, auth_headers):
+        from datetime import time as _time
+        from db import DayTask
+
+        yesterday = date.today() - timedelta(days=1)
+        db.add(
+            DayTask(
+                user_id=user.id,
+                day=yesterday,
+                title="after midnight",
+                start_time=_time(0, 30),
+                start_day_offset=1,
+                priority="medium",
+                status=0,
+                order_index=0,
+            )
+        )
+        db.commit()
+
+        r = client.get("/day-tasks/overdue", headers=auth_headers)
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_sequential_task_after_midnight_is_not_overdue_early(
+        self, client, db, user, auth_headers
+    ):
+        from datetime import time as _time
+        from db import DaySettings, DayTask
+
+        yesterday = date.today() - timedelta(days=1)
+        db.add(DaySettings(user_id=user.id, day=yesterday, start_time=_time(23, 30)))
+        db.add(
+            DayTask(
+                user_id=user.id,
+                day=yesterday,
+                title="before midnight",
+                duration_min=60,
+                priority="medium",
+                status=0,
+                order_index=0,
+            )
+        )
+        db.add(
+            DayTask(
+                user_id=user.id,
+                day=yesterday,
+                title="after midnight",
+                duration_min=30,
+                priority="medium",
+                status=0,
+                order_index=1,
+            )
+        )
+        db.commit()
+
+        titles = [
+            row["title"]
+            for row in client.get("/day-tasks/overdue", headers=auth_headers).json()
+        ]
+        assert titles == ["before midnight"]
 
     def test_excludes_dismissed(self, client, db, user, auth_headers):
         from db import DayTask

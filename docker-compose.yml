@@ -87,6 +87,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  schedule-sync:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dayplan-schedule-sync
+    command: python /app/planner/backend/schedule_worker.py
+    env_file:
+      - planner/backend/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      TZ: ${TZ:-Etc/UTC}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ── Observability (всё локально на ноуте, наружу — только Grafana через FRP) ──
 
   prometheus:

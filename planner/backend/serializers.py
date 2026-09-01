@@ -151,6 +151,7 @@ def _task_to_out(t: DayTaskRow) -> TaskOut:
         day=t.day,
         title=t.title,
         start_time=t.start_time.isoformat() if t.start_time else None,
+        start_day_offset=int(getattr(t, "start_day_offset", 0) or 0),
         duration_min=t.duration_min,
         priority=t.priority,
         category=t.category,

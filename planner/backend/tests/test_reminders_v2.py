@@ -203,6 +203,27 @@ class TestTaskReminderSync:
         assert rem is not None
         assert rem.remind_at == datetime.fromisoformat(f"{day}T17:45")
 
+    def test_following_day_task_reminder_uses_real_date(self, client, db, auth_headers):
+        day = self._tomorrow()
+        r = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Night call",
+                "start_time": "00:30",
+                "start_day_offset": 1,
+                "remind_lead_min": 15,
+            },
+        )
+        assert r.status_code == 200
+
+        rem = self._task_reminder(db, r.json()["id"])
+        expected_day = date.fromisoformat(day) + timedelta(days=1)
+        assert rem is not None
+        assert rem.remind_at == datetime.combine(
+            expected_day, datetime.min.time()
+        ) + timedelta(minutes=15)
+
     def test_negative_lead_removes_reminder(self, client, db, auth_headers):
         day = self._tomorrow()
         created = client.post(
@@ -303,6 +324,30 @@ class TestTaskReminderAnchor:
         )
         assert r.status_code == 200
         assert self._task_reminder(db, r.json()["id"]) is None
+
+    def test_duration_anchor_after_midnight_uses_following_date(
+        self, client, db, auth_headers
+    ):
+        day = self._tomorrow()
+        r = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Late work",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "00:20",
+                "remind_anchor_day_offset": 1,
+            },
+        )
+        assert r.status_code == 200
+
+        rem = self._task_reminder(db, r.json()["id"])
+        expected_day = date.fromisoformat(day) + timedelta(days=1)
+        assert rem is not None
+        assert rem.remind_at == datetime.combine(
+            expected_day, datetime.min.time()
+        ) + timedelta(minutes=10)
 
     def test_unrelated_patch_does_not_drop_anchor_reminder(self, client, db, auth_headers):
         """PATCH, не трогающий напоминание, не должен затирать якорь

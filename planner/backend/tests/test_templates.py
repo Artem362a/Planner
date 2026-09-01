@@ -94,6 +94,30 @@ class TestApplyDayTemplate:
             DayTask.user_id == user.id, DayTask.day == d
         ).count() == 3
 
+    def test_apply_preserves_following_day_start(self, client, auth_headers):
+        target = date.today().isoformat()
+        tpl = client.post(
+            "/day-templates",
+            headers=auth_headers,
+            json={
+                "name": "late",
+                "tasks": [
+                    {
+                        "title": "Night task",
+                        "start_time": "00:30",
+                        "start_day_offset": 1,
+                        "duration_min": 30,
+                    }
+                ],
+            },
+        ).json()
+
+        r = client.post(
+            f"/day-templates/{tpl['id']}/apply/{target}", headers=auth_headers
+        )
+        assert r.status_code == 200
+        assert r.json()[0]["start_day_offset"] == 1
+
     def test_apply_appends_to_existing_day(self, client, auth_headers):
         # Existing task on the day.
         client.post(f"/day/{TODAY}/tasks", headers=auth_headers, json={"title": "existing"})

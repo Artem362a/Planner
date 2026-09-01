@@ -40,6 +40,7 @@ from db import (  # noqa: E402
     Notification,
     NotificationRecipient,
     Reminder,
+    ScheduleSyncAlert,
     SessionLocal,
     TelegramLink,
     User,
@@ -1356,6 +1357,69 @@ def _reminders_loop() -> None:
         _time.sleep(30)
 
 
+# ---------------------------------------------------------------- schedule change alerts
+
+
+def _deliver_schedule_alerts() -> None:
+    targets: list[tuple[int, int, str]] = []
+    with SessionLocal() as db:
+        rows = (
+            db.query(ScheduleSyncAlert)
+            .filter(
+                ScheduleSyncAlert.telegram_sent_at.is_(None),
+                ScheduleSyncAlert.attempts < 10,
+            )
+            .order_by(ScheduleSyncAlert.created_at.asc(), ScheduleSyncAlert.id.asc())
+            .limit(20)
+            .all()
+        )
+        for alert in rows:
+            link = (
+                db.query(TelegramLink)
+                .filter(
+                    TelegramLink.user_id == alert.user_id,
+                    TelegramLink.chat_id.isnot(None),
+                )
+                .first()
+            )
+            if link is None:
+                alert.telegram_sent_at = datetime.now()
+                continue
+            targets.append((alert.id, int(link.chat_id), alert.message))
+        db.commit()
+
+    for alert_id, chat_id, message in targets:
+        try:
+            bot.send_message(
+                chat_id,
+                "📚 <b>Расписание изменилось</b>\n\n" + html.escape(message),
+            )
+        except Exception as exc:  # noqa: BLE001
+            with SessionLocal() as db:
+                row = db.query(ScheduleSyncAlert).filter(ScheduleSyncAlert.id == alert_id).first()
+                if row is not None:
+                    row.attempts += 1
+                    db.commit()
+            print(f"schedule alert send failed for {chat_id}: {exc}", flush=True)
+            continue
+
+        with SessionLocal() as db:
+            row = db.query(ScheduleSyncAlert).filter(ScheduleSyncAlert.id == alert_id).first()
+            if row is not None:
+                row.telegram_sent_at = datetime.now()
+                db.commit()
+
+
+def _schedule_alerts_loop() -> None:
+    print("schedule alerts loop started", flush=True)
+    while True:
+        try:
+            _deliver_schedule_alerts()
+        except Exception as exc:  # noqa: BLE001
+            print(f"schedule alerts loop error: {exc}", flush=True)
+        _time.sleep(30)
+
+
 # ---------------------------------------------------------------- entrypoint
 
 
@@ -1381,6 +1445,7 @@ def main() -> None:
     _set_commands()
     threading.Thread(target=_digest_loop, daemon=True).start()
     threading.Thread(target=_reminders_loop, daemon=True).start()
+    threading.Thread(target=_schedule_alerts_loop, daemon=True).start()
     print("Telegram bot started (long polling)…", flush=True)
     bot.infinity_polling(skip_pending=True, timeout=30)
 

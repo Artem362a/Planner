@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from db import DayTask, InboxTask, WeekTask
 from dependencies import get_current_user, get_db
+from schedule_sync import lock_day_plan
 from schemas import (
     InboxAssignDayIn,
     InboxAssignWeekIn,
@@ -171,6 +172,7 @@ def assign_inbox_to_day(
     )
     db.add(new_task)
     t.assigned_at = datetime.utcnow()
+    lock_day_plan(db, user.id, body.day)
     db.commit()
     db.refresh(new_task)
 

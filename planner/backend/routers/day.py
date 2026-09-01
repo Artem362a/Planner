@@ -17,10 +17,76 @@ from db import (
     WeekTask,
 )
 from dependencies import get_current_user, get_db
+from schedule_sync import lock_day_plan
 from schemas import *
 from serializers import *
 
 router = APIRouter()
+
+MAX_PLAN_SPAN_MIN = 48 * 60
+
+
+def _clock_to_minutes(value: _time) -> int:
+    return value.hour * 60 + value.minute
+
+
+def _parse_clock(value: str, field_name: str) -> _time:
+    try:
+        parts = value.split(":")
+        return _time(hour=int(parts[0]), minute=int(parts[1]))
+    except (ValueError, IndexError):
+        raise HTTPException(400, f"Bad {field_name} format, use HH:MM")
+
+
+def _validate_day_offset(value: int, *, anchor: bool = False) -> int:
+    upper = 2 if anchor else 1
+    if value < 0 or value > upper:
+        raise HTTPException(400, f"day offset must be between 0 and {upper}")
+    return value
+
+
+def _day_start_for_limit(db: Session, user: Any, d: date) -> _time:
+    settings = (
+        db.query(DaySettings)
+        .filter(DaySettings.user_id == user.id, DaySettings.day == d)
+        .first()
+    )
+    if settings is not None:
+        return cast(Any, settings).start_time
+    if d > date.today():
+        return getattr(user, "default_day_start_time", None) or _time(6, 0)
+    return _time(6, 0)
+
+
+def _validate_day_timeline_limit(db: Session, user: Any, d: date) -> None:
+    """Reject a logical day only when it extends beyond 48h from its start."""
+    day_start_min = _clock_to_minutes(_day_start_for_limit(db, user, d))
+    cursor = day_start_min
+    hard_end = day_start_min + MAX_PLAN_SPAN_MIN
+    rows = (
+        db.query(DayTask)
+        .filter(DayTask.user_id == user.id, DayTask.day == d)
+        .order_by(DayTask.order_index.asc(), DayTask.id.asc())
+        .all()
+    )
+
+    for raw in rows:
+        task = cast(Any, raw)
+        duration = int(task.duration_min or 0)
+        if duration < 0 or duration > MAX_PLAN_SPAN_MIN:
+            raise HTTPException(400, "Task duration must be between 0 and 48 hours.")
+
+        if task.start_time is not None:
+            day_offset = _validate_day_offset(int(getattr(task, "start_day_offset", 0) or 0))
+            cursor = day_offset * 1440 + _clock_to_minutes(task.start_time)
+
+        task_end = cursor + duration
+        if cursor > hard_end or task_end > hard_end:
+            raise HTTPException(
+                400,
+                "План не может продолжаться более 48 часов от начала дня.",
+            )
+        cursor = task_end
 
 
 def _sync_task_reminder(db: Session, user_id: int, task: Any) -> None:
@@ -38,16 +104,29 @@ def _sync_task_reminder(db: Session, user_id: int, task: Any) -> None:
 
     lead = getattr(task, "remind_lead_min", None)
     anchor = task.start_time or getattr(task, "remind_anchor_time", None)
+    anchor_day_offset = (
+        int(getattr(task, "start_day_offset", 0) or 0)
+        if task.start_time is not None
+        else int(getattr(task, "remind_anchor_day_offset", 0) or 0)
+    )
     remind_at = None
     if lead is not None and anchor is not None and task.status == 0:
-        remind_at = datetime.combine(task.day, anchor) - timedelta(minutes=lead)
+        remind_at = datetime.combine(
+            task.day + timedelta(days=anchor_day_offset), anchor
+        ) - timedelta(minutes=lead)
 
     if remind_at is None or remind_at <= datetime.now():
         if rem is not None:
             db.delete(rem)
         return
 
-    text = f"Задача «{task.title}» в {anchor.strftime('%H:%M')}"
+    if anchor_day_offset == 1:
+        day_suffix = " (+1 день)"
+    elif anchor_day_offset:
+        day_suffix = f" (+{anchor_day_offset} дня)"
+    else:
+        day_suffix = ""
+    text = f"Задача «{task.title}» в {anchor.strftime('%H:%M')}{day_suffix}"
     if rem is None:
         db.add(
             Reminder(
@@ -169,12 +248,16 @@ def save_day_settings(
             user_id=current_user_row.id,
             day=d,
             start_time=parsed_time,
+            plan_locked=True,
         )
         db.add(new_settings)
     else:
         settings_row = cast(DaySettingsRow, settings)
         settings_row.start_time = parsed_time
+        settings_row.plan_locked = True
 
+    db.flush()
+    _validate_day_timeline_limit(db, current_user_row, d)
     db.commit()
     return {"ok": True, "start_time": body.start_time}
 
@@ -193,16 +276,21 @@ def create_task(
     except ValueError:
         raise HTTPException(400, "Bad date format, use YYYY-MM-DD")
 
+    lock_day_plan(db, current_user_row.id, d)
+
     start_time = None
+    start_day_offset = 0
     if body.start_time:
-        parts = body.start_time.split(":")
-        hh, mm = int(parts[0]), int(parts[1])
-        start_time = _time(hour=hh, minute=mm)
+        start_time = _parse_clock(body.start_time, "start_time")
+        start_day_offset = _validate_day_offset(int(body.start_day_offset or 0))
 
     remind_anchor_time = None
+    remind_anchor_day_offset = 0
     if body.remind_anchor_time:
-        parts = body.remind_anchor_time.split(":")
-        remind_anchor_time = _time(hour=int(parts[0]), minute=int(parts[1]))
+        remind_anchor_time = _parse_clock(body.remind_anchor_time, "remind_anchor_time")
+        remind_anchor_day_offset = _validate_day_offset(
+            int(body.remind_anchor_day_offset or 0), anchor=True
+        )
 
     subtasks_payload = [s.dict() for s in body.subtasks] if body.subtasks else []
     insert_before_id = body.insert_before_id
@@ -255,6 +343,7 @@ def create_task(
         day=d,
         title=body.title,
         start_time=start_time,
+        start_day_offset=start_day_offset,
         duration_min=body.duration_min,
         priority=body.priority,
         category=body.category,
@@ -267,10 +356,12 @@ def create_task(
             else None
         ),
         remind_anchor_time=remind_anchor_time,
+        remind_anchor_day_offset=remind_anchor_day_offset,
     )
 
     db.add(task)
     db.flush()
+    _validate_day_timeline_limit(db, current_user_row, d)
     _sync_task_reminder(db, current_user_row.id, cast(Any, task))
     db.commit()
     db.refresh(task)
@@ -306,6 +397,7 @@ def update_task(
     if db_task is None:
         raise HTTPException(404, "Task not found")
 
+    lock_day_plan(db, current_user_row.id, d)
     task = cast(DayTaskRow, db_task)
     old_status = task.status
 
@@ -318,10 +410,11 @@ def update_task(
     if body.start_time is not None:
         if body.start_time == "":
             task.start_time = None
+            task.start_day_offset = 0
         else:
-            parts = body.start_time.split(":")
-            hh, mm = int(parts[0]), int(parts[1])
-            task.start_time = _time(hour=hh, minute=mm)
+            task.start_time = _parse_clock(body.start_time, "start_time")
+    if body.start_day_offset is not None:
+        task.start_day_offset = _validate_day_offset(int(body.start_day_offset))
     if body.category is not None:
         task.category = body.category
     if body.status is not None:
@@ -334,8 +427,13 @@ def update_task(
         # Отрицательное значение = снять напоминание (None в PATCH значит «не менять»).
         task.remind_lead_min = body.remind_lead_min if body.remind_lead_min >= 0 else None
     if body.remind_anchor_time is not None:
-        parts = body.remind_anchor_time.split(":")
-        task.remind_anchor_time = _time(hour=int(parts[0]), minute=int(parts[1]))
+        task.remind_anchor_time = _parse_clock(body.remind_anchor_time, "remind_anchor_time")
+    if body.remind_anchor_day_offset is not None:
+        task.remind_anchor_day_offset = _validate_day_offset(
+            int(body.remind_anchor_day_offset), anchor=True
+        )
+    if task.start_time is None:
+        task.start_day_offset = 0
 
     # Синхронизация в недельную задачу, если дневная была импортирована из недели.
     # Recurring-задачи (повтор по дням недели) — исключение: там каждый день
@@ -451,6 +549,8 @@ def update_task(
             if inbox_row is not None:
                 cast(Any, inbox_row).completed_at = datetime.utcnow()
 
+    db.flush()
+    _validate_day_timeline_limit(db, current_user_row, d)
     _sync_task_reminder(db, current_user_row.id, cast(Any, task))
     db.commit()
     db.refresh(db_task)
@@ -491,6 +591,9 @@ def reorder_day_tasks(
     for index, task_id in enumerate(body.ordered_ids):
         task_map[task_id].order_index = index
 
+    lock_day_plan(db, current_user_row.id, d)
+    db.flush()
+    _validate_day_timeline_limit(db, current_user_row, d)
     db.commit()
     return {"ok": True}
 
@@ -521,6 +624,7 @@ def delete_task(
     if not task:
         raise HTTPException(404, "Task not found")
 
+    lock_day_plan(db, current_user_row.id, d)
     db.delete(task)
     db.commit()
     return {"ok": True}
@@ -554,11 +658,35 @@ def get_overdue_tasks(
         .all()
     )
 
+    actual_task_days: dict[int, date] = {}
+    for origin_day in {cast(Any, row).day for row in pending_past}:
+        cursor = _clock_to_minutes(_day_start_for_limit(db, current_user_row, origin_day))
+        day_rows = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == current_user_row.id, DayTask.day == origin_day)
+            .order_by(DayTask.order_index.asc(), DayTask.id.asc())
+            .all()
+        )
+        for raw_day_task in day_rows:
+            day_task = cast(Any, raw_day_task)
+            if day_task.start_time is not None:
+                cursor = (
+                    int(getattr(day_task, "start_day_offset", 0) or 0) * 1440
+                    + _clock_to_minutes(day_task.start_time)
+                )
+            actual_task_days[day_task.id] = origin_day + timedelta(days=cursor // 1440)
+            cursor += int(day_task.duration_min or 0)
+
     result = []
     seen_week_task_ids: set[int] = set()
 
     for task in pending_past:
         t = cast(Any, task)
+        # A task kept in yesterday's logical plan but scheduled after midnight
+        # belongs to today's real calendar time and is not overdue yet.
+        actual_day = actual_task_days.get(t.id, t.day)
+        if actual_day >= today:
+            continue
         cat_color = cat_color_map.get(t.category) if t.category else None
 
         if t.source_week_task_id is not None:
@@ -628,6 +756,7 @@ def dismiss_overdue_task(
         raise HTTPException(404, "Task not found")
 
     t = cast(Any, task)
+    lock_day_plan(db, current_user_row.id, t.day)
 
     if t.source_week_task_id is not None:
         # Прошлые незакрытые инстансы этой недельной задачи — тоже скрываем.
@@ -676,6 +805,9 @@ def _moved_task_row(user_id: int, t: Any, new_date: date, order_index: int) -> D
         title=t.title,
         duration_min=t.duration_min,
         start_time=t.start_time,
+        # Moving a +1-day task to that calendar date should keep its actual
+        # clock time instead of shifting it by yet another day.
+        start_day_offset=0,
         priority=t.priority,
         category=t.category,
         status=0,
@@ -687,6 +819,7 @@ def _moved_task_row(user_id: int, t: Any, new_date: date, order_index: int) -> D
         source_week_task_id=t.source_week_task_id,
         remind_lead_min=getattr(t, "remind_lead_min", None),
         remind_anchor_time=getattr(t, "remind_anchor_time", None),
+        remind_anchor_day_offset=0,
     )
 
 
@@ -709,6 +842,8 @@ def carry_over_unfinished(
         raise HTTPException(400, "Bad date format, use YYYY-MM-DD")
 
     target = src_day + timedelta(days=1)
+    lock_day_plan(db, current_user_row.id, src_day)
+    lock_day_plan(db, current_user_row.id, target)
 
     tasks = (
         db.query(DayTask)
@@ -754,6 +889,8 @@ def carry_over_unfinished(
         db.delete(task)
         moved += 1
 
+    db.flush()
+    _validate_day_timeline_limit(db, current_user_row, target)
     db.commit()
     return {"moved": moved, "skipped": skipped, "target": target.isoformat()}
 
@@ -783,6 +920,8 @@ def reschedule_task(
         raise HTTPException(404, "Task not found")
 
     t = cast(Any, task)
+    lock_day_plan(db, current_user_row.id, t.day)
+    lock_day_plan(db, current_user_row.id, body.new_date)
 
     if t.source_week_task_id is not None:
         db.query(DayTask).filter(
@@ -810,6 +949,7 @@ def reschedule_task(
 
     db.add(new_task)
     db.flush()
+    _validate_day_timeline_limit(db, current_user_row, body.new_date)
     _sync_task_reminder(db, current_user_row.id, cast(Any, new_task))
     db.commit()
     db.refresh(new_task)
@@ -1049,6 +1189,8 @@ def import_week_tasks_to_days(
         created_tasks.append(new_task)
         next_order += 1
 
+    if created_tasks:
+        lock_day_plan(db, current_user_row.id, target_day)
     db.commit()
 
     for task in created_tasks:

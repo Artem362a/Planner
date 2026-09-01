@@ -657,6 +657,26 @@
   flex: 1;
 }
 
+.task-time-warning {
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid #ead49a;
+  border-radius: 10px;
+  background: #fff8df;
+  color: #765d22;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.task-time-warning strong {
+  font-weight: 600;
+}
+
+.task-time-warning--overlap {
+  border-color: #e8c688;
+  background: #fff4d7;
+}
+
 /* =========================
    MOBILE
    ========================= */
@@ -674,4 +694,5 @@
   .category-select-dropdown {
     max-width: 100% !important;
   }
+
 }

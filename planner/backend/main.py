@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from observability import setup_observability
 from rate_limit import limiter
-from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notes, notifications, statistics, telegram, templates, week
+from routers import auth_routes, categories, day, feedback, goals, inbox, legal, notes, notifications, schedule, statistics, telegram, templates, week
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -48,4 +48,5 @@ app.include_router(templates.router)
 app.include_router(week.router)
 app.include_router(statistics.router)
 app.include_router(telegram.router)
+app.include_router(schedule.router)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")

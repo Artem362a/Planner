@@ -216,7 +216,7 @@ def create_overdue_reminder(
     today_start = datetime.combine(today, datetime.min.time())
     current_user_row = cast(Any, current_user)
 
-    count = (
+    pending_rows = (
         db.query(DayTask)
         .filter(
             DayTask.user_id == current_user_row.id,
@@ -224,7 +224,36 @@ def create_overdue_reminder(
             DayTask.status == 0,
             DayTask.dismissed.isnot(True),
         )
-        .count()
+        .order_by(DayTask.day.asc(), DayTask.order_index.asc(), DayTask.id.asc())
+        .all()
+    )
+
+    # A task may deliberately live in yesterday's logical plan while its real
+    # start is after midnight today. Do not call it overdue until that actual
+    # calendar day has passed.
+    from routers.day import _clock_to_minutes, _day_start_for_limit
+
+    actual_days: dict[int, date] = {}
+    for origin_day in {cast(Any, row).day for row in pending_rows}:
+        cursor = _clock_to_minutes(_day_start_for_limit(db, current_user_row, origin_day))
+        all_day_rows = (
+            db.query(DayTask)
+            .filter(DayTask.user_id == current_user_row.id, DayTask.day == origin_day)
+            .order_by(DayTask.order_index.asc(), DayTask.id.asc())
+            .all()
+        )
+        for raw_task in all_day_rows:
+            task = cast(Any, raw_task)
+            if task.start_time is not None:
+                cursor = (
+                    int(getattr(task, "start_day_offset", 0) or 0) * 1440
+                    + _clock_to_minutes(task.start_time)
+                )
+            actual_days[task.id] = origin_day + timedelta(days=cursor // 1440)
+            cursor += int(task.duration_min or 0)
+
+    count = sum(
+        1 for raw in pending_rows if actual_days.get(cast(Any, raw).id, cast(Any, raw).day) < today
     )
 
     if count == 0:
