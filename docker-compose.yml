@@ -38,6 +38,12 @@ services:
       TZ: ${TZ:-Etc/UTC}
       # JSON logs so promtail/Loki can parse level and request_id.
       LOG_FORMAT: json
+      # Canonical public URLs used by OAuth discovery and MCP token audience
+      # binding. Production must never advertise the container's localhost.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://dailyplannerapp.ru}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-https://dailyplannerapp.ru/api}
+      MCP_RESOURCE_URL: ${MCP_RESOURCE_URL:-https://dailyplannerapp.ru/mcp}
+      OAUTH_ISSUER_URL: ${OAUTH_ISSUER_URL:-https://dailyplannerapp.ru}
       # Multiprocess mode for prometheus_client: with --workers > 1, each
       # uvicorn worker keeps its own in-memory counters. Without this,
       # Prometheus scrapes whichever worker's connection it gets, sees a
