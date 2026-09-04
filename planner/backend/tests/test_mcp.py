@@ -32,6 +32,17 @@ def _allow(db, user, developer=None):
     db.commit()
 
 
+def test_mcp_metadata_and_redirect_use_canonical_resource(client):
+    metadata = client.get("/.well-known/oauth-protected-resource/mcp")
+    assert metadata.status_code == 200
+    assert metadata.json()["resource"] == MCP_RESOURCE_URL
+    assert MCP_RESOURCE_URL.endswith("/mcp/")
+
+    redirect = client.post("/mcp", follow_redirects=False)
+    assert redirect.status_code == 308
+    assert redirect.headers["location"] == MCP_RESOURCE_URL
+
+
 def test_allowlist_is_developer_managed_and_disable_revokes_grants(
     client, db, user, auth_headers, developer, developer_headers
 ):
@@ -116,7 +127,9 @@ def test_oauth_pkce_flow_refresh_rotation_and_reuse_detection(
             "redirect_uri": "http://127.0.0.1:8765/callback",
             "code_challenge": pkce_s256(verifier),
             "code_challenge_method": "S256",
-            "resource": MCP_RESOURCE_URL,
+            # Slashless is the resource identifier published before the
+            # canonical redirect fix and remains accepted for compatibility.
+            "resource": MCP_RESOURCE_URL.rstrip("/"),
             "scope": "planner:read tasks:create tasks:edit tasks:delete feedback:read_all",
             "state": "csrf-state",
         },
@@ -151,7 +164,7 @@ def test_oauth_pkce_flow_refresh_rotation_and_reuse_detection(
             "code": code,
             "redirect_uri": "http://127.0.0.1:8765/callback",
             "code_verifier": verifier,
-            "resource": MCP_RESOURCE_URL,
+            "resource": MCP_RESOURCE_URL.rstrip("/"),
         },
     )
     assert exchanged.status_code == 200
@@ -165,7 +178,7 @@ def test_oauth_pkce_flow_refresh_rotation_and_reuse_detection(
             "grant_type": "refresh_token",
             "client_id": client_id,
             "refresh_token": first_tokens["refresh_token"],
-            "resource": MCP_RESOURCE_URL,
+            "resource": MCP_RESOURCE_URL.rstrip("/"),
         },
     )
     assert refreshed.status_code == 200
@@ -254,7 +267,7 @@ def test_token_verifier_rejects_user_removed_from_allowlist(
         user_id=user.id,
         client_id=oauth_client.client_id,
         scopes=["planner:read"],
-        resource=MCP_RESOURCE_URL,
+        resource=MCP_RESOURCE_URL.rstrip("/"),
     )
     db.add(oauth_client)
     db.add(grant)
@@ -270,6 +283,9 @@ def test_token_verifier_rejects_user_removed_from_allowlist(
     verified = asyncio.run(mcp_server.DayPlanTokenVerifier().verify_token(access_secret))
     assert verified is not None
     assert verified.subject == str(user.id)
+    assert verified.resource == MCP_RESOURCE_URL
+    db.expire_all()
+    assert db.query(McpOAuthGrant).filter(McpOAuthGrant.id == grant.id).one().resource == MCP_RESOURCE_URL
 
     allowlist_row = db.query(McpAllowlistEntry).filter(
         McpAllowlistEntry.user_id == user.id

@@ -7,8 +7,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from mcp_auth import MCP_RESOURCE_URL
 from observability import setup_observability
 from mcp_server import mcp, mcp_http_app
 from rate_limit import limiter
@@ -63,5 +65,17 @@ app.include_router(telegram.router)
 app.include_router(schedule.router)
 app.include_router(experimental.router)
 app.include_router(mcp_oauth.router)
+
+
+@app.api_route(
+    "/mcp",
+    methods=["GET", "HEAD", "POST", "DELETE", "OPTIONS"],
+    include_in_schema=False,
+)
+async def redirect_to_canonical_mcp_resource():
+    """Preserve the HTTP method while canonicalizing the Streamable HTTP URL."""
+    return RedirectResponse(MCP_RESOURCE_URL, status_code=308)
+
+
 app.mount("/mcp", mcp_http_app, name="mcp")
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")

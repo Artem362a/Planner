@@ -42,5 +42,7 @@ EXPOSE 8000
 # mode requires PROMETHEUS_MULTIPROC_DIR to point at an EMPTY directory before
 # any worker imports prometheus_client, otherwise leftover files from a prior
 # run of this same container get counted as live processes. The bot overrides
-# `command:` in docker-compose.yml and never touches this.
-CMD ["/bin/sh", "-c", "export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc}; rm -rf \"$PROMETHEUS_MULTIPROC_DIR\" && mkdir -p \"$PROMETHEUS_MULTIPROC_DIR\" && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2"]
+# `command:` in docker-compose.yml and never touches this. The published host
+# port is loopback-only; proxy peer IPs vary across nginx, FRP and Docker, so
+# forwarded headers are trusted only inside that closed proxy chain.
+CMD ["/bin/sh", "-c", "export PROMETHEUS_MULTIPROC_DIR=${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc}; rm -rf \"$PROMETHEUS_MULTIPROC_DIR\" && mkdir -p \"$PROMETHEUS_MULTIPROC_DIR\" && exec uvicorn main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'"]

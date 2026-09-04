@@ -29,6 +29,7 @@ from mcp_auth import (
     generate_secret,
     hash_secret,
     is_mcp_allowed,
+    is_mcp_resource_url,
     is_safe_redirect_uri,
     issue_tokens,
     pkce_s256,
@@ -151,7 +152,7 @@ def authorize_oauth_client(
         return redirect_error("unsupported_response_type", "Only response_type=code is supported")
     if code_challenge_method != "S256":
         return redirect_error("invalid_request", "PKCE with code_challenge_method=S256 is required")
-    if resource.rstrip("/") != MCP_RESOURCE_URL:
+    if not is_mcp_resource_url(resource):
         return redirect_error("invalid_target", "The token must target this MCP server")
 
     requested_scopes = set(scope.split()) if scope else set(DEFAULT_SCOPES)
@@ -214,8 +215,8 @@ def exchange_oauth_token(
             or row.expires_at <= now
             or row.client_id != client_id
             or row.redirect_uri != redirect_uri
-            or row.resource.rstrip("/") != MCP_RESOURCE_URL
-            or (resource is not None and resource.rstrip("/") != MCP_RESOURCE_URL)
+            or not is_mcp_resource_url(row.resource)
+            or (resource is not None and not is_mcp_resource_url(resource))
         ):
             return _oauth_error("invalid_grant", "Authorization code is invalid or expired")
         try:
@@ -268,7 +269,7 @@ def exchange_oauth_token(
             or grant.revoked_at is not None
             or grant.client_id != client_id
             or row.expires_at <= now
-            or (resource is not None and resource.rstrip("/") != MCP_RESOURCE_URL)
+            or (resource is not None and not is_mcp_resource_url(resource))
         ):
             return _oauth_error("invalid_grant", "Refresh token is invalid or expired")
 

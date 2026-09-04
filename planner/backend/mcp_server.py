@@ -84,7 +84,7 @@ class DayPlanTokenVerifier(TokenVerifier):
                     McpOAuthAccessToken.revoked_at.is_(None),
                     McpOAuthAccessToken.expires_at > now,
                     McpOAuthGrant.revoked_at.is_(None),
-                    McpOAuthGrant.resource == MCP_RESOURCE_URL,
+                    McpOAuthGrant.resource.in_((MCP_RESOURCE_URL, MCP_RESOURCE_URL.rstrip("/"))),
                 )
                 .first()
             )
@@ -93,8 +93,16 @@ class DayPlanTokenVerifier(TokenVerifier):
             access_row, grant, user = row
             if not is_mcp_allowed(db, user.id):
                 return None
+            should_commit = False
+            if grant.resource != MCP_RESOURCE_URL:
+                # Keep access tokens issued before the trailing-slash fix valid,
+                # then migrate their grant to the canonical resource lazily.
+                grant.resource = MCP_RESOURCE_URL
+                should_commit = True
             if grant.last_used_at is None or (now - grant.last_used_at).total_seconds() >= 60:
                 grant.last_used_at = now
+                should_commit = True
+            if should_commit:
                 db.commit()
             return AccessToken(
                 token=token,
@@ -104,7 +112,7 @@ class DayPlanTokenVerifier(TokenVerifier):
                 # the existing schema. datetime.timestamp() would otherwise
                 # interpret them in the server's Europe/Samara timezone.
                 expires_at=int(access_row.expires_at.replace(tzinfo=UTC).timestamp()),
-                resource=grant.resource,
+                resource=MCP_RESOURCE_URL,
                 subject=str(user.id),
                 claims={"role": user.role, "grant_id": grant.id},
             )

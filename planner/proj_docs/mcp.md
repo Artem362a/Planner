@@ -1,6 +1,8 @@
 # Экспериментальный MCP-доступ
 
-Day Plan публикует удалённый MCP-сервер по адресу `https://<домен>/mcp`.
+Day Plan публикует удалённый MCP-сервер по каноническому адресу
+`https://<домен>/mcp/`. Адрес без завершающего слэша отвечает `308` с сохранением HTTPS и
+метода запроса.
 Он предназначен для AI-клиентов с поддержкой Streamable HTTP и OAuth. Клиент
 не получает пароль пользователя и не обращается к PostgreSQL напрямую: каждый
 вызов проходит через серверные инструменты Day Plan, проверку scope и фильтр
@@ -91,7 +93,7 @@ MCP-инструменты находятся в `backend/mcp_server.py`, OAuth 
 ```env
 PUBLIC_APP_URL=https://dailyplannerapp.ru
 PUBLIC_API_URL=https://dailyplannerapp.ru/api
-MCP_RESOURCE_URL=https://dailyplannerapp.ru/mcp
+MCP_RESOURCE_URL=https://dailyplannerapp.ru/mcp/
 OAUTH_ISSUER_URL=https://dailyplannerapp.ru
 MCP_TOKEN_PEPPER=<отдельный длинный случайный секрет>
 ```

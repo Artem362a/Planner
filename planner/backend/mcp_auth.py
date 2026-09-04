@@ -34,10 +34,10 @@ PUBLIC_APP_URL = os.getenv("PUBLIC_APP_URL", os.getenv("FRONTEND_URL", "http://l
 _public_app_host = urlparse(PUBLIC_APP_URL).hostname
 _loopback_app = _public_app_host in {"localhost", "127.0.0.1", "::1"}
 _default_api_url = "http://localhost:8000" if _loopback_app else f"{PUBLIC_APP_URL}/api"
-_default_mcp_url = f"{_default_api_url}/mcp" if _loopback_app else f"{PUBLIC_APP_URL}/mcp"
+_default_mcp_url = f"{_default_api_url}/mcp/" if _loopback_app else f"{PUBLIC_APP_URL}/mcp/"
 _default_issuer_url = _default_api_url if _loopback_app else PUBLIC_APP_URL
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", _default_api_url).rstrip("/")
-MCP_RESOURCE_URL = os.getenv("MCP_RESOURCE_URL", _default_mcp_url).rstrip("/")
+MCP_RESOURCE_URL = f"{os.getenv('MCP_RESOURCE_URL', _default_mcp_url).rstrip('/')}/"
 OAUTH_ISSUER_URL = os.getenv("OAUTH_ISSUER_URL", _default_issuer_url).rstrip("/")
 
 # Scopes are deliberately about planner capabilities, never about raw REST
@@ -104,6 +104,11 @@ def is_safe_redirect_uri(uri: str) -> bool:
     if parsed.scheme == "https":
         return True
     return parsed.scheme == "http" and parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+
+
+def is_mcp_resource_url(value: str | None) -> bool:
+    """Accept the former slashless identifier while publishing one canonical URL."""
+    return value is not None and value.rstrip("/") == MCP_RESOURCE_URL.rstrip("/")
 
 
 def is_mcp_allowed(db: Session, user_id: int, *, for_update: bool = False) -> bool:
