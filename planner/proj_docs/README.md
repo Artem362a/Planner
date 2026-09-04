@@ -5,6 +5,7 @@
 | [architecture.md](architecture.md) | Общая архитектура: компоненты, инфраструктура (ноут + VDS + FRP), деплой |
 | [database.md](database.md) | База данных: 5 схем Postgres, таблицы, ER-диаграмма, Alembic |
 | [api.md](api.md) | Справка по REST-эндпоинтам backend'а |
+| [mcp.md](mcp.md) | Экспериментальный MCP: OAuth/PKCE, scopes, allowlist, подключение и безопасность |
 | [user-flows.md](user-flows.md) | Сценарии работы пользователя (диаграммы Mermaid) |
 | [reminders.md](reminders.md) | Напоминания: устройство, доставка, snooze, планы |
 | [notice.md](notice.md) | Черновик идей по развитию напоминаний |

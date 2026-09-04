@@ -65,6 +65,23 @@ jobs:
           echo "${{ secrets.VDS_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.VDS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: Обновить и проверить nginx
+        run: |
+          scp deploy/nginx.conf root@${{ secrets.VDS_HOST }}:/tmp/planner.nginx.conf
+          ssh root@${{ secrets.VDS_HOST }} 'set -e
+            target=/etc/nginx/sites-available/planner
+            backup="${target}.bak.$(date +%Y%m%d_%H%M%S)"
+            cp -a "$target" "$backup"
+            cp /tmp/planner.nginx.conf "$target"
+            if ! nginx -t || ! systemctl reload nginx; then
+              cp "$backup" "$target"
+              nginx -t
+              systemctl reload nginx
+              rm -f /tmp/planner.nginx.conf
+              exit 1
+            fi
+            rm -f /tmp/planner.nginx.conf
+            ls -dt /etc/nginx/sites-available/planner.bak.* 2>/dev/null | tail -n +4 | xargs -r rm -f'
       - name: Выкладка на VDS (с бэкапом старой версии)
         run: |
           tar -C planner/frontend/dist -czf /tmp/dist.tar.gz .

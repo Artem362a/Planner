@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { loginUser, saveToken } from "../../api/auth";
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -23,7 +24,11 @@ export default function LoginPage() {
     try {
       const data = await loginUser(form);
       saveToken(data.access_token);
-      window.location.href = "/";
+      const requestedReturn = searchParams.get("return_to") || "/";
+      const safeReturn = requestedReturn.startsWith("/") && !requestedReturn.startsWith("//")
+        ? requestedReturn
+        : "/";
+      window.location.href = safeReturn;
     } catch (err) {
       setError(err.message || "Ошибка входа");
     } finally {

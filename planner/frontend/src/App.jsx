@@ -5,6 +5,7 @@ import {
   Route,
   Link,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import FeedbackPage from "./pages/feedback/FeedbackPage";
 import DayOverview from "./components/planning/day/DayOverview";
@@ -27,6 +28,9 @@ import AccountPage from "./pages/account/AccountPage";
 import StatisticsPage from "./pages/statistics/StatisticsPage";
 import InboxPage from "./pages/inbox/InboxPage";
 import LandingPage from "./pages/landing/LandingPage";
+import ExperimentalFeaturesPage from "./pages/experimental/ExperimentalFeaturesPage";
+import OAuthConsentPage from "./pages/experimental/OAuthConsentPage";
+import { fetchMcpStatus } from "./api/experimental";
 
 function applyTheme(theme) {
   // 'system' was removed from the UI; legacy localStorage values fall back to light.
@@ -80,6 +84,13 @@ const Home = ({ user, onLogout }) => {
     formatLocalDate(new Date())
   );
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [mcpAvailable, setMcpAvailable] = React.useState(user?.role === "developer");
+
+  React.useEffect(() => {
+    fetchMcpStatus()
+      .then((data) => setMcpAvailable(Boolean(data.enabled) || user?.role === "developer"))
+      .catch(() => setMcpAvailable(user?.role === "developer"));
+  }, [user?.role]);
 
   const selectedDate = React.useMemo(
     () => parseLocalDate(selectedDay),
@@ -153,6 +164,16 @@ const Home = ({ user, onLogout }) => {
           <Link to="/feedback" onClick={() => setMenuOpen(false)}>
             Обратная связь
           </Link>
+
+          {mcpAvailable && (
+            <Link
+              to="/experimental"
+              className="side-menu-experimental-link"
+              onClick={() => setMenuOpen(false)}
+            >
+              Экспериментальные функции
+            </Link>
+          )}
 
           {user?.role === "developer" && (
             <>
@@ -278,6 +299,15 @@ function DeveloperRoute({ isAuthenticated, user, children }) {
   return children;
 }
 
+function OAuthProtectedRoute({ isAuthenticated, children }) {
+  const location = useLocation();
+  if (!isAuthenticated) {
+    const returnTo = `${location.pathname}${location.search}`;
+    return <Navigate to={`/login?return_to=${encodeURIComponent(returnTo)}`} replace />;
+  }
+  return children;
+}
+
 const App = () => {
   const [authChecked, setAuthChecked] = React.useState(false);
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
@@ -398,6 +428,24 @@ const App = () => {
             <ProtectedRoute isAuthenticated={isAuthenticated}>
               <AccountPage user={user} onUserUpdate={setUser} />
             </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/experimental"
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated}>
+              <ExperimentalFeaturesPage user={user} />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/oauth/consent"
+          element={
+            <OAuthProtectedRoute isAuthenticated={isAuthenticated}>
+              <OAuthConsentPage />
+            </OAuthProtectedRoute>
           }
         />
 

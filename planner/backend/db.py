@@ -275,6 +275,187 @@ class UserSession(Base):
     last_seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class McpAllowlistEntry(Base):
+    """Explicit opt-in for the experimental remote MCP integration."""
+
+    __tablename__ = "mcp_allowlist"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    granted_by_user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+
+class McpOAuthClient(Base):
+    __tablename__ = "mcp_oauth_clients"
+    __table_args__ = {"schema": "auth"}
+
+    client_id = Column(String, primary_key=True)
+    client_name = Column(String, nullable=False)
+    redirect_uris = Column(JSON, nullable=False, default=list)
+    token_endpoint_auth_method = Column(
+        String, nullable=False, default="none", server_default="none"
+    )
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class McpOAuthAuthorizationRequest(Base):
+    __tablename__ = "mcp_oauth_authorization_requests"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    request_hash = Column(String, nullable=False, unique=True, index=True)
+    client_id = Column(
+        String,
+        ForeignKey("auth.mcp_oauth_clients.client_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    redirect_uri = Column(Text, nullable=False)
+    scopes = Column(JSON, nullable=False, default=list)
+    state = Column(Text, nullable=True)
+    code_challenge = Column(String, nullable=False)
+    code_challenge_method = Column(String, nullable=False, default="S256")
+    resource = Column(Text, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    consumed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class McpOAuthAuthorizationCode(Base):
+    __tablename__ = "mcp_oauth_authorization_codes"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    code_hash = Column(String, nullable=False, unique=True, index=True)
+    client_id = Column(
+        String,
+        ForeignKey("auth.mcp_oauth_clients.client_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    redirect_uri = Column(Text, nullable=False)
+    scopes = Column(JSON, nullable=False, default=list)
+    code_challenge = Column(String, nullable=False)
+    resource = Column(Text, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class McpOAuthGrant(Base):
+    """One user-approved AI connection. Revoking it invalidates all its tokens."""
+
+    __tablename__ = "mcp_oauth_grants"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    client_id = Column(
+        String,
+        ForeignKey("auth.mcp_oauth_clients.client_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    scopes = Column(JSON, nullable=False, default=list)
+    resource = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True, index=True)
+
+
+class McpOAuthAccessToken(Base):
+    __tablename__ = "mcp_oauth_access_tokens"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    grant_id = Column(
+        Integer,
+        ForeignKey("auth.mcp_oauth_grants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class McpOAuthRefreshToken(Base):
+    __tablename__ = "mcp_oauth_refresh_tokens"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    grant_id = Column(
+        Integer,
+        ForeignKey("auth.mcp_oauth_grants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True)
+    replaced_by_id = Column(
+        Integer,
+        ForeignKey("auth.mcp_oauth_refresh_tokens.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class McpAuditLog(Base):
+    __tablename__ = "mcp_audit_log"
+    __table_args__ = {"schema": "auth"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    grant_id = Column(
+        Integer,
+        ForeignKey("auth.mcp_oauth_grants.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    tool_name = Column(String, nullable=False, index=True)
+    arguments = Column(JSON, nullable=False, default=dict)
+    success = Column(Boolean, nullable=False)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+
 class TelegramLink(Base):
     """Связь пользователя с Telegram-чатом + одноразовый код привязки."""
 

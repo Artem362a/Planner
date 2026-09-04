@@ -5,7 +5,7 @@ PostgreSQL 17. Все таблицы разложены по пяти домен
 
 | Схема | Назначение | Таблицы |
 |---|---|---|
-| `auth` | пользователи и доступ | `users`, `user_sessions`, `telegram_links` |
+| `auth` | пользователи и доступ | `users`, `user_sessions`, `telegram_links`, `mcp_allowlist`, `mcp_oauth_*`, `mcp_audit_log` |
 | `planning` | планирование дня/недели | `day_tasks`, `day_notes`, `day_settings`, `week_tasks`, `inbox_tasks`, `task_categories`, `day_templates`, `week_templates` |
 | `goals` | цели | `goals`, `goal_stages`, `goal_checkins` |
 | `notifications` | уведомления и напоминания | `notifications`, `notification_recipients`, `reminders` |
@@ -21,6 +21,12 @@ PostgreSQL 17. Все таблицы разложены по пяти домен
 erDiagram
     users ||--o{ user_sessions : "сессии (jti)"
     users ||--o| telegram_links : "привязка TG"
+    users ||--o| mcp_allowlist : "доступ к MCP"
+    users ||--o{ mcp_oauth_grants : "AI-подключения"
+    mcp_oauth_clients ||--o{ mcp_oauth_grants : "OAuth client"
+    mcp_oauth_grants ||--o{ mcp_oauth_access_tokens : ""
+    mcp_oauth_grants ||--o{ mcp_oauth_refresh_tokens : ""
+    mcp_oauth_grants ||--o{ mcp_audit_log : "вызовы"
     users ||--o{ day_tasks : ""
     users ||--o{ week_tasks : ""
     users ||--o{ inbox_tasks : ""
@@ -56,6 +62,14 @@ erDiagram
   ip, `last_seen_at`. Logout = удаление строки.
 - **telegram_links** — `user_id` (unique) ↔ `chat_id` (unique); одноразовый
   `link_code` + `link_code_expires` для привязки (код показывает веб, вводится в боте).
+- **mcp_allowlist** — developer-managed флаг доступа пользователя к
+  экспериментальному MCP. Выключение флага отзывает активные OAuth grants.
+- **mcp_oauth_clients / mcp_oauth_authorization_requests /
+  mcp_oauth_authorization_codes / mcp_oauth_grants / mcp_oauth_access_tokens /
+  mcp_oauth_refresh_tokens** — OAuth Authorization Code + PKCE и ротация токенов.
+  Секреты хранятся только как keyed hashes.
+- **mcp_audit_log** — журнал вызовов MCP-инструментов; чувствительные текстовые
+  аргументы маскируются. Подробнее в [mcp.md](mcp.md).
 
 ### planning
 
@@ -117,6 +131,7 @@ erDiagram
 | `1324ee61887c` cleanup dev drift | сносит мёртвую `notifications.notices` и старые имена индексов; **guard**: пропускает себя, если таблицы нет |
 | `3907d6d53071` align prod (pgloader) | чинит наследие конвертации SQLite→PG (типы BIGINT→INTEGER, NOT NULL, имена индексов, FK); **guard**: выполняется только если `auth.users.id` — BIGINT |
 | `1cbec591ba0e` reminders v2 | повторяемость/ack/`kind`+`source_task_id` у reminders, `day_tasks.remind_lead_min`, настройки напоминаний в users |
+| `e4b7a2c91d10` experimental MCP | allowlist, OAuth clients/codes/grants/tokens и аудит MCP-инструментов |
 
 Guarded-миграции самопропускаются по runtime-инспекции, поэтому одна цепочка
 работает и на чистой БД, и на исторических (dev на Windows, prod на ноуте).

@@ -93,3 +93,13 @@
   (админ), `GET /feedback/my`, `PATCH /feedback/{id}` (статус),
   `PATCH /feedback/{id}/reply` (ответ разработчика).
 - **legal.py**: тексты соглашений (`/legal/*`, plain text).
+
+## Экспериментальный MCP и OAuth
+
+- **experimental.py**: `GET /experimental/mcp/status`, пользовательские
+  подключения и аудит; developer-only `GET/PUT /experimental/mcp/allowlist`;
+  экран принятия/отклонения OAuth-запроса.
+- **mcp_oauth.py**: OAuth metadata, Dynamic Client Registration,
+  Authorization Code + PKCE, refresh rotation и revocation.
+- Сам MCP использует Streamable HTTP на `/mcp` и собственные непрозрачные Bearer
+  tokens, не JWT веб-сессии. Подробности и список scope — в [mcp.md](mcp.md).

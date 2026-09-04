@@ -13,3 +13,4 @@ python-dotenv
 prometheus-fastapi-instrumentator
 structlog
 slowapi
+mcp>=1.29,<2
