@@ -75,6 +75,7 @@ def oauth_authorization_server_metadata():
 
 
 @router.get("/.well-known/oauth-protected-resource/mcp")
+@router.get("/.well-known/oauth-protected-resource/mcp/", include_in_schema=False)
 def oauth_protected_resource_metadata():
     return {
         "resource": MCP_RESOURCE_URL,

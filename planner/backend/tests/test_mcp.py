@@ -33,9 +33,14 @@ def _allow(db, user, developer=None):
 
 
 def test_mcp_metadata_and_redirect_use_canonical_resource(client):
-    metadata = client.get("/.well-known/oauth-protected-resource/mcp")
-    assert metadata.status_code == 200
-    assert metadata.json()["resource"] == MCP_RESOURCE_URL
+    for discovery_path in (
+        "/.well-known/oauth-protected-resource/mcp",
+        "/.well-known/oauth-protected-resource/mcp/",
+    ):
+        metadata = client.get(discovery_path)
+        assert metadata.status_code == 200
+        assert metadata.headers["content-type"].startswith("application/json")
+        assert metadata.json()["resource"] == MCP_RESOURCE_URL
     assert MCP_RESOURCE_URL.endswith("/mcp/")
 
     redirect = client.post("/mcp", follow_redirects=False)

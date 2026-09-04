@@ -41,7 +41,8 @@ Day Plan публикует удалённый MCP-сервер по канон�
 
 Discovery:
 
-- `/.well-known/oauth-protected-resource/mcp`
+- `/.well-known/oauth-protected-resource/mcp/` (вариант без завершающего слэша сохранён как
+  совместимый alias)
 - `/.well-known/oauth-authorization-server`
 - `/api/oauth/register`, `/api/oauth/authorize`, `/api/oauth/token`,
   `/api/oauth/revoke` в production-конфигурации nginx.
