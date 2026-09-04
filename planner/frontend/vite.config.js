@@ -3,8 +3,41 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+function devServiceWorkerCleanup() {
+  return {
+    name: "dev-service-worker-cleanup",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/api/__dev_clear_cache", (_request, response) => {
+        response.statusCode = 200;
+        response.setHeader("Content-Type", "text/html; charset=utf-8");
+        response.setHeader("Cache-Control", "no-store");
+        response.end(`<!doctype html>
+<html lang="ru">
+  <meta charset="utf-8">
+  <title>Обновление Day Plan</title>
+  <body style="font:16px system-ui;padding:32px;background:#ece7f6;color:#2d2545">
+    Обновляем дев-версию Day Plan…
+    <script>
+      Promise.all([
+        navigator.serviceWorker
+          ? navigator.serviceWorker.getRegistrations().then((items) => Promise.all(items.map((item) => item.unregister())))
+          : Promise.resolve(),
+        window.caches
+          ? caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+          : Promise.resolve()
+      ]).finally(() => location.replace('/experimental?fresh=' + Date.now()));
+    </script>
+  </body>
+</html>`);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
+    devServiceWorkerCleanup(),
     react(),
     tailwindcss(),
     VitePWA({

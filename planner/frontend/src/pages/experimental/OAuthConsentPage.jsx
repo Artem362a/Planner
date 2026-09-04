@@ -21,6 +21,8 @@ export default function OAuthConsentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const visibleError = error || (!requestId ? "В запросе отсутствует идентификатор подключения" : "");
+  const regularScopes = request?.requested_scopes.filter((scope) => !DANGEROUS_SCOPES.has(scope)) || [];
+  const dangerousScopes = request?.requested_scopes.filter((scope) => DANGEROUS_SCOPES.has(scope)) || [];
 
   useEffect(() => {
     if (!requestId) return;
@@ -57,71 +59,91 @@ export default function OAuthConsentPage() {
     }
   }
 
+  function renderScope(scope, dangerous = false) {
+    return (
+      <label key={scope} className={`oauth-scope ${dangerous ? "is-dangerous" : ""}`}>
+        <input
+          type="checkbox"
+          checked={selected.has(scope)}
+          disabled={scope === "planner:read" || submitting}
+          onChange={() => toggleScope(scope)}
+        />
+        <span className="oauth-scope-copy">
+          <span className="oauth-scope-label">{request.scope_labels[scope] || scope}</span>
+          {dangerous && <small>Выключено по умолчанию — разрешите только при необходимости</small>}
+        </span>
+      </label>
+    );
+  }
+
   return (
-    <div className="oauth-consent-page">
-      <main className="oauth-consent-card">
-        <span className="experimental-kicker">Безопасное подключение</span>
-        <h1>Разрешить доступ к Day Plan?</h1>
+    <div className="app-wrapper oauth-consent-page">
+      <div className="app oauth-consent-app">
+        <header className="app-header">
+          <div className="app-header-left" />
+          <div className="app-header-center">ПОДКЛЮЧЕНИЕ MCP</div>
+          <div className="app-header-right" />
+        </header>
 
-        {loading && <p>Проверяем запрос…</p>}
-        {visibleError && <div className="auth-error">{visibleError}</div>}
+        <main className="day-page-main oauth-consent-main">
+          <section className="oauth-consent-card">
+            <h1>Разрешить доступ к Day Plan?</h1>
 
-        {!loading && request && (
-          <>
-            <p className="oauth-client-name">
-              Клиент <strong>{request.client_name}</strong> запрашивает доступ к вашему планировщику.
-            </p>
+            {loading && <p>Проверяем запрос…</p>}
+            {visibleError && <div className="auth-error">{visibleError}</div>}
 
-            <div className="oauth-scope-list">
-              {request.requested_scopes.map((scope) => {
-                const dangerous = DANGEROUS_SCOPES.has(scope);
-                return (
-                  <label key={scope} className={`oauth-scope ${dangerous ? "is-dangerous" : ""}`}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(scope)}
-                      disabled={scope === "planner:read" || submitting}
-                      onChange={() => toggleScope(scope)}
-                    />
-                    <span>
-                      <strong>{request.scope_labels[scope] || scope}</strong>
-                      {dangerous && <small>Опасное действие — включите вручную</small>}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+            {!loading && request && (
+              <>
+                <p className="oauth-client-name">
+                  Клиент <span>{request.client_name}</span> запрашивает доступ к вашему планировщику.
+                </p>
 
-            <p className="experimental-hint">
-              Клиент не получит пароль, доступ к профилю, активным сессиям или Telegram.
-              Разрешение можно отозвать в экспериментальных функциях.
-            </p>
+                <div className="oauth-scope-list">
+                  {regularScopes.map((scope) => renderScope(scope))}
+                </div>
 
-            <div className="oauth-consent-actions">
-              <button
-                type="button"
-                className="secondary-btn"
-                disabled={submitting}
-                onClick={() => finish("deny")}
-              >
-                Отменить
-              </button>
-              <button
-                type="button"
-                className="primary-btn"
-                disabled={submitting || !selected.has("planner:read")}
-                onClick={() => finish("approve")}
-              >
-                {submitting ? "Подключаем…" : "Разрешить выбранное"}
-              </button>
-            </div>
-          </>
-        )}
+                {dangerousScopes.length > 0 && (
+                  <section className="oauth-danger-zone">
+                    <h2>Опасные действия</h2>
+                    <p>Эти разрешения могут безвозвратно удалить данные и требуют отдельного подтверждения.</p>
+                    <div className="oauth-scope-list">
+                      {dangerousScopes.map((scope) => renderScope(scope, true))}
+                    </div>
+                  </section>
+                )}
 
-        {!loading && !request && (
-          <Link to="/" className="feedback-back-link">Вернуться в планировщик</Link>
-        )}
-      </main>
+                <p className="experimental-hint oauth-security-hint">
+                  Клиент не получит пароль, доступ к профилю, активным сессиям или Telegram.
+                  Разрешение можно отозвать в экспериментальных функциях.
+                </p>
+
+                <div className="oauth-consent-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={submitting}
+                    onClick={() => finish("deny")}
+                  >
+                    Отменить
+                  </button>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={submitting || !selected.has("planner:read")}
+                    onClick={() => finish("approve")}
+                  >
+                    {submitting ? "Подключаем…" : "Разрешить выбранное"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!loading && !request && (
+              <Link to="/" className="feedback-back-link">Вернуться в планировщик</Link>
+            )}
+          </section>
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { loginUser, saveToken } from "../../api/auth";
+import PasswordField from "../../components/forms/PasswordField";
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
@@ -55,11 +56,10 @@ export default function LoginPage() {
 
           <label>
             Пароль
-            <input
-              type="password"
-              name="password"
+            <PasswordField
               value={form.password}
               onChange={handleChange}
+              autoComplete="current-password"
               required
             />
           </label>

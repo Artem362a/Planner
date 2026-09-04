@@ -73,6 +73,53 @@
   box-shadow: 0 0 0 3px rgba(143, 115, 255, 0.12);
 }
 
+.auth-password-field {
+  position: relative;
+  width: 100%;
+}
+
+.auth-form .auth-password-field input:not([type="checkbox"]) {
+  padding-right: 48px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: calc(50% + 2px);
+  right: 8px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: #746a95;
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: color 0.16s ease, background 0.16s ease;
+}
+
+.auth-password-toggle:hover {
+  color: #5d43b5;
+  background: #eee8ff;
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid #8f73ff;
+  outline-offset: 1px;
+}
+
+.auth-password-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .feedback-textarea {
   resize: vertical;
   min-height: 180px;

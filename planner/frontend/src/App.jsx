@@ -165,16 +165,6 @@ const Home = ({ user, onLogout }) => {
             Обратная связь
           </Link>
 
-          {mcpAvailable && (
-            <Link
-              to="/experimental"
-              className="side-menu-experimental-link"
-              onClick={() => setMenuOpen(false)}
-            >
-              Экспериментальные функции
-            </Link>
-          )}
-
           {user?.role === "developer" && (
             <>
               <Link to="/notifications/send" onClick={() => setMenuOpen(false)}>
@@ -185,6 +175,12 @@ const Home = ({ user, onLogout }) => {
                 Отзывы пользователей
               </Link>
             </>
+          )}
+
+          {mcpAvailable && (
+            <Link to="/experimental" onClick={() => setMenuOpen(false)}>
+              Экспериментальные функции
+            </Link>
           )}
         </nav>
 

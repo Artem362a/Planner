@@ -140,7 +140,6 @@ export default function LandingPage() {
         </nav>
 
         <section className="landing-hero">
-          <div className="landing-hero-badge">Бесплатно и без рекламы</div>
           <h1 className="landing-headline">
             Всё под контролем.<br />Каждый&nbsp;день.
           </h1>

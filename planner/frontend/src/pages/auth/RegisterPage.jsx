@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { registerUser, saveToken } from "../../api/auth";
+import PasswordField from "../../components/forms/PasswordField";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE ||
@@ -76,11 +77,10 @@ export default function RegisterPage() {
 
           <label>
             Пароль
-            <input
-              type="password"
-              name="password"
+            <PasswordField
               value={form.password}
               onChange={handleChange}
+              autoComplete="new-password"
               required
             />
           </label>
