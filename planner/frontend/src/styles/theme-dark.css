@@ -920,6 +920,18 @@
   border-color: #7c66e3;
   color: #eae8f4;
 }
+:root[data-theme="dark"] .stats-period-arrow {
+  background: #1a1920;
+  border-color: var(--line-strong);
+  color: #c8beff;
+}
+:root[data-theme="dark"] .stats-period-arrow:hover:not(:disabled) {
+  background: rgba(154, 134, 255, 0.13);
+  border-color: var(--accent);
+}
+:root[data-theme="dark"] .stats-period-caption {
+  color: var(--text-soft);
+}
 
 :root[data-theme="dark"] .stats-card {
   background: #1a1920;
@@ -963,6 +975,18 @@
 :root[data-theme="dark"] .stats-cat-count {
   color: var(--text-muted);
 }
+:root[data-theme="dark"] .stats-metric-toggle {
+  background: #131217;
+  border: 1px solid var(--line);
+}
+:root[data-theme="dark"] .stats-metric-btn {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stats-metric-btn--active {
+  background: rgba(154, 134, 255, 0.24);
+  color: #dcd4ff;
+  box-shadow: none;
+}
 :root[data-theme="dark"] .stats-cat-track,
 :root[data-theme="dark"] .stats-priority-bar {
   background: rgba(154, 134, 255, 0.13);
@@ -993,6 +1017,9 @@
 }
 :root[data-theme="dark"] .stats-goals-subtitle {
   color: var(--text-muted);
+}
+:root[data-theme="dark"] .stats-goals-subtitle--progress {
+  color: var(--text-main);
 }
 
 /* Recharts text and gridlines */

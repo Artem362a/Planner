@@ -20,11 +20,56 @@ const PERIOD_OPTIONS = [
   { label: "30 дней", value: 30 },
   { label: "3 месяца", value: 90 },
   { label: "Год", value: 365 },
+  { label: "Всё время", value: "all" },
 ];
 
 function fmtDate(iso) {
   const [, m, d] = iso.split("-");
   return `${d}.${m}`;
+}
+
+function fmtDuration(value) {
+  const totalMinutes = Math.max(0, Number(value) || 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours && minutes) return `${hours} ч ${minutes} мин`;
+  if (hours) return `${hours} ч`;
+  return `${minutes} мин`;
+}
+
+function toIsoDate(value) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayIso() {
+  return toIsoDate(new Date());
+}
+
+function shiftIsoDate(iso, days) {
+  const [year, month, day] = iso.split("-").map(Number);
+  const value = new Date(year, month - 1, day);
+  value.setDate(value.getDate() + days);
+  return toIsoDate(value);
+}
+
+function fmtPeriodDate(iso) {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(year, month - 1, day));
+}
+
+function fmtMonth(iso) {
+  const [year, month] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("ru-RU", {
+    month: "short",
+    year: "2-digit",
+  }).format(new Date(year, month - 1, 1));
 }
 
 const HIDDEN_CATS_KEY = "stats.hiddenCategories";
@@ -40,10 +85,12 @@ function loadHiddenCats() {
 
 export default function StatisticsPage() {
   const [period, setPeriod] = useState(30);
+  const [windowEnd, setWindowEnd] = useState(todayIso);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [catView, setCatView] = useState("bars");
+  const [catMetric, setCatMetric] = useState("tasks");
   const [hiddenCats, setHiddenCats] = useState(loadHiddenCats);
 
   const toggleCat = (key) => {
@@ -61,14 +108,35 @@ export default function StatisticsPage() {
     localStorage.setItem(HIDDEN_CATS_KEY, "[]");
   };
 
-  useEffect(() => {
+  function changePeriod(value) {
+    const currentEnd = todayIso();
+    if (value === period && (value === "all" || windowEnd === currentEnd)) return;
     setLoading(true);
     setError(null);
-    fetchStatistics(period)
-      .then(setData)
-      .catch((e) => setError(e.message || "Ошибка"))
-      .finally(() => setLoading(false));
-  }, [period]);
+    setPeriod(value);
+    setWindowEnd(currentEnd);
+  }
+
+  function shiftPeriod(direction) {
+    if (period === "all") return;
+    const currentEnd = todayIso();
+    const shiftedEnd = shiftIsoDate(windowEnd, direction * period);
+    setLoading(true);
+    setError(null);
+    setWindowEnd(shiftedEnd > currentEnd ? currentEnd : shiftedEnd);
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetchStatistics(typeof period === "number" ? period : 30, {
+      endDate: windowEnd,
+      allTime: period === "all",
+    })
+      .then((result) => { if (active) setData(result); })
+      .catch((e) => { if (active) setError(e.message || "Ошибка"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [period, windowEnd]);
 
   const completed = data?.tasks?.completed ?? "—";
   const rate =
@@ -79,6 +147,12 @@ export default function StatisticsPage() {
   const bestDay = data?.best_day
     ? `${fmtDate(data.best_day.date)} (${data.best_day.completed})`
     : "—";
+  const periodCaption = period === "all"
+    ? "За всё время"
+    : data?.period
+      ? `${fmtPeriodDate(data.period.start)} — ${fmtPeriodDate(data.period.end)}`
+      : "";
+  const isCurrentPeriod = windowEnd >= todayIso();
 
   const highTotal = data?.tasks?.by_priority?.high?.total ?? 0;
   const medTotal = data?.tasks?.by_priority?.medium?.total ?? 0;
@@ -86,22 +160,45 @@ export default function StatisticsPage() {
   const highPct =
     prioritySum > 0 ? Math.round((highTotal / prioritySum) * 100) : 0;
 
+  const categoryTotalKey = catMetric === "time" ? "planned_min" : "total";
+  const categoryCompletedKey = catMetric === "time" ? "completed_min" : "completed";
   const categories = Array.isArray(data?.tasks?.by_category)
-    ? [...data.tasks.by_category].sort((a, b) => b.total - a.total)
+    ? [...data.tasks.by_category].sort(
+        (a, b) => (b[categoryTotalKey] || 0) - (a[categoryTotalKey] || 0),
+      )
     : [];
   const visibleCategories = categories.filter((c) => !hiddenCats.has(c.key));
-  const catMax = visibleCategories[0]?.total || 1;
+  const catMax = Math.max(
+    1,
+    ...visibleCategories.map((cat) => cat[categoryTotalKey] || 0),
+  );
 
-  const chartData = (data?.tasks?.by_day ?? []).slice(-60).map((d) => ({
-    date: fmtDate(d.date),
-    completed: d.completed,
-    total: d.total,
-    remaining: Math.max(0, (d.total || 0) - (d.completed || 0)),
-  }));
+  const activityByMonth = (data?.period?.days || 0) > 90;
+  const dailyActivity = data?.tasks?.by_day ?? [];
+  const chartData = activityByMonth
+    ? Object.values(dailyActivity.reduce((months, day) => {
+        const key = day.date.slice(0, 7);
+        if (!months[key]) {
+          months[key] = { date: fmtMonth(key), completed: 0, total: 0 };
+        }
+        months[key].completed += day.completed || 0;
+        months[key].total += day.total || 0;
+        return months;
+      }, {})).map((month) => ({
+        ...month,
+        remaining: Math.max(0, month.total - month.completed),
+      }))
+    : dailyActivity.map((day) => ({
+        date: fmtDate(day.date),
+        completed: day.completed,
+        total: day.total,
+        remaining: Math.max(0, (day.total || 0) - (day.completed || 0)),
+      }));
 
-  const barInterval =
-    period <= 7 ? 0 : period <= 30 ? 4 : 13;
-  const barSize = period <= 7 ? 28 : period <= 30 ? 12 : 5;
+  const barInterval = chartData.length <= 10
+    ? 0
+    : Math.max(0, Math.ceil(chartData.length / 7) - 1);
+  const barSize = chartData.length <= 10 ? 28 : chartData.length <= 35 ? 12 : 5;
 
   // Recharts colors live in JSX, not CSS, so pick them per theme.
   const isDark =
@@ -133,19 +230,48 @@ export default function StatisticsPage() {
           <div className="day-big-card stats-shell-card">
 
             {/* Period selector */}
-            <div className="stats-period-row">
-              {PERIOD_OPTIONS.map((o) => (
+            <div className="stats-period-toolbar">
+              <div className="stats-period-row">
+                {PERIOD_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    className={`stats-period-pill${
+                      period === o.value ? " stats-period-pill--active" : ""
+                    }`}
+                    onClick={() => changePeriod(o.value)}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <div className="stats-period-navigation">
                 <button
-                  key={o.value}
                   type="button"
-                  className={`stats-period-pill${
-                    period === o.value ? " stats-period-pill--active" : ""
-                  }`}
-                  onClick={() => setPeriod(o.value)}
+                  className="stats-period-arrow"
+                  onClick={() => shiftPeriod(-1)}
+                  disabled={period === "all"}
+                  aria-label="Предыдущий период"
+                  title="Предыдущий период"
                 >
-                  {o.label}
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m12.5 5-5 5 5 5" />
+                  </svg>
                 </button>
-              ))}
+                <span className="stats-period-caption">{periodCaption}</span>
+                <button
+                  type="button"
+                  className="stats-period-arrow"
+                  onClick={() => shiftPeriod(1)}
+                  disabled={period === "all" || isCurrentPeriod}
+                  aria-label="Следующий период"
+                  title="Следующий период"
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m7.5 5 5 5-5 5" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {loading && (
@@ -186,7 +312,9 @@ export default function StatisticsPage() {
                 {/* Activity chart */}
                 {chartData.length > 0 && (
                   <div className="stats-section">
-                    <h3 className="stats-section-title">Активность по дням</h3>
+                    <h3 className="stats-section-title">
+                      Активность по {activityByMonth ? "месяцам" : "дням"}
+                    </h3>
                     <div className="stats-chart-wrap">
                       <ResponsiveContainer width="100%" height={180}>
                         <BarChart
@@ -271,6 +399,25 @@ export default function StatisticsPage() {
                       )}
                     </div>
 
+                    <div className="stats-metric-toggle" role="group" aria-label="Показатель по категориям">
+                      <button
+                        type="button"
+                        className={`stats-metric-btn${catMetric === "tasks" ? " stats-metric-btn--active" : ""}`}
+                        onClick={() => setCatMetric("tasks")}
+                        aria-pressed={catMetric === "tasks"}
+                      >
+                        Задачи
+                      </button>
+                      <button
+                        type="button"
+                        className={`stats-metric-btn${catMetric === "time" ? " stats-metric-btn--active" : ""}`}
+                        onClick={() => setCatMetric("time")}
+                        aria-pressed={catMetric === "time"}
+                      >
+                        Время
+                      </button>
+                    </div>
+
                     {categories.length > 1 && (
                       <div className="stats-cat-chips">
                         {categories.map((cat) => {
@@ -291,7 +438,7 @@ export default function StatisticsPage() {
                             </button>
                           );
                         })}
-                        {hiddenCats.size > 0 && (
+                        {visibleCategories.length < categories.length && (
                           <button
                             type="button"
                             className="stats-cat-chip stats-cat-chip--reset"
@@ -310,8 +457,8 @@ export default function StatisticsPage() {
                             subject: cat.title,
                             // sqrt-шкала: иначе пара крупных категорий
                             // прижимает остальные оси к центру
-                            value: Math.sqrt(cat.completed),
-                            raw: cat.completed,
+                            value: Math.sqrt(cat[categoryCompletedKey] || 0),
+                            raw: cat[categoryCompletedKey] || 0,
                           }))}
                           margin={{ top: 16, right: 40, bottom: 16, left: 40 }}
                         >
@@ -327,9 +474,13 @@ export default function StatisticsPage() {
                             fillOpacity={0.35}
                           />
                           <Tooltip
-                            formatter={(v, n, item) => [
-                              item?.payload?.raw ?? v,
-                              "Выполнено",
+                            formatter={(v, name, item) => [
+                              catMetric === "time"
+                                ? fmtDuration(item?.payload?.raw ?? v)
+                                : item?.payload?.raw ?? v,
+                              catMetric === "time"
+                                ? "Время выполненных"
+                                : name === "value" ? "Выполнено" : name,
                             ]}
                             contentStyle={chartTooltipStyle}
                           />
@@ -338,10 +489,12 @@ export default function StatisticsPage() {
                     ) : (
                       <div className="stats-category-list">
                         {visibleCategories.map((cat) => {
-                          const volPct = Math.round((cat.total / catMax) * 100);
+                          const totalValue = cat[categoryTotalKey] || 0;
+                          const completedValue = cat[categoryCompletedKey] || 0;
+                          const volPct = Math.round((totalValue / catMax) * 100);
                           const donePct =
-                            cat.total > 0
-                              ? Math.round((cat.completed / cat.total) * 100)
+                            totalValue > 0
+                              ? Math.round((completedValue / totalValue) * 100)
                               : 0;
                           return (
                             <div key={cat.key} className="stats-cat-row">
@@ -351,8 +504,13 @@ export default function StatisticsPage() {
                                   style={{ background: cat.color || "#bbb" }}
                                 />
                                 <span className="stats-cat-title">{cat.title}</span>
-                                <span className="stats-cat-count">
-                                  {cat.completed}/{cat.total}
+                                <span
+                                  className="stats-cat-count"
+                                  title={catMetric === "time" ? "Выполнено / запланировано" : "Выполнено / всего"}
+                                >
+                                  {catMetric === "time"
+                                    ? `${fmtDuration(cat.completed_min)} / ${fmtDuration(cat.planned_min)}`
+                                    : `${cat.completed}/${cat.total}`}
                                 </span>
                               </div>
                               <div className="stats-cat-track">
@@ -439,7 +597,9 @@ export default function StatisticsPage() {
 
                   {(data.goals?.active_progress || []).length > 0 && (
                     <div className="stats-goals-sub">
-                      <div className="stats-goals-subtitle">Прогресс по целям</div>
+                      <div className="stats-goals-subtitle stats-goals-subtitle--progress">
+                        Прогресс по целям
+                      </div>
                       <div className="stats-category-list">
                         {data.goals.active_progress.map((g) => {
                           const pct = g.total

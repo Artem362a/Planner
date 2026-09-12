@@ -5,6 +5,14 @@
 }
 
 /* ── Period pills ────────────────────────────────────────────────────────── */
+.stats-period-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .stats-period-row {
   display: flex;
   flex-wrap: wrap;
@@ -31,6 +39,57 @@
   background: #7d68c9;
   border-color: #7d68c9;
   color: #fff;
+}
+
+.stats-period-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.stats-period-arrow {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e0d9f5;
+  border-radius: 10px;
+  background: #fff;
+  color: #6f59bf;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+}
+
+.stats-period-arrow svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stats-period-arrow:hover:not(:disabled) {
+  border-color: #7d68c9;
+  background: #f7f4ff;
+}
+
+.stats-period-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stats-period-caption {
+  min-width: 225px;
+  color: #6e668d;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* ── KPI cards ───────────────────────────────────────────────────────────── */
@@ -124,6 +183,32 @@
   background: #7d68c9;
   color: #fff;
   box-shadow: 0 2px 8px rgba(125, 104, 201, 0.3);
+}
+
+.stats-metric-toggle {
+  align-self: flex-start;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #ede8f8;
+}
+
+.stats-metric-btn {
+  padding: 6px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #7d719e;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stats-metric-btn--active {
+  background: #fff;
+  color: #5f4aaa;
+  box-shadow: 0 1px 5px rgba(87, 68, 146, 0.13);
 }
 
 /* ── Bar chart wrapper ───────────────────────────────────────────────────── */
@@ -220,6 +305,9 @@
 }
 
 .stats-cat-count {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   color: #9a92b6;
   white-space: nowrap;
@@ -367,10 +455,28 @@
   color: #9a92bb;
 }
 
+.stats-goals-subtitle--progress {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #32285f;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .stats-cards-row {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-period-navigation {
+    width: 100%;
+  }
+
+  .stats-period-caption {
+    min-width: 0;
+    flex: 1;
   }
 }
 
@@ -382,4 +488,5 @@
   .stats-goals-row {
     flex-direction: column;
   }
+
 }

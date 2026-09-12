@@ -7,8 +7,15 @@ function getAuthHeaders(extraHeaders = {}) {
   return { ...extraHeaders, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-export async function fetchStatistics(periodDays = 30) {
-  const res = await fetch(`${API_URL}/statistics?period_days=${periodDays}`, {
+export async function fetchStatistics(
+  periodDays = 30,
+  { endDate = null, allTime = false } = {},
+) {
+  const params = new URLSearchParams({ period_days: String(periodDays) });
+  if (endDate && !allTime) params.set("end_date", endDate);
+  if (allTime) params.set("all_time", "true");
+
+  const res = await fetch(`${API_URL}/statistics?${params.toString()}`, {
     headers: getAuthHeaders(),
   });
   return handleResponse(res, "Ошибка загрузки статистики");
