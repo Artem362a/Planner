@@ -126,6 +126,38 @@ class TestStatistics:
         ).isoformat()
         assert body["tasks"]["total"] == 1
 
+    def test_can_request_a_custom_date_range(self, client, db, user, auth_headers):
+        custom_start = date.today() - timedelta(days=20)
+        custom_end = date.today() - timedelta(days=10)
+        _add_task(db, user.id, status=1, day=custom_start)
+        _add_task(db, user.id, status=1, day=custom_end)
+        _add_task(db, user.id, status=1, day=custom_end + timedelta(days=1))
+
+        body = client.get(
+            "/statistics",
+            params={
+                "start_date": custom_start.isoformat(),
+                "end_date": custom_end.isoformat(),
+            },
+            headers=auth_headers,
+        ).json()
+
+        assert body["period"]["start"] == custom_start.isoformat()
+        assert body["period"]["end"] == custom_end.isoformat()
+        assert body["period"]["days"] == 11
+        assert body["tasks"]["total"] == 2
+
+    def test_custom_date_range_must_be_ordered(self, client, auth_headers):
+        response = client.get(
+            "/statistics",
+            params={
+                "start_date": date.today().isoformat(),
+                "end_date": (date.today() - timedelta(days=1)).isoformat(),
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
     def test_all_time_includes_tasks_older_than_a_year(
         self, client, db, user, auth_headers
     ):

@@ -932,6 +932,22 @@
 :root[data-theme="dark"] .stats-period-caption {
   color: var(--text-soft);
 }
+:root[data-theme="dark"] .stats-custom-period {
+  background: #131217;
+  border-color: var(--line);
+}
+:root[data-theme="dark"] .stats-custom-period label {
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .stats-custom-period input {
+  color-scheme: dark;
+  background: #1a1920;
+  border-color: var(--line-strong);
+  color: var(--text-main);
+}
+:root[data-theme="dark"] .stats-custom-period input:focus {
+  border-color: var(--accent);
+}
 
 :root[data-theme="dark"] .stats-card {
   background: #1a1920;

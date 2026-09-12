@@ -92,6 +92,64 @@
   white-space: nowrap;
 }
 
+.stats-custom-period {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 11px 12px;
+  border: 1px solid #ece6ff;
+  border-radius: 14px;
+  background: #faf8ff;
+}
+
+.stats-custom-period label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #8c84a4;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stats-custom-period input {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid #ddd4f3;
+  border-radius: 9px;
+  outline: none;
+  background: #fff;
+  color: #4a3c6f;
+  font: inherit;
+}
+
+.stats-custom-period input:focus {
+  border-color: #8d78d7;
+  box-shadow: 0 0 0 2px rgba(125, 104, 201, 0.12);
+}
+
+.stats-custom-period-apply {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #7d68c9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stats-custom-period-apply:hover {
+  background: #6f59bf;
+}
+
+.stats-custom-period-error {
+  width: 100%;
+  color: #d36b6b;
+  font-size: 11px;
+}
+
 /* ── KPI cards ───────────────────────────────────────────────────────────── */
 .stats-cards-row {
   display: grid;
@@ -477,6 +535,16 @@
   .stats-period-caption {
     min-width: 0;
     flex: 1;
+  }
+
+  .stats-custom-period label {
+    flex: 1;
+    min-width: 145px;
+  }
+
+  .stats-custom-period input {
+    min-width: 0;
+    width: 100%;
   }
 }
 

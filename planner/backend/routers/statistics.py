@@ -16,6 +16,7 @@ router = APIRouter()
 @router.get("/statistics")
 def get_statistics(
     period_days: int = Query(30, ge=7, le=365),
+    start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     all_time: bool = Query(False),
     db: Session = Depends(get_db),
@@ -26,6 +27,9 @@ def get_statistics(
         raise HTTPException(422, "Конец периода не может быть в будущем.")
 
     selected_end_date = today if all_time else (end_date or today)
+    if start_date is not None and start_date > selected_end_date:
+        raise HTTPException(422, "Начало периода должно быть раньше его конца.")
+
     if all_time:
         earliest_task_date = (
             db.query(func.min(DayTask.day))
@@ -46,16 +50,18 @@ def get_statistics(
         known_start_dates = [
             value for value in (earliest_task_date, earliest_checkin_date) if value
         ]
-        start_date = min(known_start_dates, default=selected_end_date)
+        selected_start_date = min(known_start_dates, default=selected_end_date)
+    elif start_date is not None:
+        selected_start_date = start_date
     else:
-        start_date = selected_end_date - timedelta(days=period_days - 1)
+        selected_start_date = selected_end_date - timedelta(days=period_days - 1)
 
     # ── Day tasks in period ─────────────────────────────────────────────────
     day_tasks = (
         db.query(DayTask)
         .filter(
             DayTask.user_id == current_user.id,
-            DayTask.day >= start_date,
+            DayTask.day >= selected_start_date,
             DayTask.day <= selected_end_date,
         )
         .all()
@@ -76,7 +82,7 @@ def get_statistics(
             day_bucket[key]["completed"] += 1
 
     by_day = []
-    cur = start_date
+    cur = selected_start_date
     while cur <= selected_end_date:
         key = cur.isoformat()
         by_day.append({"date": key, **day_bucket[key]})
@@ -190,7 +196,7 @@ def get_statistics(
         db.query(GoalCheckin)
         .filter(
             GoalCheckin.user_id == current_user.id,
-            GoalCheckin.check_date >= start_date,
+            GoalCheckin.check_date >= selected_start_date,
             GoalCheckin.check_date <= selected_end_date,
         )
         .all()
@@ -204,7 +210,7 @@ def get_statistics(
 
     def _recurring_applicable_dates(goal_row):
         out = []
-        cur = start_date
+        cur = selected_start_date
         while cur <= selected_end_date:
             hits = (
                 goal_row.repeat_unit == "day"
@@ -277,9 +283,9 @@ def get_statistics(
 
     return {
         "period": {
-            "start": start_date.isoformat(),
+            "start": selected_start_date.isoformat(),
             "end": selected_end_date.isoformat(),
-            "days": (selected_end_date - start_date).days + 1,
+            "days": (selected_end_date - selected_start_date).days + 1,
             "all_time": all_time,
         },
         "tasks": {

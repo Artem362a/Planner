@@ -21,6 +21,7 @@ const PERIOD_OPTIONS = [
   { label: "3 месяца", value: 90 },
   { label: "Год", value: 365 },
   { label: "Всё время", value: "all" },
+  { label: "Произвольный", value: "custom" },
 ];
 
 function fmtDate(iso) {
@@ -55,6 +56,19 @@ function shiftIsoDate(iso, days) {
   return toIsoDate(value);
 }
 
+function daysBetween(startIso, endIso) {
+  const [startYear, startMonth, startDay] = startIso.split("-").map(Number);
+  const [endYear, endMonth, endDay] = endIso.split("-").map(Number);
+  const start = Date.UTC(startYear, startMonth - 1, startDay);
+  const end = Date.UTC(endYear, endMonth - 1, endDay);
+  return Math.round((end - start) / 86400000);
+}
+
+function defaultCustomRange() {
+  const end = todayIso();
+  return { start: shiftIsoDate(end, -29), end };
+}
+
 function fmtPeriodDate(iso) {
   const [year, month, day] = iso.split("-").map(Number);
   return new Intl.DateTimeFormat("ru-RU", {
@@ -86,6 +100,9 @@ function loadHiddenCats() {
 export default function StatisticsPage() {
   const [period, setPeriod] = useState(30);
   const [windowEnd, setWindowEnd] = useState(todayIso);
+  const [customDraft, setCustomDraft] = useState(defaultCustomRange);
+  const [customRange, setCustomRange] = useState(defaultCustomRange);
+  const [rangeError, setRangeError] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -110,9 +127,13 @@ export default function StatisticsPage() {
 
   function changePeriod(value) {
     const currentEnd = todayIso();
-    if (value === period && (value === "all" || windowEnd === currentEnd)) return;
+    if (
+      value === period
+      && (value === "all" || value === "custom" || windowEnd === currentEnd)
+    ) return;
     setLoading(true);
     setError(null);
+    setRangeError(null);
     setPeriod(value);
     setWindowEnd(currentEnd);
   }
@@ -120,23 +141,65 @@ export default function StatisticsPage() {
   function shiftPeriod(direction) {
     if (period === "all") return;
     const currentEnd = todayIso();
+
+    if (period === "custom") {
+      const rangeDays = daysBetween(customRange.start, customRange.end) + 1;
+      let shiftDays = direction * rangeDays;
+      const candidateEnd = shiftIsoDate(customRange.end, shiftDays);
+      if (candidateEnd > currentEnd) {
+        shiftDays = daysBetween(customRange.end, currentEnd);
+      }
+      const nextRange = {
+        start: shiftIsoDate(customRange.start, shiftDays),
+        end: shiftIsoDate(customRange.end, shiftDays),
+      };
+      setLoading(true);
+      setError(null);
+      setRangeError(null);
+      setCustomDraft(nextRange);
+      setCustomRange(nextRange);
+      return;
+    }
+
     const shiftedEnd = shiftIsoDate(windowEnd, direction * period);
     setLoading(true);
     setError(null);
     setWindowEnd(shiftedEnd > currentEnd ? currentEnd : shiftedEnd);
   }
 
+  function applyCustomPeriod(event) {
+    event.preventDefault();
+    const currentEnd = todayIso();
+    if (!customDraft.start || !customDraft.end) {
+      setRangeError("Выбери обе даты.");
+      return;
+    }
+    if (customDraft.start > customDraft.end) {
+      setRangeError("Дата начала должна быть раньше даты окончания.");
+      return;
+    }
+    if (customDraft.end > currentEnd) {
+      setRangeError("Нельзя выбрать будущую дату.");
+      return;
+    }
+    setRangeError(null);
+    setError(null);
+    setLoading(true);
+    setCustomRange({ ...customDraft });
+  }
+
   useEffect(() => {
     let active = true;
     fetchStatistics(typeof period === "number" ? period : 30, {
-      endDate: windowEnd,
+      startDate: period === "custom" ? customRange.start : null,
+      endDate: period === "custom" ? customRange.end : windowEnd,
       allTime: period === "all",
     })
       .then((result) => { if (active) setData(result); })
       .catch((e) => { if (active) setError(e.message || "Ошибка"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [period, windowEnd]);
+  }, [period, windowEnd, customRange]);
 
   const completed = data?.tasks?.completed ?? "—";
   const rate =
@@ -152,7 +215,9 @@ export default function StatisticsPage() {
     : data?.period
       ? `${fmtPeriodDate(data.period.start)} — ${fmtPeriodDate(data.period.end)}`
       : "";
-  const isCurrentPeriod = windowEnd >= todayIso();
+  const isCurrentPeriod = period === "custom"
+    ? customRange.end >= todayIso()
+    : windowEnd >= todayIso();
 
   const highTotal = data?.tasks?.by_priority?.high?.total ?? 0;
   const medTotal = data?.tasks?.by_priority?.medium?.total ?? 0;
@@ -273,6 +338,48 @@ export default function StatisticsPage() {
                 </button>
               </div>
             </div>
+
+            {period === "custom" && (
+              <form className="stats-custom-period" onSubmit={applyCustomPeriod}>
+                <label>
+                  <span>С</span>
+                  <input
+                    type="date"
+                    value={customDraft.start}
+                    max={todayIso()}
+                    onChange={(event) => {
+                      setCustomDraft((current) => ({
+                        ...current,
+                        start: event.target.value,
+                      }));
+                      setRangeError(null);
+                    }}
+                  />
+                </label>
+                <label>
+                  <span>По</span>
+                  <input
+                    type="date"
+                    value={customDraft.end}
+                    min={customDraft.start || undefined}
+                    max={todayIso()}
+                    onChange={(event) => {
+                      setCustomDraft((current) => ({
+                        ...current,
+                        end: event.target.value,
+                      }));
+                      setRangeError(null);
+                    }}
+                  />
+                </label>
+                <button type="submit" className="stats-custom-period-apply">
+                  Показать
+                </button>
+                {rangeError && (
+                  <span className="stats-custom-period-error">{rangeError}</span>
+                )}
+              </form>
+            )}
 
             {loading && (
               <div className="day-task-empty">Загрузка статистики...</div>

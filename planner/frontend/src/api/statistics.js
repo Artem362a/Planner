@@ -9,9 +9,10 @@ function getAuthHeaders(extraHeaders = {}) {
 
 export async function fetchStatistics(
   periodDays = 30,
-  { endDate = null, allTime = false } = {},
+  { startDate = null, endDate = null, allTime = false } = {},
 ) {
   const params = new URLSearchParams({ period_days: String(periodDays) });
+  if (startDate && !allTime) params.set("start_date", startDate);
   if (endDate && !allTime) params.set("end_date", endDate);
   if (allTime) params.set("all_time", "true");
 
