@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from task_progress import set_task_status
 
 from db import (
     DayTask,
@@ -505,7 +506,7 @@ def ack_reminder(
             .first()
         )
         if task is not None:
-            cast(Any, task).status = 1
+            set_task_status(db, current_user_row.id, cast(Any, task), 1)
 
     if row_cast.recur_every:
         reschedule_recurring(row_cast, now)

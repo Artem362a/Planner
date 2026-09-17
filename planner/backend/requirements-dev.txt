@@ -1,3 +1,4 @@
 -r requirements.txt
+-r ../bot/requirements.txt
 pytest
 httpx

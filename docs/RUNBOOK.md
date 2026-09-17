@@ -10,8 +10,9 @@
 Автоматически: merge в `main` → CI (5 джобов) → при зелёном CI запускается
 Deploy (`.github/workflows/deploy.yml`):
 
-- **backend** — на self-hosted раннере ноута: бэкап БД → `git reset --hard
-  origin/main` в `~/Planner` → `docker compose up -d --build` (включая `schedule-sync`) →
+- **backend** — на self-hosted раннере ноута: бэкап БД → `git reset --hard "$DEPLOY_SHA"`
+  в `~/Planner` (`DEPLOY_SHA` — `head_sha` успешного CI, тот же коммит, что у frontend) →
+  `docker compose up -d --build` (включая `schedule-sync`) →
   `alembic upgrade head` → health check на `127.0.0.1:8000/docs`.
 - **frontend** — на облачном раннере: Vite-билд → scp на VDS →
   подмена /var/www/planner (старая версия остаётся рядом,
@@ -90,7 +91,12 @@ docker compose start backend bot schedule-sync
 ## Rate limiting
 
 `/auth/login` — 10/мин, `/auth/register` — 5/мин с одного IP
-(IP берётся из `X-Forwarded-For`, который ставит nginx на VDS).
+(IP берётся из адреса клиента ASGI, который определяет Uvicorn с учётом доверенных прокси).
+nginx на VDS **перезаписывает** `X-Forwarded-For` значением `$remote_addr`,
+отбрасывая адреса, переданные клиентом. При обновлении backend нужно применять
+и актуальный `deploy/nginx.conf` — штатный Deploy обновляет его в frontend-джобе.
+Доверие Uvicorn ко всем прокси допустимо только внутри существующей закрытой цепочки:
+порт backend опубликован на loopback, внешний доступ проходит через nginx.
 Хранилище — память процесса: при 2 воркерах фактический потолок ×2.
 Выключатель: `RATE_LIMIT_ENABLED=0` (нужен только в тестах).
 

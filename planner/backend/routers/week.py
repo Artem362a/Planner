@@ -13,6 +13,7 @@ from db import (
     WeekTask,
 )
 from dependencies import get_current_user, get_db
+from task_progress import sync_task_reminder
 from schemas import *
 from serializers import *
 
@@ -276,7 +277,6 @@ def api_set_week_task_week_status(
     """Чекбокс recurring-задачи в плане недели: выполнить/снять сразу все её
     дни в пределах недели. Статус самой WeekTask не трогаем — для recurring
     он означает «повтор остановлен», а не «неделя закрыта»."""
-    from routers.day import _sync_task_reminder
 
     current_user_row = cast(Any, current_user)
 
@@ -325,7 +325,7 @@ def api_set_week_task_week_status(
             cast(Any, day_task).status = new_status
             # Выполненная задача не должна оставить за собой живое напоминание
             # (и наоборот — снятая галочка возвращает его, если время впереди).
-            _sync_task_reminder(db, current_user_row.id, cast(Any, day_task))
+            sync_task_reminder(db, current_user_row.id, cast(Any, day_task))
 
     db.commit()
 

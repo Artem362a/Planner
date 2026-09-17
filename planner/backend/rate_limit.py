@@ -14,12 +14,9 @@ from slowapi.util import get_remote_address
 
 
 def client_ip(request) -> str:
-    # Запрос приходит через nginx → frps → frpc, так что remote_addr всегда
-    # один и тот же (туннель) — реальный IP клиента только в X-Forwarded-For,
-    # который проставляет nginx на VDS.
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
+    # Uvicorn resolves the client using its trusted proxy configuration.
+    # Edge nginx overwrites X-Forwarded-For with $remote_addr. Never parse
+    # the raw header here: direct clients can supply arbitrary values in it.
     return get_remote_address(request)
 
 

@@ -63,6 +63,7 @@ const EMPTY_FORM = { title: "", description: "", priority: "medium", category: "
 export default function InboxPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteError, setDeleteError] = useState(null);
   const [categories, setCategories] = useState({});
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -161,8 +162,13 @@ export default function InboxPage() {
   }
 
   async function handleDelete(taskId) {
-    await deleteInboxTask(taskId).catch(console.error);
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setDeleteError(null);
+    try {
+      await deleteInboxTask(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch (err) {
+      setDeleteError(err.message || "Не удалось удалить задачу. Попробуйте ещё раз.");
+    }
   }
 
   async function handleAssignDay() {
@@ -210,6 +216,7 @@ export default function InboxPage() {
         <main className="day-page-main">
           <div className="day-big-card">
             <section className="day-tasks-page">
+              {deleteError && <p role="alert">{deleteError}</p>}
               <div className="page-tasks-wrapper">
                 {loading ? (
                   <div className="inbox-empty">Загрузка…</div>

@@ -109,7 +109,9 @@ class TestScheduleParser:
 
 
 class TestScheduleSync:
-    def test_selected_subgroup_creates_ordinary_future_day_tasks(self, db, user):
+    def test_selected_subgroup_creates_ordinary_future_day_tasks(
+        self, client, db, user, auth_headers
+    ):
         from db import DayTask, ScheduleEvent
         from schedule_sync import sync_subscription
 
@@ -136,6 +138,13 @@ class TestScheduleSync:
         ]
         assert all(task.schedule_subscription_id == subscription.id for task in tasks)
         assert db.query(ScheduleEvent).filter(ScheduleEvent.subscription_id == subscription.id).count() == 3
+
+        response = client.get(f"/day/{target.isoformat()}", headers=auth_headers)
+        assert response.status_code == 200
+        assert [item["schedule_lesson_type"] for item in response.json()] == [
+            "lecture",
+            "lab",
+        ]
 
     def test_today_and_past_are_never_written_to_day_plan(self, db, user):
         from db import DayTask, ScheduleEvent

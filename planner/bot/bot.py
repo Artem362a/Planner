@@ -47,6 +47,7 @@ from db import (  # noqa: E402
     WeekTask,
 )
 from reminder_rules import add_interval, reschedule_recurring  # noqa: E402
+from task_progress import set_task_status, sync_task_reminder  # noqa: E402
 
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 DIGEST_HOUR = int(os.getenv("TELEGRAM_DIGEST_HOUR", "8"))
@@ -328,7 +329,8 @@ def _toggle_day_task(user_id: int, task_id: int) -> bool:
         )
         if task is None:
             return False
-        task.status = 0 if task.status == 1 else 1
+        set_task_status(db, user_id, task, 0 if task.status == 1 else 1)
+        sync_task_reminder(db, user_id, task)
         db.commit()
         return True
 
@@ -1156,7 +1158,7 @@ def _ack_reminder(user_id: int, reminder_id: int, status: str) -> tuple[str, dat
                 .first()
             )
             if task is not None:
-                task.status = 1
+                set_task_status(db, user_id, task, 1)
 
         result: tuple[str, datetime | None]
         if r.recur_every:

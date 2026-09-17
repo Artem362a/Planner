@@ -5,7 +5,8 @@ import {
   updateCategory,
   deleteCategory,
 } from "../../api/tasks";
-import { CATEGORY_ICONS, CategoryIcon } from "../icons";
+import { CategoryIcon } from "../icons";
+import { CATEGORY_ICONS } from "../icons/categoryIcons";
 
 const CATEGORY_COLOR_PALETTE = [
   { value: "#9B7BE8", label: "Лавандовый" },

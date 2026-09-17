@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from datetime import time as _time
 from pathlib import Path
+import re
 from uuid import uuid4
 from typing import Any, cast
 
@@ -18,6 +19,7 @@ from auth import (
 )
 from bootstrap import ensure_default_categories_for_user
 from db import (
+    DayNote,
     DaySettings,
     DayTask,
     DayTemplate,
@@ -28,7 +30,9 @@ from db import (
     InboxTask,
     Notification,
     NotificationRecipient,
+    Reminder,
     TaskCategory,
+    TelegramLink,
     User,
     UserSession,
     WeekTask,
@@ -50,6 +54,15 @@ ALLOWED_AVATAR_TYPES = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+
+
+def _owned_avatar_path(avatar: str, user_id: int) -> Path | None:
+    """Only server-generated filenames belonging to this user may be removed."""
+    if not re.fullmatch(
+        rf"/uploads/avatars/user_{user_id}_[0-9a-f]{{32}}\.(jpg|png|webp|gif)", avatar
+    ):
+        return None
+    return AVATAR_UPLOAD_DIR / Path(avatar).name
 
 
 def _create_session(
@@ -215,6 +228,8 @@ def update_profile(
     avatar = (body.avatar or "").strip() or None
     if avatar is not None and len(avatar) > 3_000_000:
         raise HTTPException(status_code=400, detail="Avatar image is too large")
+    if avatar and avatar.startswith("/uploads/") and _owned_avatar_path(avatar, current_user_row.id) is None:
+        raise HTTPException(status_code=400, detail="Avatar does not belong to this user")
 
     current_user_row.username = username
     current_user_row.avatar = avatar
@@ -284,16 +299,13 @@ async def upload_avatar(
     if content_type not in ALLOWED_AVATAR_TYPES:
         raise HTTPException(status_code=400, detail="Unsupported avatar image type")
 
-    content = await file.read()
+    content = await file.read(MAX_AVATAR_SIZE_BYTES + 1)
     if len(content) > MAX_AVATAR_SIZE_BYTES:
         raise HTTPException(status_code=400, detail="Avatar image is too large")
 
     AVATAR_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    old_avatar: str = current_user_row.avatar or ""
-    if old_avatar.startswith("/uploads/avatars/"):
-        old_path = AVATAR_UPLOAD_DIR / Path(old_avatar).name
-        old_path.unlink(missing_ok=True)
+    old_path = _owned_avatar_path(current_user_row.avatar or "", current_user_row.id)
 
     suffix = ALLOWED_AVATAR_TYPES[content_type]
     filename = f"user_{current_user_row.id}_{uuid4().hex}{suffix}"
@@ -301,7 +313,14 @@ async def upload_avatar(
     avatar_path.write_bytes(content)
 
     current_user_row.avatar = f"/uploads/avatars/{filename}"
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        avatar_path.unlink(missing_ok=True)
+        raise
+    if old_path is not None:
+        old_path.unlink(missing_ok=True)
     db.refresh(current_user)
 
     return _user_to_out(current_user)
@@ -543,6 +562,9 @@ def delete_account(
     )
 
     # Sessions and the user itself.
+    db.query(DayNote).filter(DayNote.user_id == uid).delete(synchronize_session=False)
+    db.query(Reminder).filter(Reminder.user_id == uid).delete(synchronize_session=False)
+    db.query(TelegramLink).filter(TelegramLink.user_id == uid).delete(synchronize_session=False)
     db.query(UserSession).filter(UserSession.user_id == uid).delete(synchronize_session=False)
     db.query(User).filter(User.id == uid).delete(synchronize_session=False)
     db.commit()

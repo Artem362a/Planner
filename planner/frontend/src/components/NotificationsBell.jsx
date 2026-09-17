@@ -415,7 +415,7 @@ export default function NotificationsBell() {
     if (hasUnreadServer || hasUnreadVirtual) {
       setItems((prev) => prev.map((item) => ({ ...item, is_read: true })));
     }
-  }, [open]);
+  }, [open, items]);
 
   React.useEffect(() => {
     function handleClickOutside(event) {

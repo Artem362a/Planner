@@ -15,9 +15,8 @@ import { CategoryIcon } from "../../components/icons";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
 import GoalStagesEditor from "../../components/goals/GoalStagesEditor";
-import GoalStagesStrip, {
-  summarizeStages,
-} from "../../components/goals/GoalStagesStrip";
+import GoalStagesStrip from "../../components/goals/GoalStagesStrip";
+import { summarizeStages } from "../../utils/goalStages";
 
 function FocusIcon({ active }) {
   // Мишень/прицел — «взять в фокус». В активном состоянии центр залит.

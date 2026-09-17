@@ -255,6 +255,7 @@ class TaskOut(TaskIn):
     start_day_offset: int = 0
     order_index: int = 0
     dismissed: bool = False
+    schedule_lesson_type: Literal["lecture", "practice", "lab", "other"] | None = None
 
 
 class DayTaskReorderIn(BaseModel):

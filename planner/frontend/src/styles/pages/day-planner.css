@@ -925,6 +925,36 @@
   overflow-wrap: anywhere;
 }
 
+.day-lesson-type {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(126, 104, 201, 0.11);
+  color: #705bb8;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  vertical-align: 1px;
+}
+
+.day-lesson-type--practice {
+  background: rgba(71, 139, 214, 0.12);
+  color: #3979bd;
+}
+
+.day-lesson-type--lab {
+  background: rgba(218, 137, 55, 0.13);
+  color: #b66d25;
+}
+
+.day-lesson-type--other {
+  background: rgba(105, 101, 121, 0.11);
+  color: #696579;
+}
+
 .day-timeline-time {
   color: #5f587d;
   font-size: 13px;

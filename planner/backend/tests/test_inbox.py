@@ -2,9 +2,28 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import pytest
 
 
 class TestInboxCRUD:
+    @pytest.mark.parametrize("destination", ["day", "week"])
+    def test_delete_assigned_inbox_preserves_scheduled_tasks(self, client, db, auth_headers, destination):
+        from db import DayTask
+
+        created = client.post("/inbox", headers=auth_headers, json={"title": "keep in plan"}).json()
+        payload = {"day" if destination == "day" else "week_start": "2026-09-07"}
+        assigned = client.post(f"/inbox/{created['id']}/assign-{destination}", headers=auth_headers, json=payload)
+        assert assigned.status_code == 200
+        tasks = db.query(DayTask).filter(DayTask.source_inbox_task_id == created["id"]).all()
+        task_ids = [t.id for t in tasks]
+        assert len(task_ids) == (1 if destination == "day" else 7)
+
+        assert client.delete(f"/inbox/{created['id']}", headers=auth_headers).status_code == 200
+        db.expire_all()
+        remaining = db.query(DayTask).filter(DayTask.id.in_(task_ids)).all()
+        assert len(remaining) == len(task_ids)
+        assert all(t.source_inbox_task_id is None and t.title == "keep in plan" for t in remaining)
+
     def test_create(self, client, auth_headers):
         r = client.post(
             "/inbox",

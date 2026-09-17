@@ -402,6 +402,39 @@ class TestTaskReminderAnchor:
         rem = self._task_reminder(db, created["id"])
         assert rem.remind_at == datetime.fromisoformat(f"{day}T15:50")
 
+    def test_reorder_moves_duration_task_reminder(self, client, db, auth_headers):
+        day = self._tomorrow()
+        first = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={"title": "Подготовка", "duration_min": 60},
+        ).json()
+        reminded = client.post(
+            f"/day/{day}/tasks",
+            headers=auth_headers,
+            json={
+                "title": "Созвон",
+                "duration_min": 30,
+                "remind_lead_min": 10,
+                "remind_anchor_time": "07:00",
+            },
+        ).json()
+
+        before = self._task_reminder(db, reminded["id"])
+        assert before.remind_at == datetime.fromisoformat(f"{day}T06:50")
+
+        response = client.post(
+            f"/day/{day}/reorder",
+            headers=auth_headers,
+            json={"ordered_ids": [reminded["id"], first["id"]]},
+        )
+        assert response.status_code == 200
+
+        db.expire_all()
+        after = self._task_reminder(db, reminded["id"])
+        assert after.remind_at == datetime.fromisoformat(f"{day}T05:50")
+        assert after.text == "Задача «Созвон» в 06:00"
+
     def test_fixed_start_time_takes_priority_over_anchor(self, client, db, auth_headers):
         """Если у задачи есть настоящее start_time, оно всегда важнее якоря."""
         day = self._tomorrow()

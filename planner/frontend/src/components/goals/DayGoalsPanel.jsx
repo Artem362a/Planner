@@ -6,7 +6,7 @@ import {
   fetchGoalsForDay,
   toggleGoalDayItem,
 } from "../../api/goals";
-import { summarizeStages } from "./GoalStagesStrip";
+import { summarizeStages } from "../../utils/goalStages";
 
 function formatShortDate(dateStr) {
   if (!dateStr) return "";
@@ -188,7 +188,7 @@ export default function DayGoalsPanel({ selectedDay }) {
     });
   }
 
-  async function loadItems() {
+  const loadItems = React.useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchGoalsForDay(selectedDay);
@@ -209,12 +209,12 @@ export default function DayGoalsPanel({ selectedDay }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedDay]);
 
   React.useEffect(() => {
     if (!selectedDay) return;
     loadItems();
-  }, [selectedDay]);
+  }, [selectedDay, loadItems]);
 
   function replaceGoal(updatedGoal) {
     setGoals((prev) =>

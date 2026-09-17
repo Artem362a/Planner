@@ -135,6 +135,11 @@ def delete_inbox_task(
     )
     if row is None:
         raise HTTPException(404, "Inbox task not found")
+    # Scheduled tasks remain in the plan after removing their inbox source.
+    db.query(DayTask).filter(
+        DayTask.source_inbox_task_id == task_id,
+        DayTask.user_id == user.id,
+    ).update({"source_inbox_task_id": None}, synchronize_session=False)
     db.delete(row)
     db.commit()
     return {"ok": True}

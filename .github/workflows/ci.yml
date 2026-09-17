@@ -51,13 +51,14 @@ jobs:
           cache-dependency-path: |
             planner/backend/requirements.txt
             planner/backend/requirements-dev.txt
+            planner/bot/requirements.txt
       - run: pip install -r requirements-dev.txt
         working-directory: planner/backend
       - run: python -m pytest
         working-directory: planner/backend
 
   frontend-build:
-    name: Frontend (vitest + build)
+    name: Frontend (eslint + vitest + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -70,6 +71,7 @@ jobs:
           cache: npm
           cache-dependency-path: planner/frontend/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npm run test
       - run: npm run build
 

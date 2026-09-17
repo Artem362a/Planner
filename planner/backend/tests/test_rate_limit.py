@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi.testclient import TestClient
 
 from rate_limit import limiter
 
@@ -43,15 +44,29 @@ class TestRateLimit:
         assert statuses[5] == 429
 
     def test_limit_is_per_ip(self, client, rate_limited):
-        """Лимит считается по X-Forwarded-For — исчерпание с одного IP
-        не блокирует другой (за туннелем remote_addr у всех одинаковый)."""
+        """Use the ASGI client address, already resolved by Uvicorn in production."""
         body = {"email": "nobody@test.com", "password": "wrong-password"}
-        for _ in range(10):
-            client.post("/auth/login", json=body, headers={"X-Forwarded-For": "10.0.0.1"})
-        r = client.post("/auth/login", json=body, headers={"X-Forwarded-For": "10.0.0.1"})
-        assert r.status_code == 429
-        r = client.post("/auth/login", json=body, headers={"X-Forwarded-For": "10.0.0.2"})
-        assert r.status_code == 401
+        first = TestClient(client.app, client=("198.51.100.1", 12345))
+        second = TestClient(client.app, client=("198.51.100.2", 12345))
+        try:
+            for _ in range(10):
+                assert first.post("/auth/login", json=body).status_code == 401
+            assert first.post("/auth/login", json=body).status_code == 429
+            assert second.post("/auth/login", json=body).status_code == 401
+        finally:
+            first.close()
+            second.close()
+
+    def test_forged_forwarded_addresses_do_not_reset_limit(self, client, rate_limited):
+        body = {"email": "nobody@test.com", "password": "wrong-password"}
+        statuses = [
+            client.post(
+                "/auth/login", json=body,
+                headers={"X-Forwarded-For": f"198.51.100.{i + 1}, 192.0.2.10"},
+            ).status_code
+            for i in range(12)
+        ]
+        assert statuses == [401] * 10 + [429] * 2
 
     def test_disabled_by_default_in_tests(self, client):
         body = {"email": "nobody@test.com", "password": "wrong-password"}

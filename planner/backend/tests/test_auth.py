@@ -1,6 +1,7 @@
 """Tests for /auth/* endpoints."""
 from __future__ import annotations
 
+import pytest
 
 class TestRegister:
     def test_register_returns_token(self, client):
@@ -264,6 +265,28 @@ class TestSessions:
 
 
 class TestAccountDelete:
+    @pytest.mark.parametrize("related_type", ["note", "reminder", "telegram"])
+    def test_delete_account_with_related_data(
+        self, client, db, user, other_user, auth_headers, related_type
+    ):
+        from datetime import date, datetime
+        from db import DayNote, Reminder, TelegramLink, User
+
+        uid, other_uid = user.id, other_user.id
+        model, values = {
+            "note": (DayNote, {"day": date.today(), "text": "saved note"}),
+            "reminder": (Reminder, {"text": "manual reminder", "remind_at": datetime.now()}),
+            "telegram": (TelegramLink, {}),
+        }[related_type]
+        db.add_all([model(user_id=uid, **values), model(user_id=other_uid, **values)])
+        db.commit()
+
+        r = client.request("DELETE", "/auth/account", headers=auth_headers, json={"password": "password123"})
+        assert r.status_code == 200
+        assert db.query(User).filter(User.id == uid).count() == 0
+        assert db.query(model).filter(model.user_id == uid).count() == 0
+        assert db.query(model).filter(model.user_id == other_uid).count() == 1
+
     def test_delete_account_wipes_user_data(self, client, db, user, auth_headers):
         from db import DayTask, User
         from datetime import date
@@ -295,6 +318,47 @@ class TestAccountDelete:
 
 
 class TestAvatarUpload:
+    def test_profile_rejects_foreign_uploaded_avatar(self, client, auth_headers, other_user):
+        r = client.patch("/auth/profile", headers=auth_headers, json={
+            "username": "alice", "avatar": f"/uploads/avatars/user_{other_user.id}_{'a' * 32}.png",
+        })
+        assert r.status_code == 400
+
+    def test_upload_never_deletes_foreign_avatar_from_legacy_profile(
+        self, client, db, user, other_user, auth_headers, tmp_path, monkeypatch
+    ):
+        from routers import auth_routes
+
+        monkeypatch.setattr(auth_routes, "AVATAR_UPLOAD_DIR", tmp_path)
+        filename = f"user_{other_user.id}_{'a' * 32}.png"
+        foreign_path = tmp_path / filename
+        foreign_path.write_bytes(b"other user's avatar")
+        user.avatar = f"/uploads/avatars/{filename}"
+        db.commit()
+
+        r = client.post("/auth/avatar", headers=auth_headers, files={"file": ("avatar.png", b"new avatar", "image/png")})
+        assert r.status_code == 200
+        assert foreign_path.read_bytes() == b"other user's avatar"
+        assert r.json()["avatar"] != f"/uploads/avatars/{filename}"
+
+    def test_replacing_own_avatar_removes_old_file(self, client, auth_headers, tmp_path, monkeypatch):
+        from pathlib import Path
+        from routers import auth_routes
+
+        monkeypatch.setattr(auth_routes, "AVATAR_UPLOAD_DIR", tmp_path)
+        files = {"file": ("avatar.png", b"new avatar", "image/png")}
+        first = client.post("/auth/avatar", headers=auth_headers, files=files)
+        assert first.status_code == 200
+        old_path = tmp_path / Path(first.json()["avatar"]).name
+        assert old_path.exists()
+        assert client.patch("/auth/profile", headers=auth_headers, json={
+            "username": "alice", "avatar": first.json()["avatar"],
+        }).status_code == 200
+        second = client.post("/auth/avatar", headers=auth_headers, files=files)
+        assert second.status_code == 200
+        assert not old_path.exists()
+        assert (tmp_path / Path(second.json()["avatar"]).name).exists()
+
     def test_upload_valid_image(self, client, auth_headers):
         from routers.auth_routes import AVATAR_UPLOAD_DIR
         from pathlib import Path

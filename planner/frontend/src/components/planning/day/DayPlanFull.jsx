@@ -38,6 +38,22 @@ const PRIORITIES = [
   { value: "medium", label: "Обычный" },
 ];
 
+const LESSON_TYPE_LABELS = {
+  lecture: "Лекция",
+  practice: "Практика",
+  lab: "Лабораторная",
+  other: "Занятие",
+};
+
+function LessonTypeBadge({ type }) {
+  if (!type) return null;
+  return (
+    <span className={`day-lesson-type day-lesson-type--${type}`}>
+      {LESSON_TYPE_LABELS[type] || LESSON_TYPE_LABELS.other}
+    </span>
+  );
+}
+
 const TEMPLATE_COLORS = [
   "#9B7BE8", "#7C67D8", "#5A6FD1", "#6F8EDB", "#7EA7F2", "#4FA3E0",
   "#67C5D8", "#48B8B0", "#5FD6C0", "#3FAE8C", "#72C99F", "#63B85E",
@@ -697,7 +713,7 @@ const overdueImportCandidates = useMemo(
   const timelineSmallGroupMaxListHeight = 260;
   const timelineMaxAttachGapMin = 30;
   const getSmallGroupId = (run) => `small-${run[0].id}-${run[run.length - 1].id}`;
-  const getSmallGroupHeight = (run) => {
+  const getSmallGroupHeight = React.useCallback((run) => {
     const id = getSmallGroupId(run);
 
     if (expandedTimelineGroupId !== id) {
@@ -711,7 +727,7 @@ const overdueImportCandidates = useMemo(
         timelineSmallGroupExpandedPadding + run.length * timelineSmallGroupRowHeight
       )
     );
-  };
+  }, [expandedTimelineGroupId, timelineSmallGroupBaseHeight, timelineSmallGroupMaxListHeight, timelineSmallGroupExpandedPadding, timelineSmallGroupRowHeight]);
   const timelinePxPerMinute = timelineHourHeight / 60;
 
   const timelineScale = useMemo(() => {
@@ -795,6 +811,7 @@ const overdueImportCandidates = useMemo(
       height: Math.max(timelineHourHeight, currentY),
     };
   }, [
+    getSmallGroupHeight,
     tasksWithComputedTime,
     timelineStartMinute,
     timelineEndMinute,
@@ -803,15 +820,10 @@ const overdueImportCandidates = useMemo(
     timelineHourHeight,
     timelineSmallTaskMinutes,
     timelineStandaloneSmallGroupSize,
-    timelineSmallGroupBaseHeight,
-    timelineSmallGroupRowHeight,
-    timelineSmallGroupExpandedPadding,
-    timelineSmallGroupMaxListHeight,
-    expandedTimelineGroupId,
   ]);
 
   const timelineHeight = timelineScale.height;
-  const minuteToTimelineY = (minute) => {
+  const minuteToTimelineY = React.useCallback((minute) => {
     const points = timelineScale.points;
 
     if (minute <= points[0].minute) return points[0].y;
@@ -828,7 +840,7 @@ const overdueImportCandidates = useMemo(
     }
 
     return points[points.length - 1].y;
-  };
+  }, [timelineScale]);
 
   // Линия «сейчас» на таймлайне: только для сегодняшнего дня и только когда
   // текущее время попадает в диапазон таймлайна.
@@ -1003,7 +1015,7 @@ const overdueImportCandidates = useMemo(
     }
 
     return result;
-  }, [tasksWithComputedTime, timelineStartMinute, timelineScale, expandedTimelineGroupId]);
+  }, [tasksWithComputedTime, minuteToTimelineY, getSmallGroupHeight]);
 
   const saveDayNotes = (value) => {
     setDayNotes(value);
@@ -1109,7 +1121,7 @@ const overdueImportCandidates = useMemo(
       window.removeEventListener("open-day-create-task", createHandler);
       window.removeEventListener("open-day-import-week", importHandler);
     };
-  }, [dayString, categories]);
+  });
 
   const onDragStart = (e, index) => {
     dragIndexRef.current = index;
@@ -2224,7 +2236,10 @@ const overdueImportCandidates = useMemo(
                   </label>
 
                   <div className="day-task-content">
-                    <div className="day-task-title">{t.title}</div>
+                    <div className="day-task-title">
+                      {t.title}
+                      <LessonTypeBadge type={t.schedule_lesson_type} />
+                    </div>
 
                     <div className="day-task-meta">
                       {t.has_time_conflict && (
@@ -2580,6 +2595,7 @@ const overdueImportCandidates = useMemo(
                             </span>
                           )}
                           {task.title}
+                          <LessonTypeBadge type={task.schedule_lesson_type} />
                         </div>
                         <div className="day-timeline-time-row">
                           <span className="day-timeline-time">

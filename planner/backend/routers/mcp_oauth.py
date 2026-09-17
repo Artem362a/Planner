@@ -207,9 +207,11 @@ def exchange_oauth_token(
         if row is not None and not is_mcp_allowed(db, row.user_id, for_update=True):
             return _oauth_error("access_denied", "MCP access is no longer enabled", 403)
         if row is not None:
+            # The earlier read may predate another exchange. Refresh the
+            # identity-map object after obtaining the lock before checking used_at.
             row = db.query(McpOAuthAuthorizationCode).filter(
                 McpOAuthAuthorizationCode.id == row.id,
-            ).with_for_update().first()
+            ).populate_existing().with_for_update().first()
         if (
             row is None
             or row.used_at is not None
@@ -251,12 +253,13 @@ def exchange_oauth_token(
         if grant is not None and not is_mcp_allowed(db, grant.user_id, for_update=True):
             return _oauth_error("invalid_grant", "Refresh token is invalid or expired")
         if grant is not None:
+            # FOR UPDATE alone does not refresh objects already in the session.
             grant = db.query(McpOAuthGrant).filter(
                 McpOAuthGrant.id == grant.id,
-            ).with_for_update().first()
+            ).populate_existing().with_for_update().first()
         row = db.query(McpOAuthRefreshToken).filter(
             McpOAuthRefreshToken.id == row.id,
-        ).with_for_update().first()
+        ).populate_existing().with_for_update().first()
         if row is None:
             return _oauth_error("invalid_grant", "Refresh token is invalid or expired")
         if row.revoked_at is not None:
