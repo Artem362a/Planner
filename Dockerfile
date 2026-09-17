@@ -24,6 +24,7 @@ FROM base AS runtime
 # time (reminders, digest hour) — without it TZ=Europe/Samara would be
 # silently ignored and everything would run in UTC.
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends libpq5 curl tzdata \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 appuser
