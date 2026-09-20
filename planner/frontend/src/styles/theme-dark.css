@@ -920,6 +920,55 @@
   border-color: #7c66e3;
   color: #eae8f4;
 }
+
+:root[data-theme="dark"] .day-task-item--selected {
+  background: #211d2d;
+  box-shadow:
+    inset 0 0 0 2px #a58bf0,
+    0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .day-task-bulk-error button {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .day-selection-clear {
+  border-color: #927be0;
+  background: #8068d6;
+  color: #fff;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .day-selection-clear:hover {
+  border-color: #a58ff0;
+  background: #8d75df;
+  color: #fff;
+}
+
+:root[data-theme="dark"] .day-task-drag-preview {
+  border-color: rgba(165, 139, 240, 0.5);
+  color: #ded6ff;
+  background: rgba(32, 29, 41, 0.96);
+}
+
+:root[data-theme="dark"] .day-task-bulk-error {
+  color: #ffb0bc;
+  background: #321d23;
+  border-color: #65313b;
+}
+
+:root[data-theme="dark"] .day-task-trash {
+  color: #e9909d;
+  background: rgba(37, 28, 32, 0.96);
+  border-color: rgba(233, 144, 157, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-theme="dark"] .day-task-trash--active {
+  color: #fff;
+  background: rgba(193, 53, 72, 0.97);
+  border-color: rgba(255, 255, 255, 0.8);
+}
 :root[data-theme="dark"] .stats-period-arrow {
   background: #1a1920;
   border-color: var(--line-strong);

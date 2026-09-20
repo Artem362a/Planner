@@ -156,6 +156,11 @@
     padding: 4px 0;
   }
 
+  .day-task-bulk-error {
+    margin-inline: 0;
+    align-items: flex-start;
+  }
+
   .day-task-item {
     width: 100%;
     max-width: 100%;
@@ -173,6 +178,13 @@
     align-items: start;
     padding: 12px 12px;
     border-radius: 18px;
+  }
+
+  .day-task-trash {
+    bottom: max(14px, env(safe-area-inset-bottom));
+    min-width: 0;
+    width: calc(100vw - 24px);
+    padding: 9px 13px;
   }
 
   .day-task-drag-handle {

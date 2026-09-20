@@ -30,6 +30,7 @@ import {
   splitExtendedTime,
   timeStringToMinutes,
 } from "../../../utils/time";
+import { moveTaskGroup } from "../../../utils/dayTaskDrag";
 
 import DayGoalsPanel from "../../goals/DayGoalsPanel";
 
@@ -218,8 +219,17 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   const [expandedTimelineGroupId, setExpandedTimelineGroupId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState(null);
-  const [swapTick, setSwapTick] = useState(0);
+  const [draggedTaskIds, setDraggedTaskIds] = useState([]);
+  const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const [isTrashActive, setIsTrashActive] = useState(false);
+  const [bulkActionError, setBulkActionError] = useState("");
   const dragIndexRef = useRef(null);
+  const draggedTaskIdRef = useRef(null);
+  const draggedTaskIdsRef = useRef([]);
+  const dragOrderRef = useRef(null);
+  const trashActiveRef = useRef(false);
+  const droppedOnTrashRef = useRef(false);
+  const bulkDeleteInFlightRef = useRef(false);
   const dragHoverTimerRef = useRef(null);
   const dragHoverTargetRef = useRef(null);
   const [dayStartTime, setDayStartTime] = useState("06:00");
@@ -298,6 +308,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   const dayString = formatLocalDate(selectedDate);
   const nextDayString = formatLocalDate(addLocalDays(selectedDate, 1));
   const notesSaveTimerRef = useRef(null);
+  const selectedTaskIdSet = useMemo(() => new Set(selectedTaskIds), [selectedTaskIds]);
 
   const taskItemRefs = useRef(new Map());
   const previousTaskRectsRef = useRef(new Map());
@@ -326,6 +337,19 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     fetchDayTasks(dayString).then(setTasks).catch(console.error);
   }, [dayString, isTemplateMode]);
 
+  useEffect(() => {
+    setSelectedTaskIds([]);
+    setBulkActionError("");
+  }, [dayString, isTemplateMode]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setSelectedTaskIds([]);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // Вернулись на вкладку — подтягиваем свежие задачи (могли добавиться,
   // например, через Telegram-бота). Не дёргаем во время редактирования.
   useEffect(() => {
@@ -348,7 +372,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     if (isTemplateMode) return;
 
     const onChange = () => {
-      if (isModalOpen || dragIndex !== null) return;
+      if (isModalOpen || dragIndex !== null || bulkDeleteInFlightRef.current) return;
       fetchDayTasks(dayString).then(setTasks).catch(console.error);
     };
 
@@ -369,11 +393,10 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
     });
 
     if (orderChanged) {
-      const draggedTaskId =
-        dragIndex !== null && tasks[dragIndex] ? tasks[dragIndex].id : null;
+      const movingTaskIds = new Set(draggedTaskIdsRef.current);
 
       newRects.forEach((nextRect, id) => {
-        if (id === draggedTaskId) return;
+        if (movingTaskIds.has(id)) return;
 
         const prevRect = previousTaskRectsRef.current.get(id);
         if (!prevRect) return;
@@ -390,8 +413,8 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
             { transform: "translateY(0)" },
           ],
           {
-            duration: 220,
-            easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
+            duration: 180,
+            easing: "cubic-bezier(0.2, 0.7, 0.3, 1)",
           }
         );
       });
@@ -1123,17 +1146,45 @@ const overdueImportCandidates = useMemo(
     };
   });
 
-  const onDragStart = (e, index) => {
+  const beginTaskDrag = (taskId) => {
+    const currentTasks = dragOrderRef.current || tasks;
+    const index = currentTasks.findIndex((task) => task.id === taskId);
+    const isSelected = selectedTaskIdSet.has(taskId);
+    const taskIds = isSelected
+      ? currentTasks.filter((task) => selectedTaskIdSet.has(task.id)).map((task) => task.id)
+      : [taskId];
+
+    if (!isSelected) setSelectedTaskIds([]);
+
+    draggedTaskIdRef.current = taskId;
+    draggedTaskIdsRef.current = taskIds;
+    dragOrderRef.current = currentTasks;
+    droppedOnTrashRef.current = false;
+    trashActiveRef.current = false;
     dragIndexRef.current = index;
+    setDraggedTaskIds(taskIds);
     setDragIndex(index);
+    setIsTrashActive(false);
+    setBulkActionError("");
     setHoveredTaskId(null);
     setHoverInsertSide(null);
+    return { index, taskIds };
+  };
+
+  const onDragStart = (e, taskId) => {
+    const { index, taskIds } = beginTaskDrag(taskId);
     const card = e.currentTarget.closest(".day-task-item");
     if (card && e.dataTransfer) {
-      const rect = card.getBoundingClientRect();
-      e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
+      const dragPreview = document.createElement("div");
+      dragPreview.className = "day-task-drag-preview";
+      dragPreview.textContent = "Перемещение задач";
+      document.body.appendChild(dragPreview);
+      e.dataTransfer.setDragImage(dragPreview, 24, 18);
+      requestAnimationFrame(() => dragPreview.remove());
       e.dataTransfer.effectAllowed = "move";
-      try { e.dataTransfer.setData("text/plain", String(index)); } catch { /* setData может бросить в некоторых браузерах */ }
+      try {
+        e.dataTransfer.setData("text/plain", JSON.stringify({ index, taskIds }));
+      } catch { /* setData может бросить в некоторых браузерах */ }
     }
   };
 
@@ -1147,108 +1198,190 @@ const overdueImportCandidates = useMemo(
     setHoverInsertSide(null);
   };
 
-  const scheduleSwap = (index) => {
-    dragHoverTargetRef.current = index;
-    const target = tasks[index];
+  const scheduleSwap = (targetId, position) => {
+    const hoverKey = `${targetId}:${position}`;
+    dragHoverTargetRef.current = hoverKey;
+    const target = (dragOrderRef.current || tasks).find((task) => task.id === targetId);
     if (target) setHoveredTaskId(target.id);
     setHoverInsertSide(null);
     dragHoverTimerRef.current = setTimeout(() => {
-      const current = dragIndexRef.current;
       dragHoverTimerRef.current = null;
       dragHoverTargetRef.current = null;
-      if (current === null || current === index) return;
+      const movingIds = draggedTaskIdsRef.current;
+      const draggedTaskId = draggedTaskIdRef.current;
+      if (!draggedTaskId || movingIds.includes(targetId)) return;
 
       setTasks((prev) => {
-        const copy = [...prev];
-        const [moved] = copy.splice(current, 1);
-        copy.splice(index, 0, moved);
-        return copy.map((task, idx) => ({
-          ...task,
-          order_index: idx,
-        }));
+        const next = moveTaskGroup(prev, movingIds, targetId, position);
+        dragOrderRef.current = next;
+        const nextIndex = next.findIndex((task) => task.id === draggedTaskId);
+        dragIndexRef.current = nextIndex;
+        setDragIndex(nextIndex);
+        return next;
       });
 
-      dragIndexRef.current = index;
-      setDragIndex(index);
-      setSwapTick((t) => t + 1);
       setHoveredTaskId(null);
-    }, 40);
+    }, 80);
   };
 
-  const onDragOver = (e, index) => {
+  const onDragOver = (e, targetId) => {
     e.preventDefault();
-    const current = dragIndexRef.current;
-    if (current === null || current === index) {
+    const currentTasks = dragOrderRef.current || tasks;
+    const movingIdSet = new Set(draggedTaskIdsRef.current);
+    const targetIndex = currentTasks.findIndex((task) => task.id === targetId);
+    const movingIndexes = currentTasks
+      .map((task, index) => (movingIdSet.has(task.id) ? index : -1))
+      .filter((index) => index !== -1);
+
+    if (targetIndex === -1 || movingIdSet.has(targetId) || movingIndexes.length === 0) {
       cancelDragHoverTimer();
       return;
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
-    if (current < index && e.clientY < midY) {
-      cancelDragHoverTimer();
-      return;
-    }
-    if (current > index && e.clientY > midY) {
-      cancelDragHoverTimer();
-      return;
+    const firstMovingIndex = Math.min(...movingIndexes);
+    const lastMovingIndex = Math.max(...movingIndexes);
+    let position;
+
+    if (targetIndex < firstMovingIndex) {
+      if (e.clientY > midY) {
+        cancelDragHoverTimer();
+        return;
+      }
+      position = "before";
+    } else if (targetIndex > lastMovingIndex) {
+      if (e.clientY < midY) {
+        cancelDragHoverTimer();
+        return;
+      }
+      position = "after";
+    } else {
+      position = e.clientY < midY ? "before" : "after";
     }
 
-    if (dragHoverTargetRef.current === index) return;
+    const hoverKey = `${targetId}:${position}`;
+    if (dragHoverTargetRef.current === hoverKey) return;
 
     cancelDragHoverTimer();
-    scheduleSwap(index);
+    scheduleSwap(targetId, position);
+  };
+
+  const resetDragState = () => {
+    cancelDragHoverTimer();
+    dragIndexRef.current = null;
+    draggedTaskIdRef.current = null;
+    draggedTaskIdsRef.current = [];
+    dragOrderRef.current = null;
+    trashActiveRef.current = false;
+    setDragIndex(null);
+    setDraggedTaskIds([]);
+    setIsTrashActive(false);
   };
 
   const onDragEnd = async () => {
-    cancelDragHoverTimer();
-    dragIndexRef.current = null;
-    setDragIndex(null);
+    const wasDroppedOnTrash = droppedOnTrashRef.current;
+    const finalTasks = dragOrderRef.current || tasks;
+    const draggedCount = draggedTaskIdsRef.current.length;
+    resetDragState();
+
+    if (wasDroppedOnTrash) {
+      droppedOnTrashRef.current = false;
+      return;
+    }
 
     try {
-      const hasFixed = tasks.some((t) => t.start_time);
+      // Одиночный drag сохраняет прежнее поведение с временными якорями.
+      // Группа остаётся цельным блоком: это важнее автоматической пересортировки.
+      const hasFixed = draggedCount === 1 && finalTasks.some((task) => task.start_time);
       if (hasFixed) {
-        const sorted = sortTasksByTime(tasks);
-        const changed = sorted.some((t, i) => t.id !== tasks[i].id);
+        const sorted = sortTasksByTime(finalTasks);
+        const changed = sorted.some((task, index) => task.id !== finalTasks[index].id);
         if (changed) {
-          await persistReorder(sorted.map((t) => t.id));
-          setTasks(sorted);
+          await persistReorder(sorted.map((task) => task.id));
+          setTasks(sorted.map((task, index) => ({ ...task, order_index: index })));
           return;
         }
       }
-      await persistReorder(tasks.map((t) => t.id));
+      await persistReorder(finalTasks.map((task) => task.id));
     } catch (err) {
       console.error(err);
+      setBulkActionError("Не удалось сохранить новый порядок задач.");
+      if (!isTemplateMode) fetchDayTasks(dayString).then(setTasks).catch(console.error);
     }
   };
 
-  const touchStartPosRef = useRef(null);
-  const touchPendingIndexRef = useRef(null);
+  const deleteDraggedTasks = async () => {
+    const taskIds = draggedTaskIdsRef.current;
+    if (taskIds.length === 0) return;
 
-  const onTouchStart = (e, index) => {
+    const previousTasks = dragOrderRef.current || tasks;
+    const deletedIdSet = new Set(taskIds);
+    droppedOnTrashRef.current = true;
+    resetDragState();
+    setTasks(previousTasks.filter((task) => !deletedIdSet.has(task.id)));
+    setSelectedTaskIds((prev) => prev.filter((id) => !deletedIdSet.has(id)));
+    bulkDeleteInFlightRef.current = true;
+
+    try {
+      const results = await Promise.allSettled(taskIds.map((id) => persistDelete(id)));
+      const failed = results.find((result) => result.status === "rejected");
+      if (failed) throw failed.reason;
+    } catch (err) {
+      console.error(err);
+      setBulkActionError("Не удалось удалить все выбранные задачи. План обновлён с сервера.");
+      if (isTemplateMode) {
+        setTasks(previousTasks);
+        setSelectedTaskIds(taskIds);
+      } else {
+        fetchDayTasks(dayString).then(setTasks).catch(console.error);
+      }
+    } finally {
+      bulkDeleteInFlightRef.current = false;
+    }
+  };
+
+  const onTrashDragOver = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    trashActiveRef.current = true;
+    setIsTrashActive(true);
+  };
+
+  const onTrashDragLeave = (e) => {
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    trashActiveRef.current = false;
+    setIsTrashActive(false);
+  };
+
+  const onTrashDrop = (e) => {
+    e.preventDefault();
+    deleteDraggedTasks();
+  };
+
+  const touchStartPosRef = useRef(null);
+  const touchPendingTaskIdRef = useRef(null);
+
+  const onTouchStart = (e, taskId) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
-    touchPendingIndexRef.current = index;
+    touchPendingTaskIdRef.current = taskId;
   };
 
   const onTouchMove = (e) => {
     const startPos = touchStartPosRef.current;
-    const pendingIndex = touchPendingIndexRef.current;
-    if (startPos === null || pendingIndex === null) return;
+    const pendingTaskId = touchPendingTaskIdRef.current;
+    if (startPos === null || pendingTaskId === null) return;
 
     const touch = e.touches[0];
     if (!touch) return;
 
-    let activeIndex = dragIndexRef.current;
-
-    if (activeIndex === null) {
+    if (dragIndexRef.current === null) {
       const dx = touch.clientX - startPos.x;
       const dy = touch.clientY - startPos.y;
       if (Math.hypot(dx, dy) < 8) return;
-      dragIndexRef.current = pendingIndex;
-      setDragIndex(pendingIndex);
-      activeIndex = pendingIndex;
+      beginTaskDrag(pendingTaskId);
     }
 
     const target = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -1257,39 +1390,74 @@ const overdueImportCandidates = useMemo(
       return;
     }
 
-    const taskEl = target.closest("[data-task-index]");
+    if (target.closest(".day-task-trash")) {
+      cancelDragHoverTimer();
+      trashActiveRef.current = true;
+      setIsTrashActive(true);
+      return;
+    }
+
+    if (trashActiveRef.current) {
+      trashActiveRef.current = false;
+      setIsTrashActive(false);
+    }
+
+    const taskEl = target.closest("[data-task-id]");
     if (!taskEl) {
       cancelDragHoverTimer();
       return;
     }
 
-    const overIndex = Number(taskEl.dataset.taskIndex);
-    if (Number.isNaN(overIndex) || overIndex === activeIndex) {
+    const targetId = Number(taskEl.dataset.taskId);
+    const currentTasks = dragOrderRef.current || tasks;
+    const targetIndex = currentTasks.findIndex((task) => task.id === targetId);
+    const movingIdSet = new Set(draggedTaskIdsRef.current);
+    const movingIndexes = currentTasks
+      .map((task, index) => (movingIdSet.has(task.id) ? index : -1))
+      .filter((index) => index !== -1);
+    if (Number.isNaN(targetId) || targetIndex === -1 || movingIdSet.has(targetId)) {
       cancelDragHoverTimer();
       return;
     }
 
     const rect = taskEl.getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
-    if (activeIndex < overIndex && touch.clientY < midY) {
-      cancelDragHoverTimer();
-      return;
-    }
-    if (activeIndex > overIndex && touch.clientY > midY) {
-      cancelDragHoverTimer();
-      return;
+    const firstMovingIndex = Math.min(...movingIndexes);
+    const lastMovingIndex = Math.max(...movingIndexes);
+    let position;
+
+    if (targetIndex < firstMovingIndex) {
+      if (touch.clientY > midY) return;
+      position = "before";
+    } else if (targetIndex > lastMovingIndex) {
+      if (touch.clientY < midY) return;
+      position = "after";
+    } else {
+      position = touch.clientY < midY ? "before" : "after";
     }
 
-    if (dragHoverTargetRef.current === overIndex) return;
+    const hoverKey = `${targetId}:${position}`;
+    if (dragHoverTargetRef.current === hoverKey) return;
 
     cancelDragHoverTimer();
-    scheduleSwap(overIndex);
+    scheduleSwap(targetId, position);
   };
 
   const onTouchEnd = () => {
     const wasDragging = dragIndexRef.current !== null;
+    const shouldDelete = trashActiveRef.current;
     touchStartPosRef.current = null;
-    touchPendingIndexRef.current = null;
+    touchPendingTaskIdRef.current = null;
+    if (shouldDelete) deleteDraggedTasks();
+    else if (wasDragging) onDragEnd();
+  };
+
+  const onTouchCancel = () => {
+    const wasDragging = dragIndexRef.current !== null;
+    touchStartPosRef.current = null;
+    touchPendingTaskIdRef.current = null;
+    trashActiveRef.current = false;
+    setIsTrashActive(false);
     if (wasDragging) onDragEnd();
   };
 
@@ -1766,6 +1934,7 @@ const overdueImportCandidates = useMemo(
     try {
       await persistDelete(task.id);
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      setSelectedTaskIds((prev) => prev.filter((id) => id !== task.id));
     } catch (err) {
       console.error(err);
     }
@@ -2160,10 +2329,32 @@ const overdueImportCandidates = useMemo(
 
         {viewMode === "list" ? (
           <div className="day-timeline-layout">
-          <ul className={"day-tasks-list" + (dragIndex !== null ? " day-tasks-list--dragging" : "")}>
+          <div className="day-list-pane">
+            {selectedTaskIds.length > 0 && (
+              <div className="day-list-selection-actions">
+                <button
+                  type="button"
+                  className="day-selection-clear"
+                  onClick={() => setSelectedTaskIds([])}
+                >
+                  Снять выделение
+                </button>
+              </div>
+            )}
+            <ul className={"day-tasks-list" + (dragIndex !== null ? " day-tasks-list--dragging" : "")}>
+            {bulkActionError && (
+              <li className="day-task-bulk-error" role="alert">
+                <span>{bulkActionError}</span>
+                <button type="button" onClick={() => setBulkActionError("")} aria-label="Закрыть">
+                  ×
+                </button>
+              </li>
+            )}
             {tasksWithComputedTime.map((t, index) => {
             const nextTask = tasksWithComputedTime[index + 1];
             const isHovered = hoveredTaskId === t.id;
+            const isSelected = selectedTaskIdSet.has(t.id);
+            const isInDraggedGroup = draggedTaskIds.includes(t.id);
 
             return (
               <li key={t.id} className="day-task-hover-wrap">
@@ -2189,6 +2380,8 @@ const overdueImportCandidates = useMemo(
                     (t.status === 1 ? " done" : "") +
                     (t.has_time_conflict ? " day-task-item--conflict" : "") +
                     (isHovered ? " day-task-item--hovered" : "") +
+                    (isSelected ? " day-task-item--selected" : "") +
+                    (isInDraggedGroup ? " day-task-item--group-dragging" : "") +
                     (index === dragIndex ? " day-task-item--dragging" : "") +
                     (remindMode && t.status !== 1 ? " remind-pickable" : "") +
                     (remindMode && t.status !== 1 && t.remind_lead_min != null
@@ -2198,6 +2391,17 @@ const overdueImportCandidates = useMemo(
                   onClick={() => {
                     if (remindMode && t.status !== 1) toggleTaskReminder(t);
                   }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setBulkActionError("");
+                    setSelectedTaskIds((prev) =>
+                      prev.includes(t.id)
+                        ? prev.filter((id) => id !== t.id)
+                        : [...prev, t.id]
+                    );
+                  }}
+                  aria-selected={isSelected}
+                  title={isSelected ? "Выбрано для групповой операции" : "Правый клик — выбрать задачу"}
                   style={{
                     "--task-list-tint": hexToRgba(
                       categories[t.category]?.color,
@@ -2205,23 +2409,21 @@ const overdueImportCandidates = useMemo(
                     ),
                   }}
                   data-task-index={index}
-                  onDragOver={(e) => onDragOver(e, index)}
+                  data-task-id={t.id}
+                  onDragOver={(e) => onDragOver(e, t.id)}
                   onDragEnd={onDragEnd}
                   onMouseMove={(e) => handleTaskMouseMove(e, t.id)}
                   onMouseLeave={handleTaskMouseLeave}
                 >
-                  {index === dragIndex && (
-                    <span key={swapTick} className="day-task-swap-flash" aria-hidden="true" />
-                  )}
                   <div
                     className="day-task-drag-handle"
                     draggable
-                    onDragStart={(e) => onDragStart(e, index)}
+                    onDragStart={(e) => onDragStart(e, t.id)}
                     onMouseEnter={hideInsertHover}
-                    onTouchStart={(e) => onTouchStart(e, index)}
+                    onTouchStart={(e) => onTouchStart(e, t.id)}
                     onTouchMove={onTouchMove}
                     onTouchEnd={onTouchEnd}
-                    onTouchCancel={onTouchEnd}
+                    onTouchCancel={onTouchCancel}
                   >
                     ⋮⋮
                   </div>
@@ -2416,7 +2618,8 @@ const overdueImportCandidates = useMemo(
             {tasksWithComputedTime.length === 0 && (
               <li className="day-task-empty">Пока нет задач на этот день</li>
             )}
-          </ul>
+            </ul>
+          </div>
           {sidePanel}
           </div>
         ) : (
@@ -2655,6 +2858,25 @@ const overdueImportCandidates = useMemo(
           </div>
         )}
       </div>
+
+      {dragIndex !== null && (
+        <div
+          className={`day-task-trash${isTrashActive ? " day-task-trash--active" : ""}`}
+          onDragEnter={onTrashDragOver}
+          onDragOver={onTrashDragOver}
+          onDragLeave={onTrashDragLeave}
+          onDrop={onTrashDrop}
+          role="button"
+          aria-label="Удалить перетаскиваемые задачи"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18M9 6V4h6v2m-9 0 1 15h10l1-15M10 10v7m4-7v7" />
+          </svg>
+          <span>
+            Перетащите сюда, чтобы удалить
+          </span>
+        </div>
+      )}
 
       {timelineSubtaskTaskId && (() => {
         const stTask = tasksWithComputedTime.find(t => t.id === timelineSubtaskTaskId);
