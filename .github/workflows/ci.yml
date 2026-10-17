@@ -98,10 +98,7 @@ jobs:
           /tmp/audit-venv/bin/pip install --quiet \
             -r planner/backend/requirements.txt \
             -r planner/bot/requirements.txt
-          # PYSEC-2026-1325: ecdsa (транзитивно из python-jose), Minerva
-          # timing attack — исправления не существует, апстрим чинить не
-          # планирует. Осознанно принимаем.
-          pip-audit --ignore-vuln PYSEC-2026-1325 \
+          pip-audit \
             --path "$(/tmp/audit-venv/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
 
   security-image:
