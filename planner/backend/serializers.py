@@ -78,6 +78,7 @@ def _user_to_out(user: User) -> UserResponse:
         reminder_repeat_min=getattr(row, "reminder_repeat_min", 30),
         reminder_repeat_max=getattr(row, "reminder_repeat_max", 3),
         goal_deadline_days=getattr(row, "goal_deadline_days", 3),
+        daily_successes_enabled=getattr(row, "daily_successes_enabled", False),
     )
 
 

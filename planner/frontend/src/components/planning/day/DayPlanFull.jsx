@@ -18,10 +18,12 @@ import {
   fetchDayNote,
   saveDayNote,
 } from "../../../api/tasks";
+import TemplatePreview from "../TemplatePreview";
+import TemplateColorPicker from "../TemplateColorPicker";
 import PrioritySelect from "../../forms/PrioritySelect";
 import CategorySelect from "../../forms/CategorySelect";
 import CategoryManagerModal from "../../categories/CategoryManagerModal";
-import { CategoryIcon } from "../../icons";
+import { CategoryIcon, PlusIcon } from "../../icons";
 import {
   addMinutesToTime,
   clockAndDayOffsetToMinutes,
@@ -33,6 +35,7 @@ import {
 import { moveTaskGroup } from "../../../utils/dayTaskDrag";
 
 import DayGoalsPanel from "../../goals/DayGoalsPanel";
+import DailySuccessesButton from "./DailySuccessesButton";
 
 const PRIORITIES = [
   { value: "high", label: "Важный" },
@@ -63,8 +66,7 @@ const TEMPLATE_COLORS = [
   "#D985C7", "#B064C9", "#B97AD6", "#A6A2D8", "#7E88A8", "#95A0BF",
 ];
 
-// Category tints that read fine on white are invisible on dark surfaces —
-// timeline blocks bump their alphas when the dark theme is active.
+// Dark timeline blocks use opaque surfaces; category color stays on edges and icons.
 function isDarkTheme() {
   return document.documentElement.getAttribute("data-theme") === "dark";
 }
@@ -221,6 +223,7 @@ export default function DayPlanFull({ selectedDate, onTemplateModeChange, user }
   const [dragIndex, setDragIndex] = useState(null);
   const [draggedTaskIds, setDraggedTaskIds] = useState([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState([]);
+  const selectionMode = selectedTaskIds.length > 0;
   const [isTrashActive, setIsTrashActive] = useState(false);
   const [bulkActionError, setBulkActionError] = useState("");
   const dragIndexRef = useRef(null);
@@ -1311,11 +1314,12 @@ const overdueImportCandidates = useMemo(
     }
   };
 
-  const deleteDraggedTasks = async () => {
-    const taskIds = draggedTaskIdsRef.current;
+  const deleteDraggedTasks = async (requestedIds) => {
+    if (bulkDeleteInFlightRef.current) return;
+    const taskIds = Array.isArray(requestedIds) ? requestedIds : draggedTaskIdsRef.current;
     if (taskIds.length === 0) return;
 
-    const previousTasks = dragOrderRef.current || tasks;
+    const previousTasks = Array.isArray(requestedIds) ? tasks : dragOrderRef.current || tasks;
     const deletedIdSet = new Set(taskIds);
     droppedOnTrashRef.current = true;
     resetDragState();
@@ -2158,28 +2162,13 @@ const overdueImportCandidates = useMemo(
               <span className="template-edit-banner-label">✎ Шаблон:</span>
               <input
                 className="template-edit-banner-name"
+                aria-label="Название шаблона"
                 type="text"
                 value={editingTemplateName}
                 onChange={(e) => setEditingTemplateName(e.target.value)}
                 placeholder="Название шаблона"
               />
-              <div className="template-edit-banner-palette">
-                {TEMPLATE_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      "category-color-swatch" +
-                      (editingTemplateColor === color
-                        ? " category-color-swatch--active"
-                        : "")
-                    }
-                    style={{ "--swatch-color": color }}
-                    onClick={() => setEditingTemplateColor(color)}
-                    title={color}
-                  />
-                ))}
-              </div>
+              <TemplateColorPicker colors={TEMPLATE_COLORS} value={editingTemplateColor} onChange={setEditingTemplateColor} />
             </div>
             <div className="template-edit-banner-actions">
               <button
@@ -2251,6 +2240,9 @@ const overdueImportCandidates = useMemo(
           </div>
 
           <div className="day-toolbar-right">
+            {!isTemplateMode && user?.daily_successes_enabled && (
+              <DailySuccessesButton key={dayString} day={dayString} categories={categories} />
+            )}
             {!isTemplateMode && (
               <button
                 type="button"
@@ -2260,7 +2252,7 @@ const overdueImportCandidates = useMemo(
                 }
                 title="Режим напоминаний: отметь задачи, о которых напомнить"
                 aria-pressed={remindMode}
-                onClick={() => setRemindMode((prev) => !prev)}
+                onClick={() => { setRemindMode((prev) => !prev); setSelectedTaskIds([]); }}
               >
                 <BellIcon />
               </button>
@@ -2270,7 +2262,7 @@ const overdueImportCandidates = useMemo(
               <button
                 type="button"
                 className={viewMode === "timeline" ? "active" : ""}
-                onClick={() => setViewMode("timeline")}
+                onClick={() => { setViewMode("timeline"); setSelectedTaskIds([]); }}
               >
                 Таймлайн
               </button>
@@ -2330,8 +2322,10 @@ const overdueImportCandidates = useMemo(
         {viewMode === "list" ? (
           <div className="day-timeline-layout">
           <div className="day-list-pane">
-            {selectedTaskIds.length > 0 && (
+            {selectionMode && (
               <div className="day-list-selection-actions">
+                <span>Выбрано: {selectedTaskIds.length}</span>
+                <button type="button" className="secondary-btn" onClick={() => setSelectedTaskIds(tasks.map(t => t.id))}>Выбрать всё</button>
                 <button
                   type="button"
                   className="day-selection-clear"
@@ -2369,7 +2363,7 @@ const overdueImportCandidates = useMemo(
                     onClick={() => openCreateModal(t.id)}
                     aria-label="Добавить задачу перед этой"
                   >
-                    +
+                    <PlusIcon width={16} height={16} />
                   </button>
                 )}
 
@@ -2394,6 +2388,7 @@ const overdueImportCandidates = useMemo(
                   onContextMenu={(e) => {
                     e.preventDefault();
                     setBulkActionError("");
+                    setRemindMode(false);
                     setSelectedTaskIds((prev) =>
                       prev.includes(t.id)
                         ? prev.filter((id) => id !== t.id)
@@ -2431,8 +2426,11 @@ const overdueImportCandidates = useMemo(
                   <label className="day-task-checkbox">
                     <input
                       type="checkbox"
-                      checked={t.status === 1}
-                      onChange={() => cycleStatus(t)}
+                      checked={selectionMode ? isSelected : t.status === 1}
+                      aria-label={`${selectionMode ? "Выбрать" : "Выполнить"} задачу: ${t.title}`}
+                      onChange={() => selectionMode
+                        ? setSelectedTaskIds(prev => prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id])
+                        : cycleStatus(t)}
                     />
                     <span />
                   </label>
@@ -2457,7 +2455,7 @@ const overdueImportCandidates = useMemo(
                         <span>{minutesToDurationString(t.duration_min)}</span>
                       )}
 
-                      {t.priority && <span>[{t.priority}]</span>}
+                      {t.priority && <span>{t.priority === "high" ? "Важная" : "Обычная"}</span>}
 
                       {t.category && (
                         <span>
@@ -2608,7 +2606,7 @@ const overdueImportCandidates = useMemo(
                     }
                     aria-label="Добавить задачу после этой"
                   >
-                    +
+                    <PlusIcon width={16} height={16} />
                   </button>
                 )}
               </li>
@@ -2693,9 +2691,13 @@ const overdueImportCandidates = useMemo(
                           top: `${Math.max(0, item.top)}px`,
                           height: `${item.height}px`,
                           background: isDarkTheme()
-                            ? hexToRgba(color, 0.14)
+                            ? `color-mix(in srgb, ${color} 6%, var(--surface-secondary))`
                             : `linear-gradient(90deg, ${hexToRgba(color, 0.18)} 0%, ${hexToRgba(color, 0.08)} 100%)`,
-                          ...(isDarkTheme() && { borderColor: hexToRgba(color, 0.25) }),
+                          ...(isDarkTheme() && {
+                            borderTopColor: "var(--line)",
+                            borderRightColor: "var(--line)",
+                            borderBottomColor: "var(--line)",
+                          }),
                           borderLeftColor: color,
                         }}
                       >
@@ -2766,10 +2768,12 @@ const overdueImportCandidates = useMemo(
                         top: `${Math.max(0, top)}px`,
                         height: `${height}px`,
                         background: isDarkTheme()
-                          ? hexToRgba(bgColor, isDone ? 0.09 : 0.15)
+                          ? `color-mix(in srgb, ${bgColor} ${isDone ? 4 : 6}%, var(--surface-secondary))`
                           : `linear-gradient(90deg, ${hexToRgba(bgColor, isDone ? 0.14 : 0.2)} 0%, ${hexToRgba(bgColor, isDone ? 0.07 : 0.1)} 100%)`,
                         ...(isDarkTheme() && {
-                          borderColor: hexToRgba(bgColor, isDone ? 0.14 : 0.25),
+                          borderTopColor: "var(--line)",
+                          borderRightColor: "var(--line)",
+                          borderBottomColor: "var(--line)",
                         }),
                         borderLeftColor: isDone ? "#aaaaaa" : color,
                         cursor: "pointer",
@@ -3262,7 +3266,8 @@ const overdueImportCandidates = useMemo(
           onClick={() => { setIsApplyTemplateOpen(false); setEditingTemplateId(null); setApplyTemplateError(""); }}
         >
           <div className="task-modal apply-template-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="save-template-title">Шаблоны</h3>
+            <div className="ui-modal-heading"><h3 className="save-template-title">Шаблоны дня</h3>
+              <button type="button" className="secondary-btn" onClick={() => { setIsApplyTemplateOpen(false); setEditingTemplateId(null); setApplyTemplateError(""); }}>Закрыть</button></div>
             {applyTemplateError && (
               <p className="form-error-banner">{applyTemplateError}</p>
             )}
@@ -3270,11 +3275,13 @@ const overdueImportCandidates = useMemo(
             <ul className="templates-list">
               {templates.map((tpl) => (
                 <li key={tpl.id} className="template-item">
-                  <span
-                    className="template-color-dot"
-                    style={{ backgroundColor: tpl.color }}
-                  />
-                  <span className="template-name">{tpl.name}</span>
+                  <div className="template-info">
+                    <div className="template-title-row">
+                      <span className="template-color-dot" style={{ backgroundColor: tpl.color }} />
+                      <span className="template-name">{tpl.name}</span>
+                    </div>
+                    <TemplatePreview template={tpl} />
+                  </div>
 
                   <div className="template-actions">
                     <button
@@ -3283,7 +3290,7 @@ const overdueImportCandidates = useMemo(
                       disabled={isSaving}
                       onClick={() => applyTemplateWithCheck(tpl)}
                     >
-                      Импорт
+                      Применить
                     </button>
 
                     <button

@@ -204,6 +204,7 @@ class UserResponse(BaseModel):
     reminder_repeat_min: int = 30
     reminder_repeat_max: int = 3
     goal_deadline_days: int = 3
+    daily_successes_enabled: bool = False
 
 
 class TokenOut(BaseModel):

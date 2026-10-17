@@ -14,6 +14,7 @@ from mcp_auth import MCP_RESOURCE_URL
 from observability import setup_observability
 from mcp_server import mcp, mcp_http_app
 from rate_limit import limiter
+from routers import daily_successes
 from routers import auth_routes, categories, day, experimental, feedback, goals, inbox, legal, mcp_oauth, notes, notifications, schedule, statistics, telegram, templates, week
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -64,6 +65,7 @@ app.include_router(statistics.router)
 app.include_router(telegram.router)
 app.include_router(schedule.router)
 app.include_router(experimental.router)
+app.include_router(daily_successes.router)
 app.include_router(mcp_oauth.router)
 
 

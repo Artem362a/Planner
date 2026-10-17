@@ -6,6 +6,9 @@ export default function PasswordField({
   onChange,
   autoComplete,
   required = false,
+  minLength,
+  maxLength,
+  describedBy,
 }) {
   const [visible, setVisible] = useState(false);
   const actionLabel = visible ? "Скрыть пароль" : "Показать пароль";
@@ -19,6 +22,9 @@ export default function PasswordField({
         onChange={onChange}
         autoComplete={autoComplete}
         required={required}
+        minLength={minLength}
+        maxLength={maxLength}
+        aria-describedby={describedBy}
       />
       <button
         type="button"

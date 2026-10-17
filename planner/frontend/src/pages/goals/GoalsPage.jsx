@@ -11,7 +11,7 @@ import {
   toggleGoalFocus,
 } from "../../api/goals";
 import { fetchCategories } from "../../api/tasks";
-import { CategoryIcon } from "../../components/icons";
+import { CategoryIcon, PlusIcon } from "../../components/icons";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
 import GoalStagesEditor from "../../components/goals/GoalStagesEditor";
@@ -634,7 +634,7 @@ export default function GoalsPage() {
                 onClick={openCreateModal}
                 aria-label="Добавить цель"
               >
-                +
+                <PlusIcon />
               </button>
             </section>
 

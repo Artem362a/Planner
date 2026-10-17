@@ -124,7 +124,9 @@ const WeekPlan = ({ selectedDate }) => {
     async function loadImportant() {
       setLoading(true);
       try {
-        const data = await fetchImportantWeekTasks(formatDate(weekStart));
+        const data = await fetchImportantWeekTasks(formatDate(weekStart), {
+          fallbackToPending: true,
+        });
         setTasks(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error("Failed to load important week tasks:", e);
@@ -157,7 +159,7 @@ const WeekPlan = ({ selectedDate }) => {
 
           {!loading && tasks.length === 0 && (
             <div className="week-empty-text">
-              Нет важных задач на этой неделе
+              Нет невыполненных задач на этой неделе
             </div>
           )}
 
@@ -192,6 +194,8 @@ const WeekPlan = ({ selectedDate }) => {
                     <div className="week-mini-task-dates">
                       {isRecurring
                         ? "Повтор"
+                        : task.start_date === task.end_date
+                        ? formatShortDate(task.start_date)
                         : `${formatShortDate(task.start_date)} – ${formatShortDate(
                             task.end_date
                           )}`}

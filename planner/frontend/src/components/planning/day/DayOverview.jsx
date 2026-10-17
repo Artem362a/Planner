@@ -546,14 +546,15 @@ function ImportantToday({ selectedDay }) {
                 const isSmallGroup = t.type === "small-group";
 
                 const bgColor = isDone ? "#aaaaaa" : categoryColor;
-                // On dark surfaces a 9% flat tint (hex "16") is invisible;
-                // use a top-down gradient + tinted border instead.
+                // Opaque dark surfaces keep the hour grid from showing through labels.
                 const isDarkTheme =
                   document.documentElement.getAttribute("data-theme") === "dark";
                 const blockStyle = isDarkTheme
                   ? {
-                      backgroundColor: `${bgColor}24`,
-                      borderColor: `${bgColor}40`,
+                      backgroundColor: `color-mix(in srgb, ${bgColor} ${isDone ? 4 : 6}%, var(--surface-secondary))`,
+                      borderTopColor: "var(--line)",
+                      borderRightColor: "var(--line)",
+                      borderBottomColor: "var(--line)",
                     }
                   : {
                       backgroundColor: `${bgColor}16`,

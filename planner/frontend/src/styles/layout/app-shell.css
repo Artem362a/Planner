@@ -122,6 +122,10 @@
   margin-bottom: 18px;
 }
 
+.app-wrapper--home .week-card .card-header-row {
+  margin-bottom: 8px;
+}
+
 
 .day-open-link,
 .week-open-link {

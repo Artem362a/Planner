@@ -216,6 +216,101 @@ class TestImportantWeekTasks:
         assert "done" not in names
 
 
+class TestHomeWeekTasks:
+    def _list(self, client, headers, **params):
+        response = client.get(
+            "/week-tasks/important",
+            headers=headers,
+            params={"week_start": MONDAY.isoformat(), "fallback_to_pending": True, **params},
+        )
+        assert response.status_code == 200
+        return [task["name"] for task in response.json()]
+
+    def test_switches_to_remaining_tasks_after_important_tasks_are_done(
+        self, client, db, auth_headers, other_auth_headers
+    ):
+        from db import WeekTask
+
+        important_id = _create_week_task(
+            client, auth_headers, name="important", important=True
+        ).json()["id"]
+        ordinary_id = _create_week_task(client, auth_headers, name="ordinary").json()["id"]
+        _create_week_task(client, auth_headers, name="already done", status=1)
+        _create_week_task(client, other_auth_headers, name="another user's task", important=True)
+        _create_week_task(
+            client, auth_headers, name="another week", important=True,
+            start_date="2025-06-09", end_date="2025-06-15",
+        )
+
+        assert self._list(client, auth_headers) == ["important"]
+
+        db.get(WeekTask, important_id).status = 1
+        db.commit()
+        assert self._list(client, auth_headers) == ["ordinary"]
+        # The original endpoint contract remains important-only without the option.
+        assert self._list(client, auth_headers, fallback_to_pending=False) == []
+
+        db.get(WeekTask, ordinary_id).status = 1
+        db.commit()
+        assert self._list(client, auth_headers) == []
+
+    def test_returns_ordinary_tasks_when_week_has_no_important_tasks(self, client, auth_headers):
+        _create_week_task(client, auth_headers, name="ordinary")
+        _create_week_task(client, auth_headers, name="volume", task_type="volume", volume_value=3)
+        _create_week_task(client, auth_headers, name="done", status=1)
+
+        assert self._list(client, auth_headers) == ["ordinary", "volume"]
+
+    def test_completed_recurring_week_unlocks_fallback(self, client, auth_headers):
+        recurring_id = _create_week_task(
+            client, auth_headers, name="important recurring", important=True,
+            task_type="recurring", repeat_days=[0, 2, 4],
+        ).json()["id"]
+        _create_week_task(client, auth_headers, name="ordinary")
+        ordinary_recurring_id = _create_week_task(
+            client, auth_headers, name="ordinary recurring", task_type="recurring", repeat_days=[1, 3],
+        ).json()["id"]
+
+        assert self._list(client, auth_headers) == ["important recurring"]
+        for task_id in (recurring_id, ordinary_recurring_id):
+            response = client.put(
+                f"/week-tasks/{task_id}/week-status", headers=auth_headers,
+                json={"week_start": MONDAY.isoformat(), "status": 1},
+            )
+            assert response.status_code == 200
+
+        assert self._list(client, auth_headers) == ["ordinary"]
+
+        client.put(
+            f"/week-tasks/{recurring_id}/week-status", headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 0},
+        )
+        assert self._list(client, auth_headers) == ["important recurring"]
+
+    def test_missing_recurring_day_keeps_important_task_pending(self, client, db, auth_headers):
+        from db import DayTask
+
+        recurring_id = _create_week_task(
+            client, auth_headers, name="important recurring", important=True,
+            task_type="recurring", repeat_days=[0, 2, 4],
+        ).json()["id"]
+        _create_week_task(client, auth_headers, name="ordinary")
+        client.put(
+            f"/week-tasks/{recurring_id}/week-status", headers=auth_headers,
+            json={"week_start": MONDAY.isoformat(), "status": 1},
+        )
+        db.query(DayTask).filter(
+            DayTask.source_week_task_id == recurring_id, DayTask.day == MONDAY
+        ).delete()
+        db.commit()
+
+        assert self._list(client, auth_headers) == ["important recurring"]
+        # Reading the home widget must not create missing recurring instances.
+        assert db.query(DayTask).filter(
+            DayTask.source_week_task_id == recurring_id, DayTask.day == MONDAY
+        ).count() == 0
+
+
 class TestUpdateWeekTask:
     def test_rename_updates_pending_day_tasks(self, client, db, user, auth_headers):
         from db import DayTask

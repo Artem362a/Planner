@@ -202,6 +202,7 @@ def api_list_week_tasks(
 @router.get("/week-tasks/important", response_model=list[WeekTaskOut])
 def api_list_important_week_tasks(
     week_start: date,
+    fallback_to_pending: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -209,11 +210,10 @@ def api_list_important_week_tasks(
 
     week_end = week_start + timedelta(days=6)
 
-    rows = (
+    query = (
         db.query(WeekTask)
         .filter(
             WeekTask.user_id == current_user_row.id,
-            WeekTask.important == True,  # noqa: E712
             WeekTask.status != 1,
             or_(
                 (WeekTask.start_date >= week_start) & (WeekTask.start_date <= week_end),
@@ -226,8 +226,10 @@ def api_list_important_week_tasks(
             WeekTask.order_index.asc(),
             WeekTask.id.asc(),
         )
-        .all()
     )
+    if not fallback_to_pending:
+        query = query.filter(WeekTask.important == True)  # noqa: E712
+    rows = query.all()
 
     # Recurring-задача с полностью закрытой неделей пропадает из «важного»,
     # как обычная выполненная (у той status=1 отфильтрован выше). День без
@@ -260,10 +262,14 @@ def api_list_important_week_tasks(
             if expected and all(statuses.get(d) == 1 for d in expected):
                 done_week_ids.add(rr.id)
 
+    pending_rows = [row for row in rows if cast(Any, row).id not in done_week_ids]
+    if fallback_to_pending:
+        important_rows = [row for row in pending_rows if cast(Any, row).important]
+        pending_rows = important_rows or pending_rows
+
     return [
         _week_task_model_to_out(row)
-        for row in rows
-        if cast(Any, row).id not in done_week_ids
+        for row in pending_rows
     ]
 
 

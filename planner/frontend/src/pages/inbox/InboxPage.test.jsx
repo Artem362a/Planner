@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import InboxPage from "./InboxPage";
 import { deleteInboxTask, fetchInboxTasks } from "../../api/inbox";
+import { fetchCategories } from "../../api/tasks";
 
 vi.mock("../../api/inbox", () => ({
   fetchInboxTasks: vi.fn(),
@@ -51,4 +52,24 @@ it("keeps the task on deletion failure and removes it after a successful retry",
   expect(deleteInboxTask).toHaveBeenCalledTimes(2);
   expect(container.textContent).not.toContain("Не потерять задачу");
   expect(container.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("hides completed tasks until expanded and combines category and text filters", async () => {
+  fetchInboxTasks.mockResolvedValue([
+    {id:1,title:"Прочесть книгу",category:"study",description:"По математике"},
+    {id:2,title:"Купить книгу",category:"home"},
+    {id:3,title:"Законченная книга",category:"study",completed_at:"2026-10-03T12:00:00Z"},
+  ]);
+  fetchCategories.mockResolvedValue([{key:"study",title:"Учёба"},{key:"home",title:"Дом"}]);
+  await act(async () => root.render(<MemoryRouter><InboxPage /></MemoryRouter>));
+  expect(container.textContent).not.toContain("Законченная книга");
+  await act(async () => container.querySelector('.ui-disclosure').click());
+  expect(container.textContent).toContain("Законченная книга");
+  const category = container.querySelector('.ui-toolbar select');
+  await act(async () => { category.value="study"; category.dispatchEvent(new Event("change",{bubbles:true})); });
+  const search = container.querySelector('input[type="search"]');
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(search,"математике"); search.dispatchEvent(new Event("input",{bubbles:true})); });
+  expect(container.textContent).toContain("Прочесть книгу");
+  expect(container.textContent).not.toContain("Купить книгу");
+  expect(container.textContent).not.toContain("Законченная книга");
 });

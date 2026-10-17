@@ -256,6 +256,7 @@ class User(Base):
     reminder_repeat_max = Column(Integer, nullable=False, default=3, server_default="3")
     # За сколько дней предупреждать о дедлайне цели (0 = выключено).
     goal_deadline_days = Column(Integer, nullable=False, default=3, server_default="3")
+    daily_successes_enabled = Column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class UserSession(Base):
@@ -657,6 +658,18 @@ class DayTask(Base):
     # Sequential tasks can acquire a reminder anchor after midnight even
     # though they have no fixed start_time.
     remind_anchor_day_offset = Column(Integer, nullable=False, default=0, server_default="0")
+
+
+class DailySuccess(Base):
+    __tablename__ = "daily_successes"
+    __table_args__ = {"schema": "planning"}
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False, index=True)
+    day = Column(Date, nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    category_id = Column(Integer, ForeignKey("planning.task_categories.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class DayNote(Base):

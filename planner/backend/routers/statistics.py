@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from db import DayTask, Goal, GoalCheckin, GoalStage, TaskCategory
+from db import DailySuccess, DayTask, Goal, GoalCheckin, GoalStage, TaskCategory
 from dependencies import get_current_user, get_db
 
 router = APIRouter()
@@ -50,6 +50,13 @@ def get_statistics(
         known_start_dates = [
             value for value in (earliest_task_date, earliest_checkin_date) if value
         ]
+        if current_user.daily_successes_enabled:
+            earliest_success_date = db.query(func.min(DailySuccess.day)).filter(
+                DailySuccess.user_id == current_user.id,
+                DailySuccess.day <= selected_end_date,
+            ).scalar()
+            if earliest_success_date:
+                known_start_dates.append(earliest_success_date)
         selected_start_date = min(known_start_dates, default=selected_end_date)
     elif start_date is not None:
         selected_start_date = start_date

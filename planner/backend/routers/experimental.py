@@ -39,6 +39,20 @@ class AllowlistUpdateIn(BaseModel):
     enabled: bool
 
 
+@router.put("/daily-successes")
+def set_daily_successes_enabled(
+    body: AllowlistUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from serializers import _user_to_out
+
+    current_user.daily_successes_enabled = body.enabled
+    db.commit()
+    db.refresh(current_user)
+    return _user_to_out(current_user)
+
+
 class OAuthDecisionIn(BaseModel):
     scopes: list[str] = []
 

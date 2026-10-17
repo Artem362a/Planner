@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 import mcp_server
 from db import (
+    DailySuccess,
     DayTask,
     McpAllowlistEntry,
     McpOAuthAccessToken,
@@ -304,6 +305,12 @@ def test_streamable_http_requires_and_accepts_oauth_token(
     monkeypatch, _txn, client, db, user
 ):
     _allow(db, user)
+    user.daily_successes_enabled = True
+    db.add_all([
+        DailySuccess(user_id=user.id, day=date(2026, 10, 10), text="First success"),
+        DailySuccess(user_id=user.id, day=date(2026, 10, 10), text="Second success"),
+        DailySuccess(user_id=user.id, day=date(2026, 10, 9), text="Outside period"),
+    ])
     oauth_client = McpOAuthClient(
         client_id="transport-client",
         client_name="Transport client",
@@ -370,8 +377,14 @@ def test_streamable_http_requires_and_accepts_oauth_token(
         )
         assert listed.status_code == 200, listed.text
         tool_names = {tool["name"] for tool in listed.json()["result"]["tools"]}
-        assert len(tool_names) == 39
+        assert len(tool_names) == 44
         assert {"create_day_task", "edit_day_task", "delete_day_task", "get_statistics"} <= tool_names
+        assert {"list_daily_successes", "get_daily_successes_summary", "create_daily_success", "edit_daily_success", "delete_daily_success"} <= tool_names
+        tools = {tool["name"]: tool for tool in listed.json()["result"]["tools"]}
+        assert tools["list_daily_successes"]["annotations"]["readOnlyHint"] is True
+        assert tools["get_daily_successes_summary"]["annotations"]["readOnlyHint"] is True
+        assert tools["create_daily_success"]["annotations"]["idempotentHint"] is False
+        assert tools["delete_daily_success"]["annotations"]["destructiveHint"] is True
         assert {
             "delete_account",
             "change_password",
@@ -380,3 +393,39 @@ def test_streamable_http_requires_and_accepts_oauth_token(
             "edit_university_schedule",
             "reply_to_feedback",
         }.isdisjoint(tool_names)
+
+        call_headers = {
+            **transport_headers,
+            "Authorization": f"Bearer {access_secret}",
+            "MCP-Protocol-Version": accepted.json()["result"]["protocolVersion"],
+        }
+        period = {"start_date": "2026-10-10", "end_date": "2026-10-10"}
+        summary = client.post("/mcp/", headers=call_headers, json={
+            "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+            "params": {"name": "get_daily_successes_summary", "arguments": period},
+        })
+        assert summary.status_code == 200, summary.text
+        assert not summary.json()["result"].get("isError", False)
+        assert summary.json()["result"]["structuredContent"] == {
+            "total": 2, "days": 1,
+            "categories": [{"category": None, "total": 2, "days": 1}],
+        }
+        history = client.post("/mcp/", headers=call_headers, json={
+            "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+            "params": {"name": "list_daily_successes", "arguments": {**period, "limit": 1}},
+        })
+        assert history.status_code == 200, history.text
+        result = history.json()["result"]["structuredContent"]
+        assert result["has_more"] is True
+        assert len(result["items"]) == 1
+        assert result["items"][0]["day"] == "2026-10-10"
+        denied_write = client.post("/mcp/", headers=call_headers, json={
+            "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+            "params": {"name": "create_daily_success", "arguments": {
+                "day": "2026-10-10", "text": "Unauthorized creation",
+            }},
+        })
+        assert denied_write.status_code == 200, denied_write.text
+        assert denied_write.json()["result"]["isError"] is True
+        assert "organizer:edit" in denied_write.json()["result"]["content"][0]["text"]
+        assert db.query(DailySuccess).filter(DailySuccess.user_id == user.id).count() == 3

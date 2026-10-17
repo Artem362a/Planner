@@ -14,6 +14,7 @@ function getAudienceLabel(audienceType) {
 export default function NotificationSendPage() {
   const [audienceType, setAudienceType] = useState("single");
   const [users, setUsers] = useState([]);
+  const [userQuery, setUserQuery] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(true);
 
   const [form, setForm] = useState({
@@ -48,6 +49,8 @@ export default function NotificationSendPage() {
     return users.filter((user) => user.role !== "developer");
   }, [users]);
 
+  const filteredUsers = visibleUsers.filter(user => `${user.username} ${user.email}`.toLocaleLowerCase("ru-RU").includes(userQuery.trim().toLocaleLowerCase("ru-RU")));
+  const recipients = audienceType === "all" ? users : visibleUsers.filter(user => audienceType === "single" ? String(user.id) === form.singleUserId : form.selectedUserIds.includes(user.id));
   function handleChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -235,74 +238,19 @@ export default function NotificationSendPage() {
                 />
               </label>
 
-              {audienceType === "single" && (
-                <label>
-                  Пользователь
-                  <select
-                    name="singleUserId"
-                    value={form.singleUserId}
-                    onChange={handleChange}
-                    disabled={loadingUsers}
-                  >
-                    <option value="">
-                      {loadingUsers
-                        ? "Загрузка пользователей..."
-                        : "Выбери пользователя"}
-                    </option>
-
-                    {visibleUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {audienceType === "group" && (
-                <div className="notification-users-block">
-                  <div className="notification-users-title">
-                    Получатели
-                  </div>
-
-                  {loadingUsers ? (
-                    <div className="day-task-empty">Загрузка пользователей...</div>
-                  ) : visibleUsers.length === 0 ? (
-                    <div className="day-task-empty">Пользователи не найдены</div>
-                  ) : (
-                    <div className="notification-users-list">
-                      {visibleUsers.map((user) => {
-                        const checked = form.selectedUserIds.includes(user.id);
-
-                        return (
-                          <label
-                            key={user.id}
-                            className={
-                              "notification-user-item" +
-                              (checked ? " notification-user-item--selected" : "")
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleUser(user.id)}
-                            />
-
-                            <div className="notification-user-content">
-                              <div className="notification-user-name">
-                                {user.username}
-                              </div>
-                              <div className="notification-user-email">
-                                {user.email}
-                              </div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+              {audienceType !== "all" && <div className="notification-users-block">
+                <label>Поиск получателей<input type="search" value={userQuery} onChange={e => setUserQuery(e.target.value)} placeholder="Имя или email" /></label>
+                {loadingUsers ? <p>Загрузка пользователей…</p> : !filteredUsers.length ? <p>Пользователи не найдены</p> : <div className="notification-users-list">
+                  {filteredUsers.map(user => {
+                    const checked = audienceType === "single" ? form.singleUserId === String(user.id) : form.selectedUserIds.includes(user.id);
+                    return <label key={user.id} className={"notification-user-item" + (checked ? " notification-user-item--selected" : "")}>
+                      <input type={audienceType === "single" ? "radio" : "checkbox"} name={audienceType === "single" ? "recipient" : undefined} checked={checked}
+                        onChange={() => audienceType === "single" ? setForm(prev => ({...prev, singleUserId: String(user.id)})) : toggleUser(user.id)} />
+                      <div className="notification-user-content"><div className="notification-user-name">{user.username}</div><div className="notification-user-email">{user.email}</div></div>
+                    </label>;
+                  })}
+                </div>}
+              </div>}
 
               {audienceType === "all" && (
                 <div className="notification-all-note">
@@ -310,6 +258,11 @@ export default function NotificationSendPage() {
                 </div>
               )}
 
+              <section className="notification-preview" aria-label="Предпросмотр уведомления">
+                <div className="ui-modal-heading"><h2>Предпросмотр</h2><span>Получателей: {recipients.length}</span></div>
+                <div className="notification-preview-message"><strong>{form.title.trim() || "Заголовок уведомления"}</strong><p>{form.message.trim() || "Здесь будет текст сообщения"}</p></div>
+                {audienceType !== "all" && recipients.length > 0 && <p className="ui-field-hint">{recipients.map(user => user.username).join(", ")}</p>}
+              </section>
               {error && <div className="auth-error">{error}</div>}
               {success && <div className="feedback-success">{success}</div>}
 
@@ -317,7 +270,7 @@ export default function NotificationSendPage() {
                 <button
                   type="submit"
                   className="primary-btn"
-                  disabled={sending}
+                  disabled={sending || loadingUsers || !recipients.length || !form.title.trim() || !form.message.trim()}
                 >
                   {sending ? "Отправка..." : "Отправить уведомление"}
                 </button>

@@ -12,6 +12,7 @@ import { fetchCategories } from "../../api/tasks";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
 import PrioritySelect from "../../components/forms/PrioritySelect";
+import { PlusIcon } from "../../components/icons";
 
 function formatLocalDate(date) {
   const y = date.getFullYear();
@@ -65,6 +66,9 @@ export default function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [deleteError, setDeleteError] = useState(null);
   const [categories, setCategories] = useState({});
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -201,6 +205,10 @@ export default function InboxPage() {
   }
 
   const weekLabel = assignWeekDate ? formatWeekLabel(getMonday(assignWeekDate)) : "";
+  const filteredTasks = tasks.filter((task) =>
+    (!categoryFilter || task.category === categoryFilter) &&
+    (!search.trim() || `${task.title} ${task.description || ""}`.toLocaleLowerCase("ru-RU").includes(search.trim().toLocaleLowerCase("ru-RU")))
+  );
 
   return (
     <div className="app-wrapper">
@@ -217,6 +225,10 @@ export default function InboxPage() {
           <div className="day-big-card">
             <section className="day-tasks-page">
               {deleteError && <p role="alert">{deleteError}</p>}
+              <div className="ui-toolbar">
+                <label className="ui-search">Поиск задач<input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Название или описание" /></label>
+                <label>Категория<select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}><option value="">Все категории</option>{Object.values(categories).map((category) => <option key={category.key} value={category.key}>{category.title}</option>)}</select></label>
+              </div>
               <div className="page-tasks-wrapper">
                 {loading ? (
                   <div className="inbox-empty">Загрузка…</div>
@@ -228,8 +240,8 @@ export default function InboxPage() {
                     </div>
                   </div>
                 ) : (() => {
-                  const activeTasks = tasks.filter(t => !t.completed_at);
-                  const doneTasks = tasks.filter(t => !!t.completed_at);
+                  const activeTasks = filteredTasks.filter(t => !t.completed_at);
+                  const doneTasks = filteredTasks.filter(t => !!t.completed_at);
 
                   const renderTask = (task, showAssignBtns) => {
                     const catColor = categories[task.category]?.color;
@@ -357,6 +369,7 @@ export default function InboxPage() {
 
                   return (
                     <>
+                      {filteredTasks.length === 0 && <p className="inbox-empty">По этим условиям задач нет</p>}
                       {activeTasks.length > 0 && (
                         <ul className="day-tasks-list">
                           {activeTasks.map(t => renderTask(t, true))}
@@ -365,11 +378,11 @@ export default function InboxPage() {
                       {doneTasks.length > 0 && (
                         <>
                           <div className="inbox-section-divider">
-                            <span>Выполнено · {doneTasks.length}</span>
+                            <button type="button" className="ui-disclosure" aria-expanded={showCompleted} onClick={() => setShowCompleted(!showCompleted)}>Выполнено · {doneTasks.length}</button>
                           </div>
-                          <ul className="day-tasks-list">
+                          {showCompleted && <ul className="day-tasks-list">
                             {doneTasks.map(t => renderTask(t, false))}
-                          </ul>
+                          </ul>}
                         </>
                       )}
                     </>
@@ -379,7 +392,7 @@ export default function InboxPage() {
             </section>
 
             <button className="fab-button" onClick={openCreate} title="Добавить во входящие">
-              +
+              <PlusIcon />
             </button>
           </div>
         </main>

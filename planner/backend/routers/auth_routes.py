@@ -1,4 +1,5 @@
 from __future__ import annotations
+from db import DailySuccess
 
 from datetime import date, datetime, timedelta
 from datetime import time as _time
@@ -478,6 +479,7 @@ def export_account_data(
             "username": row.username,
             "role": row.role,
             "theme": row.theme,
+            "daily_successes_enabled": row.daily_successes_enabled,
             "default_day_start_time": row.default_day_start_time.strftime("%H:%M"),
         },
         "categories": _rows_as_dicts(
@@ -485,6 +487,9 @@ def export_account_data(
         ),
         "day_tasks": _rows_as_dicts(
             db.query(DayTask).filter(DayTask.user_id == uid)
+        ),
+        "daily_successes": _rows_as_dicts(
+            db.query(DailySuccess).filter(DailySuccess.user_id == uid)
         ),
         "day_settings": _rows_as_dicts(
             db.query(DaySettings).filter(DaySettings.user_id == uid)

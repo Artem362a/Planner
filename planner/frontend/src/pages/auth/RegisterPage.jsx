@@ -3,10 +3,6 @@ import { Link } from "react-router-dom";
 import { registerUser, saveToken } from "../../api/auth";
 import PasswordField from "../../components/forms/PasswordField";
 
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  window.location.origin.replace(":5173", ":8000");
-
 export default function RegisterPage() {
   const [form, setForm] = useState({
     email: "",
@@ -58,6 +54,7 @@ export default function RegisterPage() {
             <input
               type="email"
               name="email"
+              autoComplete="email"
               value={form.email}
               onChange={handleChange}
               required
@@ -69,6 +66,8 @@ export default function RegisterPage() {
             <input
               type="text"
               name="username"
+              autoComplete="nickname"
+              minLength={2}
               value={form.username}
               onChange={handleChange}
               required
@@ -77,10 +76,14 @@ export default function RegisterPage() {
 
           <label>
             Пароль
+            <span id="password-requirements" className="ui-field-hint">8–128 символов, минимум 5 разных. Не только цифры; простые слова и последовательности не подходят.</span>
             <PasswordField
               value={form.password}
               onChange={handleChange}
               autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              describedBy="password-requirements"
               required
             />
           </label>
@@ -94,7 +97,7 @@ export default function RegisterPage() {
             <span>
               Я принимаю{" "}
               <a
-                href={`${window.location.origin}/legal/user-agreement.txt`}
+                href="/documents/user-agreement"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -102,11 +105,11 @@ export default function RegisterPage() {
               </a>
             {" "}и{" "}
             <a
-              href={`${window.location.origin}/legal/personal-data-policy.txt`}
+              href="/documents/personal-data-policy"
               target="_blank"
               rel="noreferrer"
             >
-              политикой обработки персональных данных
+              политику обработки персональных данных
             </a>
             </span>
           </label>

@@ -8,6 +8,8 @@
   transform: translateX(-50%);
   width: 24px;
   height: 24px;
+  box-sizing: border-box;
+  padding: 0;
   border-radius: 50%;
   border: 1px solid #d8cff2;
   background: #ffffff;
@@ -20,6 +22,10 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(93, 84, 132, 0.18);
   z-index: 5;
+}
+
+.day-hover-insert svg {
+  flex-shrink: 0;
 }
 
 .day-hover-insert--top {
@@ -218,6 +224,7 @@
 
 .fab-button,
 .fab-add-task {
+  padding: 0;
   background: #8e44ad;
   color: #fff;
   font-size: 30px;

@@ -149,6 +149,7 @@ function AboutPage() {
                 <article className="about-card">
                   <div className="about-card-icon">📅</div>
                   <h3>План на день</h3>
+                  <Link to="/day-plan">Открыть план →</Link>
                   <p>
                     Удобное расписание, задачи по времени, категории и понятная
                     структура на каждый день.
@@ -158,6 +159,7 @@ function AboutPage() {
                 <article className="about-card">
                   <div className="about-card-icon">🗓️</div>
                   <h3>План на неделю</h3>
+                  <Link to="/week-plan">Открыть неделю →</Link>
                   <p>
                     Смотри на всю неделю сразу, распределяй нагрузку и держи в
                     голове общую картину.
@@ -167,6 +169,7 @@ function AboutPage() {
                 <article className="about-card">
                   <div className="about-card-icon">🎯</div>
                   <h3>Цели и фокус</h3>
+                  <Link to="/goals">Перейти к целям →</Link>
                   <p>
                     Не только список дел, но и понимание, ради чего всё это
                     делается.
@@ -174,6 +177,11 @@ function AboutPage() {
                 </article>
               </div>
 
+              <div className="about-grid about-guide">
+                <article className="about-card"><h3>Сначала собери мысли</h3><p>Добавляй идеи и дела во входящие, когда ещё не решил, в какой день ими заняться. Позже перенеси их в план.</p><Link to="/inbox">Открыть входящие →</Link></article>
+                <article className="about-card"><h3>Повторяющиеся планы</h3><p>Сохрани день или неделю как шаблон. Перед применением можно посмотреть его задачи и выбрать подходящий вариант.</p><Link to="/day-plan">Шаблоны в плане дня →</Link></article>
+                <article className="about-card"><h3>Посмотри на результат</h3><p>Сравни выполненные задачи и затраченное время по категориям. Выбери период, который хочешь изучить.</p><Link to="/statistics">Открыть статистику →</Link></article>
+              </div>
               <section className="about-story">
                 <div className="about-story-left">
                   <h2>Зачем это приложение</h2>
@@ -187,14 +195,12 @@ function AboutPage() {
                     Здесь всё собрано в одном месте: день, неделя, шаблоны,
                     категории и цели. Так легче держать порядок и не терять
                     важное.
-                    Картинка, которую вы видите на сайте - это чат жбт нарисовал через программный код лол
                   </p>
                 </div>
 
                 <div className="about-story-right">
                   <div className="about-quote">
                     “Планирование должно помогать жить, а не усложнять её.”
-                    АХАХАХА ЖИТЬ ЭТО КТО ТАКОЙ
                   </div>
                 </div>
               </section>

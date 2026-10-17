@@ -43,15 +43,15 @@ OAUTH_ISSUER_URL = os.getenv("OAUTH_ISSUER_URL", _default_issuer_url).rstrip("/"
 # Scopes are deliberately about planner capabilities, never about raw REST
 # endpoints.  Security/account/Telegram/admin-write operations are absent.
 MCP_SCOPE_LABELS: dict[str, str] = {
-    "planner:read": "Чтение планов, целей, заметок, напоминаний и статистики",
+    "planner:read": "Чтение планов, целей, заметок, успехов, напоминаний и статистики",
     "tasks:create": "Создание дневных, недельных и входящих задач",
     "tasks:edit": "Редактирование, завершение, перенос и упорядочивание задач",
     "tasks:delete": "Удаление задач",
     "goals:create": "Создание целей и этапов",
     "goals:edit": "Редактирование целей, этапов и отметок прогресса",
     "goals:delete": "Удаление целей и этапов",
-    "organizer:edit": "Редактирование заметок, категорий, шаблонов и напоминаний",
-    "organizer:delete": "Удаление категорий, шаблонов и напоминаний",
+    "organizer:edit": "Редактирование заметок, успехов, категорий, шаблонов и напоминаний",
+    "organizer:delete": "Удаление успехов, категорий, шаблонов и напоминаний",
     "schedule:read": "Чтение расписания занятий",
     "feedback:read_all": "Чтение отзывов всех пользователей (только developer)",
 }

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import DayPlanFull from "../../components/planning/day/DayPlanFull";
 import OverdueModal from "../../components/planning/day/OverdueModal";
 import { fetchOverdueTasks } from "../../api/tasks";
+import { formatPlanDate } from "../../utils/dates";
+import { PlusIcon } from "../../components/icons";
 
 function parseLocalDate(dateStr) {
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -102,7 +104,7 @@ function DayPlannerPage({ user }) {
                     <span className="day-header-title-prefix">
                       ПЛАН НА ДЕНЬ{" "}
                     </span>
-                    {selectedDay}
+                    {formatPlanDate(selectedDay, { year: "numeric" })}
                   </>
                 )}
               </span>
@@ -151,8 +153,9 @@ function DayPlannerPage({ user }) {
                 className="fab-add-task"
                 onClick={handleOpenCreateTask}
                 title="Добавить задачу"
+                aria-label="Добавить задачу"
               >
-                +
+                <PlusIcon />
               </button>
             </div>
           </div>

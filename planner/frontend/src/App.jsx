@@ -15,6 +15,7 @@ import WeekPlan from "./components/planning/week/week_plan";
 import Targets from "./components/goals/Targets";
 import DayPlannerPage from "./pages/planning/DayPlannerPage";
 import LoginPage from "./pages/auth/LoginPage";
+import LegalDocumentPage from "./pages/auth/LegalDocumentPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import AboutPage from "./pages/about/AboutPage";
 import FeedbackInboxPage from "./pages/feedback/FeedbackInboxPage";
@@ -30,7 +31,6 @@ import InboxPage from "./pages/inbox/InboxPage";
 import LandingPage from "./pages/landing/LandingPage";
 import ExperimentalFeaturesPage from "./pages/experimental/ExperimentalFeaturesPage";
 import OAuthConsentPage from "./pages/experimental/OAuthConsentPage";
-import { fetchMcpStatus } from "./api/experimental";
 
 function applyTheme(theme) {
   // 'system' was removed from the UI; legacy localStorage values fall back to light.
@@ -84,13 +84,6 @@ const Home = ({ user, onLogout }) => {
     formatLocalDate(new Date())
   );
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const [mcpAvailable, setMcpAvailable] = React.useState(user?.role === "developer");
-
-  React.useEffect(() => {
-    fetchMcpStatus()
-      .then((data) => setMcpAvailable(Boolean(data.enabled) || user?.role === "developer"))
-      .catch(() => setMcpAvailable(user?.role === "developer"));
-  }, [user?.role]);
 
   const selectedDate = React.useMemo(
     () => parseLocalDate(selectedDay),
@@ -177,11 +170,9 @@ const Home = ({ user, onLogout }) => {
             </>
           )}
 
-          {mcpAvailable && (
-            <Link to="/experimental" onClick={() => setMenuOpen(false)}>
-              Экспериментальные функции
-            </Link>
-          )}
+          <Link to="/experimental" onClick={() => setMenuOpen(false)}>
+            Экспериментальные функции
+          </Link>
         </nav>
 
         <div className="side-menu-footer">
@@ -380,6 +371,7 @@ const App = () => {
           }
         />
 
+        <Route path="/documents/:document" element={<LegalDocumentPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route
@@ -413,7 +405,7 @@ const App = () => {
           path="/statistics"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <StatisticsPage />
+              <StatisticsPage user={user} />
             </ProtectedRoute>
           }
         />
@@ -431,7 +423,7 @@ const App = () => {
           path="/experimental"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <ExperimentalFeaturesPage user={user} />
+              <ExperimentalFeaturesPage user={user} onUserUpdate={setUser} />
             </ProtectedRoute>
           }
         />
@@ -470,7 +462,7 @@ const App = () => {
           path="/feedback"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated}>
-              <FeedbackPage />
+              <FeedbackPage user={user} />
             </ProtectedRoute>
           }
         />

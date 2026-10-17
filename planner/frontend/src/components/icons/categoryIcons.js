@@ -47,6 +47,16 @@ export const CATEGORY_ICONS = [
   { key: "pen", label: "Письмо" },
   { key: "rocket", label: "Проект" },
   { key: "folder", label: "Файлы" },
+  { key: "chef-hat", label: "Готовка" },
+  { key: "medical-cross", label: "Медицина" },
+  { key: "shower", label: "Душ" },
+  { key: "repeat", label: "Рутина" },
+  { key: "walk", label: "Прогулка" },
+  { key: "bed", label: "Сон и восстановление" },
+  { key: "train", label: "Транспорт" },
+  { key: "sofa", label: "Спокойный отдых" },
+  { key: "hourglass", label: "Резерв времени" },
+  { key: "book-open", label: "Саморазвитие" },
   { key: "tag", label: "Другое" },
 ];
 

@@ -265,9 +265,10 @@ export async function fetchWeekTasks(weekStart) {
   return await handleResponse(res, "Failed to fetch week tasks");
 }
 
-export async function fetchImportantWeekTasks(weekStart) {
+export async function fetchImportantWeekTasks(weekStart, { fallbackToPending = false } = {}) {
+  const fallbackQuery = fallbackToPending ? "&fallback_to_pending=true" : "";
   const res = await fetch(
-    `${API_URL}/week-tasks/important?week_start=${weekStart}`,
+    `${API_URL}/week-tasks/important?week_start=${weekStart}${fallbackQuery}`,
     {
       headers: getAuthHeaders(),
     }

@@ -12,6 +12,14 @@ const iconProps = {
   "aria-hidden": true,
 };
 
+export function PlusIcon(props) {
+  return (
+    <svg {...iconProps} width={24} height={24} {...props}>
+      <path d="M12 3v18M3 12h18" />
+    </svg>
+  );
+}
+
 const ICON_COMPONENTS = {
   sun: SunIcon,
   moon: MoonIcon,
@@ -61,6 +69,16 @@ const ICON_COMPONENTS = {
   pen: PenIcon,
   rocket: RocketIcon,
   folder: FolderIcon,
+  "chef-hat": ChefHatIcon,
+  "medical-cross": MedicalCrossIcon,
+  shower: ShowerIcon,
+  repeat: RepeatIcon,
+  walk: WalkIcon,
+  bed: BedIcon,
+  train: TrainIcon,
+  sofa: SofaIcon,
+  hourglass: HourglassIcon,
+  "book-open": BookOpenIcon,
   tag: TagIcon,
 };
 
@@ -544,6 +562,94 @@ function ArchiveIcon(props) {
       <rect x="4" y="5" width="16" height="4" rx="1" />
       <path d="M6 9v10h12V9" />
       <path d="M10 13h4" />
+    </svg>
+  );
+}
+
+function ChefHatIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M7 14a4 4 0 1 1 0-8c1-4 9-4 10 0a4 4 0 1 1 0 8v7H7Z" />
+      <path d="M7 17h10M10 12v2M14 12v2" />
+    </svg>
+  );
+}
+
+function MedicalCrossIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z" />
+    </svg>
+  );
+}
+
+function ShowerIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M4 21V7a4 4 0 0 1 7-2.6l1 1" />
+      <path d="m10 8 4-4 4 4-4 4ZM16 14l1 1M19 11l1 1M13 17l1 1M19 17l1 1M16 20l1 1" />
+    </svg>
+  );
+}
+
+function RepeatIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="m17 2 4 4-4 4M21 6H7a4 4 0 0 0-4 4M7 22l-4-4 4-4M3 18h14a4 4 0 0 0 4-4" />
+    </svg>
+  );
+}
+
+function WalkIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <circle cx="14" cy="4" r="2" />
+      <path d="m7 12 3-4 4 1 3 4h4M14 9l-3 6 5 3 1 4M11 15l-3 7" />
+    </svg>
+  );
+}
+
+function BedIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M3 18v3M21 18v3M5 12V5h14v7M3 18v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4Z" />
+      <rect x="8" y="8" width="8" height="4" rx="1" />
+    </svg>
+  );
+}
+
+function TrainIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <rect x="5" y="3" width="14" height="16" rx="4" />
+      <path d="M5 7h14M5 12h14M12 7v5M8 19l-2 3M16 19l2 3M9 16h.01M15 16h.01" />
+    </svg>
+  );
+}
+
+function SofaIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M5 10V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M5 19v2M19 19v2" />
+      <path d="M5 14v-2a2 2 0 0 0-4 0v5a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v2ZM12 4v10" />
+    </svg>
+  );
+}
+
+function HourglassIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M5 3h14M5 21h14M7 3v3a6 6 0 0 0 3 5l2 1 2-1a6 6 0 0 0 3-5V3M7 21v-3a6 6 0 0 1 3-5l2-1 2 1a6 6 0 0 1 3 5v3" />
+      <path d="M9 18h6" />
+    </svg>
+  );
+}
+
+function BookOpenIcon(props) {
+  return (
+    <svg {...iconProps} {...props}>
+      <path d="M12 6C9 4 6 4 3 5v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v15" />
+      <path d="M6 9h3M6 13h3M15 9h3M15 13h3" />
     </svg>
   );
 }

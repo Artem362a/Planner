@@ -2,33 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { submitFeedback, fetchMyFeedbackList } from "../../api/feedback";
 
-const FEEDBACK_CATEGORIES = [
-  "План на день",
-  "План на неделю",
-  "Календарь",
-  "Цели",
-  "Шаблоны",
-  "Категории",
-  "Авторизация",
-  "Интерфейс",
-  "Другое",
-];
-
-const FEEDBACK_TYPES = ["Баг", "Идея", "Вопрос", "Другое"];
+import { FEEDBACK_CATEGORIES, FEEDBACK_TYPES, FEEDBACK_STATUSES, filterFeedback } from "../../utils/feedback";
+import { formatUtcDateTime } from "../../utils/dates";
 
 const MAX_SCREENSHOTS = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-function formatDateTime(value) {
-  if (!value) return "";
-  return new Date(value).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const formatDateTime = formatUtcDateTime;
 
 function getStatusLabel(status) {
   if (status === "resolved") return "Решено";
@@ -36,14 +16,14 @@ function getStatusLabel(status) {
   return "Новое";
 }
 
-export default function FeedbackPage() {
+export default function FeedbackPage({ user }) {
   const [activeTab, setActiveTab] = useState("new");
 
   const [form, setForm] = useState({
     category: "План на день",
     type: "Идея",
-    name: "",
-    contact: "",
+    name: user?.username || "",
+    contact: user?.email || "",
     message: "",
   });
 
@@ -59,6 +39,10 @@ export default function FeedbackPage() {
   const [myItems, setMyItems] = useState([]);
   const [myLoading, setMyLoading] = useState(false);
   const [myError, setMyError] = useState("");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyStatus, setHistoryStatus] = useState("all");
+  const [historyLimit, setHistoryLimit] = useState(20);
+  const filteredHistory = useMemo(() => filterFeedback(myItems, { query: historyQuery, status: historyStatus }), [myItems, historyQuery, historyStatus]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -151,7 +135,7 @@ export default function FeedbackPage() {
       });
 
       setSuccess("Обращение отправлено");
-      setForm({ category: "План на день", type: "Идея", name: "", contact: "", message: "" });
+      setForm({ category: "План на день", type: "Идея", name: user?.username || "", contact: user?.email || "", message: "" });
       setFeedbackConsent(false);
       previewUrls.forEach((url) => URL.revokeObjectURL(url));
       setScreenshots([]);
@@ -319,7 +303,7 @@ export default function FeedbackPage() {
                     Я даю согласие на обработку персональных данных, указанных в обращении, в целях
                     рассмотрения обращения и направления ответа.{" "}
                     <a
-                      href={`${window.location.origin}/legal/feedback-consent.txt`}
+                      href="/documents/feedback-consent"
                       target="_blank"
                       rel="noreferrer"
                     >
@@ -360,17 +344,21 @@ export default function FeedbackPage() {
                   </div>
                 </div>
 
+                <div className="ui-toolbar">
+                  <label className="ui-search">Поиск обращений<input type="search" value={historyQuery} onChange={e => { setHistoryQuery(e.target.value); setHistoryLimit(20); }} placeholder="Текст обращения или ответа" /></label>
+                  <label>Статус<select value={historyStatus} onChange={e => { setHistoryStatus(e.target.value); setHistoryLimit(20); }}><option value="all">Все</option><option value="active">Новые и в работе</option>{Object.entries(FEEDBACK_STATUSES).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                </div>
                 {myLoading && <div className="day-task-empty">Загрузка...</div>}
 
                 {!myLoading && myError && <div className="auth-error">{myError}</div>}
 
-                {!myLoading && !myError && myItems.length === 0 && (
-                  <div className="day-task-empty">У тебя пока нет обращений</div>
+                {!myLoading && !myError && filteredHistory.length === 0 && (
+                  <div className="day-task-empty">{myItems.length ? "По этим условиям обращений нет" : "У тебя пока нет обращений"}</div>
                 )}
 
-                {!myLoading && !myError && myItems.length > 0 && (
+                {!myLoading && !myError && filteredHistory.length > 0 && (
                   <div className="feedback-inbox-list">
-                    {myItems.map((item) => (
+                    {filteredHistory.slice(0, historyLimit).map((item) => (
                       <article key={item.id} className="feedback-inbox-card">
                         <div className="feedback-inbox-top">
                           <div className="feedback-inbox-tags">
@@ -424,6 +412,7 @@ export default function FeedbackPage() {
                     ))}
                   </div>
                 )}
+                {!myLoading && !myError && filteredHistory.length > 0 && <div className="ui-pagination"><span>Показано {Math.min(historyLimit, filteredHistory.length)} из {filteredHistory.length}</span>{historyLimit < filteredHistory.length && <button type="button" className="secondary-btn" onClick={() => setHistoryLimit(value => value + 20)}>Показать ещё</button>}</div>}
               </div>
             )}
           </div>

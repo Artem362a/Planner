@@ -1,42 +1,33 @@
 /* =========================
    DARK THEME
-   ---
-   Neutral graphite surfaces (hue ~255, sat <10%) with violet reserved
-   for accents. Chips / active states use translucent accent —
-   rgba(154, 134, 255, a) — so they sit naturally on any surface.
-
-   Surface ramp (dark → light):
-     page bg     = #121118
-     input/track = #131217
-     card-2      = #1a1920  (list items, side panels)
-     card        = #1d1c24  (cards, modals, popovers)
-     hover       = #232230
-     line        = #262530 / strong #33313f
-     text main   = #e4e2ed
-     text soft   = #a5a2b5
-     text muted  = #706d80
-     accent      = #a48bff, chip text #c8beff / #b4a8fa
+   Graphite surfaces with distinct page, card and inset levels.
+   Violet stays reserved for accents and selected states.
    ========================= */
 
 :root[data-theme="dark"] {
-  --bg-dark: #121118;
-  --bg-app: #121118;
-  --panel-bg: #16151c;
+  --bg-dark: #0e0f14;
+  --bg-app: #0e0f14;
+  --panel-bg: #15161d;
   --header-bg: linear-gradient(90deg, #372c66 0%, #27214b 100%);
-  --card-bg: #1d1c24;
-  --text-main: #e4e2ed;
-  --text-soft: #a5a2b5;
-  --text-muted: #7d7990;
-  --line: #262530;
-  --line-strong: #33313f;
+  --card-bg: #1d1f29;
+  --surface-secondary: #171922;
+  --surface-input: #101117;
+  --surface-hover: #292c39;
+  --surface-raised: #242632;
+  --text-main: #f1f2f8;
+  --text-soft: #c4c8d9;
+  --text-muted: #a1a7bd;
+  --text-on-accent: #15111f;
+  --line: #383c4d;
+  --line-strong: #50566e;
   --accent: #a48bff;
   --accent-2: #c77fea;
   --accent-soft: rgba(154, 134, 255, 0.25);
   --danger: #ef8585;
   --success: #93dca0;
-  --shadow-main: 0 18px 40px rgba(0, 0, 0, 0.7);
-  --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.45);
-  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-main: 0 18px 40px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 6px 16px rgba(0, 0, 0, 0.32);
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.32);
 }
 
 :root[data-theme="dark"] body {
@@ -45,16 +36,29 @@
 }
 
 :root[data-theme="dark"] * {
-  scrollbar-color: #393746 #121116;
+  scrollbar-color: var(--line) var(--surface-input);
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-track {
-  background: #121116;
+  background: var(--surface-input);
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-thumb {
-  background: #393746;
+  background: var(--line);
 }
 :root[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
-  background: #484659;
+  background: var(--line-strong);
+}
+
+:root[data-theme="dark"] .template-edit-banner {
+  background: var(--surface-secondary);
+}
+
+:root[data-theme="dark"] .day-start-tpl-check {
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .day-start-tpl-check input {
+  color-scheme: dark;
+  accent-color: var(--accent);
 }
 
 /* ---------- App shell ---------- */
@@ -74,13 +78,14 @@
 
 :root[data-theme="dark"] .card {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .card h2 {
   color: var(--text-main);
+  font-weight: 600;
 }
 
 :root[data-theme="dark"] .day-open-link,
@@ -97,12 +102,12 @@
 /* ---------- Side menu ---------- */
 
 :root[data-theme="dark"] .side-menu {
-  background: linear-gradient(180deg, #1a1920 0%, #14131a 100%);
+  background: linear-gradient(180deg, var(--surface-secondary) 0%, var(--panel-bg) 100%);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .side-menu-header {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: var(--line);
 }
 
 :root[data-theme="dark"] .side-menu-user-name,
@@ -119,7 +124,7 @@
 }
 
 :root[data-theme="dark"] .side-menu-logout {
-  background: #232230;
+  background: var(--surface-hover);
   color: #c8beff;
 }
 
@@ -140,7 +145,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-mode {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
 }
 
@@ -162,7 +167,7 @@
 }
 
 :root[data-theme="dark"] .important-task-item {
-  background: #1a1920;
+  background: var(--surface-secondary);
   box-shadow: none;
   border: 1px solid var(--line);
 }
@@ -182,7 +187,7 @@
 }
 
 :root[data-theme="dark"] .important-checkbox span {
-  border-color: #4b4860;
+  border-color: var(--line-strong);
 }
 
 :root[data-theme="dark"] .day-overview-timeline-hour {
@@ -190,7 +195,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-timeline-track {
-  background: #131217;
+  background: var(--surface-input);
   border-left-color: var(--line);
 }
 
@@ -203,17 +208,28 @@
 }
 
 :root[data-theme="dark"] .day-overview-midnight span {
-  background: #18171d;
+  background: var(--surface-input);
   color: #c9bcff;
 }
 
 :root[data-theme="dark"] .day-overview-timeline-item {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
+}
+
+:root[data-theme="dark"] .day-overview-timeline-item.is-done {
+  opacity: 1;
 }
 
 :root[data-theme="dark"] .day-overview-timeline-title {
   color: var(--text-main);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+:root[data-theme="dark"] .day-overview-timeline-meta {
+  font-size: 11px;
 }
 
 :root[data-theme="dark"] .day-overview-timeline-meta,
@@ -236,7 +252,7 @@
 }
 
 :root[data-theme="dark"] .day-overview-now-dot {
-  border-color: #1d1c24;
+  border-color: var(--card-bg);
 }
 
 /* ---------- Month calendar ---------- */
@@ -257,7 +273,7 @@
 }
 :root[data-theme="dark"] .custom-month-cell.other {
   background: transparent;
-  color: #46434f;
+  color: var(--text-muted);
 }
 :root[data-theme="dark"] .custom-month-cell:hover {
   background: rgba(154, 134, 255, 0.1);
@@ -278,7 +294,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .week-mini-task-card {
-  background: #1a1920;
+  background: var(--surface-secondary);
   box-shadow: none;
   border: 1px solid var(--line);
 }
@@ -290,10 +306,10 @@
   color: #c8beff;
 }
 :root[data-theme="dark"] .week-mini-track {
-  background: #121116;
+  background: var(--surface-input);
 }
 :root[data-theme="dark"] .week-mini-separator {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--line);
 }
 :root[data-theme="dark"] .week-empty-text {
   color: var(--text-muted);
@@ -328,7 +344,7 @@
 }
 
 :root[data-theme="dark"] .account-profile-band {
-  background: linear-gradient(135deg, #252336 0%, #1d1c24 100%);
+  background: linear-gradient(135deg, #252336 0%, var(--card-bg) 100%);
   border-bottom-color: var(--line);
 }
 
@@ -359,7 +375,7 @@
 }
 
 :root[data-theme="dark"] .account-field input {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -370,8 +386,8 @@
 }
 
 :root[data-theme="dark"] .account-upload {
-  background: #131217;
-  border-color: #3c3a4c;
+  background: var(--surface-input);
+  border-color: var(--line-strong);
   color: #b4a8fa;
 }
 
@@ -385,25 +401,25 @@
 :root[data-theme="dark"] .account-primary-btn--secondary {
   background: transparent;
   color: #b4a8fa;
-  border-color: #3c3a4c;
+  border-color: var(--line-strong);
 }
 :root[data-theme="dark"] .account-primary-btn--secondary:hover {
-  background: #232230;
+  background: var(--surface-hover);
 }
 
 :root[data-theme="dark"] .account-status {
-  background: #232230;
+  background: var(--surface-hover);
   color: #b4a8fa;
 }
 
 :root[data-theme="dark"] .account-theme-btn {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .account-theme-btn:hover {
-  background: #1d1c24;
-  border-color: #3c3a4c;
+  background: var(--card-bg);
+  border-color: var(--line-strong);
 }
 :root[data-theme="dark"] .account-theme-btn--active {
   background: rgba(154, 134, 255, 0.25);
@@ -413,16 +429,16 @@
 
 :root[data-theme="dark"] .account-avatar-option--active {
   border-color: var(--accent);
-  background: #232230;
+  background: var(--surface-hover);
 }
 
 :root[data-theme="dark"] .account-session {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .account-session--current {
-  background: #232230;
-  border-color: #3c3a4c;
+  background: var(--surface-hover);
+  border-color: var(--line-strong);
 }
 :root[data-theme="dark"] .account-session-title {
   color: var(--text-main);
@@ -432,11 +448,11 @@
 }
 :root[data-theme="dark"] .account-session-revoke {
   background: transparent;
-  border-color: #3c3a4c;
+  border-color: var(--line-strong);
   color: #b4a8fa;
 }
 :root[data-theme="dark"] .account-session-revoke:hover {
-  background: #232230;
+  background: var(--surface-hover);
   border-color: var(--accent);
 }
 
@@ -461,13 +477,13 @@
 
 :root[data-theme="dark"] .day-big-card {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .day-view-toggle {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   box-shadow: none;
 }
@@ -484,7 +500,7 @@
 /* ---------- Bell / reminder mode (day plan) ---------- */
 
 :root[data-theme="dark"] .day-remind-mode-btn {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: var(--text-soft);
   box-shadow: none;
@@ -497,7 +513,7 @@
 :root[data-theme="dark"] .day-remind-mode-btn--active:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--panel-bg);
+  color: var(--text-on-accent);
 }
 
 :root[data-theme="dark"] .day-remind-mode-hint {
@@ -574,13 +590,56 @@
 }
 
 :root[data-theme="dark"] .day-timeline-task {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
 }
 
+:root[data-theme="dark"] .day-timeline-task--done {
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .day-overview-timeline-item.is-done .day-overview-timeline-title,
+:root[data-theme="dark"] .day-timeline-task--done .day-timeline-title,
+:root[data-theme="dark"] .day-overview-timeline-attached.is-done .day-overview-attached-title,
+:root[data-theme="dark"] .day-overview-sg-task.is-done .day-overview-sg-task-title,
+:root[data-theme="dark"] .day-timeline-attached-task.is-done .day-timeline-small-title {
+  opacity: 1;
+  color: var(--text-muted);
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+}
+
 :root[data-theme="dark"] .day-timeline-title {
   color: var(--text-main);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+:root[data-theme="dark"] .day-timeline-task--compact .day-timeline-title,
+:root[data-theme="dark"] .day-timeline-task--with-attached .day-timeline-title,
+:root[data-theme="dark"] .day-timeline-task--small-group .day-timeline-title {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+:root[data-theme="dark"] .day-timeline-subtask-badge,
+:root[data-theme="dark"] .subtasks-count-btn {
+  color: #c8beff;
+  font-weight: 500;
+}
+
+:root[data-theme="dark"] .day-timeline-subtask-badge {
+  background: rgba(154, 134, 255, 0.16);
+}
+
+:root[data-theme="dark"] .day-timeline-subtask-badge:hover {
+  background: rgba(154, 134, 255, 0.25);
+}
+
+:root[data-theme="dark"] .day-overview-timeline-meta-time {
+  color: var(--text-soft);
 }
 
 :root[data-theme="dark"] .day-timeline-attached-task {
@@ -609,7 +668,7 @@
 }
 
 :root[data-theme="dark"] .day-timeline-popover {
-  background: #1d1c24;
+  background: var(--card-bg);
   border-color: var(--line);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
 }
@@ -625,26 +684,36 @@
 :root[data-theme="dark"] .day-timeline-empty {
   border-color: var(--line);
   color: var(--text-muted);
-  background: #131217;
+  background: var(--surface-input);
 }
 
 :root[data-theme="dark"] .day-side-panel {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
+  min-height: 0;
+  align-self: start;
+  border-radius: 14px;
+  padding: 18px;
 }
 
 :root[data-theme="dark"] .day-side-title-row h3 {
   color: var(--text-main);
+  font-weight: 500;
 }
 :root[data-theme="dark"] .day-side-title-row span {
   color: #b4a8fa;
 }
 
 :root[data-theme="dark"] .day-side-section textarea {
-  background: #131217;
-  border-color: var(--line-strong);
+  background: var(--surface-input);
+  border-color: var(--line);
   color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.5;
+}
+:root[data-theme="dark"] .day-side-section textarea::placeholder {
+  color: var(--text-muted);
 }
 :root[data-theme="dark"] .day-side-section textarea:focus {
   border-color: var(--accent);
@@ -652,7 +721,7 @@
 }
 
 :root[data-theme="dark"] .day-goals-placeholder {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
   color: var(--text-muted);
 }
@@ -665,13 +734,13 @@
 }
 
 :root[data-theme="dark"] .day-goals-quick-form input {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .day-goals-card {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
 }
@@ -689,23 +758,27 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .day-goals-upcoming-item {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
 }
 @media (hover: hover) {
   :root[data-theme="dark"] .day-goals-upcoming-item:hover {
-    background: #232230;
+    background: var(--surface-hover);
     border-color: var(--line-strong);
   }
 }
 :root[data-theme="dark"] .day-goals-upcoming-title {
   color: var(--text-main);
+  font-weight: 500;
+  line-height: 1.4;
 }
 :root[data-theme="dark"] .day-goals-upcoming-progress {
   color: #b6a6f0;
 }
 :root[data-theme="dark"] .day-goals-upcoming-meta {
   color: var(--text-muted);
+  font-weight: 400;
+  line-height: 1.45;
 }
 :root[data-theme="dark"] .day-goals-upcoming-label--overdue {
   color: #f0a0ab;
@@ -727,31 +800,79 @@
 /* Day task list view */
 
 :root[data-theme="dark"] .day-task-item {
-  background: #1a1920;
+  background: var(--surface-secondary);
   box-shadow: none;
   border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+:root[data-theme="dark"] .day-task-item--hovered:not(.day-task-item--selected) {
+  background: var(--card-bg);
+  border-color: var(--line-strong);
+  transform: none;
 }
 
 :root[data-theme="dark"] .day-task-title {
   color: var(--text-main);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+:root[data-theme="dark"] .day-task-item.done {
+  opacity: 1;
 }
 :root[data-theme="dark"] .day-task-item.done .day-task-title {
   color: var(--text-muted);
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+}
+:root[data-theme="dark"] .day-task-meta {
+  margin-top: 6px;
+  gap: 6px 12px;
 }
 :root[data-theme="dark"] .day-task-meta span {
-  color: var(--text-soft);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+:root[data-theme="dark"] .day-task-meta .day-task-conflict-tag {
+  background: rgba(239, 133, 133, 0.12);
+  color: var(--danger);
 }
 :root[data-theme="dark"] .day-task-time {
-  background: rgba(154, 134, 255, 0.13);
+  background: rgba(154, 134, 255, 0.08);
+  border: 1px solid rgba(154, 134, 255, 0.2);
   color: #c8beff;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 :root[data-theme="dark"] .day-task-time--fixed {
-  background: #3a3118;
-  color: #ffd866;
+  background: rgba(228, 199, 139, 0.08);
+  border-color: rgba(228, 199, 139, 0.24);
+  color: #e4c78b;
+}
+
+:root[data-theme="dark"] .day-lesson-type {
+  background: rgba(154, 134, 255, 0.12);
+  color: #c8beff;
+  font-size: 11px;
+}
+:root[data-theme="dark"] .day-lesson-type--practice {
+  background: rgba(142, 194, 255, 0.1);
+  color: #8ec2ff;
+}
+:root[data-theme="dark"] .day-lesson-type--lab {
+  background: rgba(228, 199, 139, 0.1);
+  color: #e4c78b;
+}
+:root[data-theme="dark"] .day-lesson-type--other {
+  background: var(--surface-hover);
+  color: var(--text-soft);
 }
 :root[data-theme="dark"] .day-task-checkbox span {
-  background: #131217;
-  border-color: #4b4860;
+  background: var(--surface-input);
+  border-color: var(--line-strong);
 }
 :root[data-theme="dark"] .day-task-inline-add {
   background: rgba(154, 134, 255, 0.13);
@@ -764,7 +885,7 @@
 /* Overdue modal */
 
 :root[data-theme="dark"] .overdue-modal {
-  background: #131217;
+  background: var(--surface-input);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
 }
 :root[data-theme="dark"] .od-header {
@@ -779,7 +900,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .od-dismiss-all:hover {
-  background: #232230;
+  background: var(--surface-hover);
   color: #c8beff;
 }
 :root[data-theme="dark"] .od-close {
@@ -790,11 +911,11 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-section-count {
-  background: #232230;
+  background: var(--surface-hover);
   color: #b6a6f0;
 }
 :root[data-theme="dark"] .od-close:hover {
-  background: #232230;
+  background: var(--surface-hover);
   color: #c8beff;
 }
 :root[data-theme="dark"] .od-empty,
@@ -802,7 +923,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .od-card {
-  background: #1d1c24;
+  background: var(--card-bg);
   border-color: var(--line);
   box-shadow: none;
 }
@@ -824,14 +945,14 @@
   background: rgba(154, 134, 255, 0.36);
 }
 :root[data-theme="dark"] .od-btn--ignore {
-  background: #232230;
+  background: var(--surface-hover);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .od-btn--ignore:hover {
   background: rgba(154, 134, 255, 0.13);
 }
 :root[data-theme="dark"] .od-chip {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
@@ -842,7 +963,7 @@
   color: #eae8f4;
 }
 :root[data-theme="dark"] .od-date-input {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -867,7 +988,7 @@
 
 :root[data-theme="dark"] .target-widget-item,
 :root[data-theme="dark"] .goals-create-card {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
 }
@@ -908,7 +1029,7 @@
 /* ---------- Statistics page ---------- */
 
 :root[data-theme="dark"] .stats-period-pill {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
@@ -922,7 +1043,7 @@
 }
 
 :root[data-theme="dark"] .day-task-item--selected {
-  background: #211d2d;
+  background: color-mix(in srgb, var(--surface-secondary), var(--accent) 16%);
   box-shadow:
     inset 0 0 0 2px #a58bf0,
     0 8px 24px rgba(0, 0, 0, 0.35);
@@ -970,7 +1091,7 @@
   border-color: rgba(255, 255, 255, 0.8);
 }
 :root[data-theme="dark"] .stats-period-arrow {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: #c8beff;
 }
@@ -982,7 +1103,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .stats-custom-period {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .stats-custom-period label {
@@ -990,7 +1111,7 @@
 }
 :root[data-theme="dark"] .stats-custom-period input {
   color-scheme: dark;
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -999,7 +1120,7 @@
 }
 
 :root[data-theme="dark"] .stats-card {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
 }
@@ -1016,7 +1137,7 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .stats-chart-wrap {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .stats-cat-label {
@@ -1031,7 +1152,7 @@
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .stats-cat-chip--off {
-  background: #131217;
+  background: var(--surface-input);
   opacity: 0.45;
 }
 :root[data-theme="dark"] .stats-cat-chip--reset {
@@ -1041,7 +1162,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .stats-metric-toggle {
-  background: #131217;
+  background: var(--surface-input);
   border: 1px solid var(--line);
 }
 :root[data-theme="dark"] .stats-metric-btn {
@@ -1068,7 +1189,7 @@
   border-color: #2f5940;
 }
 :root[data-theme="dark"] .stats-goals-box--archived {
-  background: #1b1a21;
+  background: var(--surface-secondary);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .stats-goals-val {
@@ -1108,7 +1229,7 @@
 :root[data-theme="dark"] .about-story-left,
 :root[data-theme="dark"] .about-story-right {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -1131,7 +1252,7 @@
   color: #c8beff;
 }
 :root[data-theme="dark"] .about-quote {
-  background: linear-gradient(135deg, #232230 0%, #1e1c30 100%);
+  background: linear-gradient(135deg, var(--surface-hover) 0%, #1e1c30 100%);
   color: #b4a8fa;
 }
 
@@ -1140,7 +1261,7 @@
 :root[data-theme="dark"] .feedback-page-card,
 :root[data-theme="dark"] .feedback-admin-card {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -1162,7 +1283,7 @@
 :root[data-theme="dark"] .feedback-form input:not([type="checkbox"]),
 :root[data-theme="dark"] .feedback-form select,
 :root[data-theme="dark"] .feedback-textarea {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1180,7 +1301,7 @@
 /* Inbox cards (FeedbackInboxPage + my feedback) */
 :root[data-theme="dark"] .feedback-inbox-card,
 :root[data-theme="dark"] .feedback-stat-card {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
   color: var(--text-main);
@@ -1196,7 +1317,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .feedback-inbox-message {
-  background: #131217;
+  background: var(--surface-input);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .feedback-inbox-tag,
@@ -1206,7 +1327,7 @@
   color: #c8beff;
 }
 :root[data-theme="dark"] .feedback-inbox-tag--soft {
-  background: #232230;
+  background: var(--surface-hover);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .feedback-inbox-tag--new,
@@ -1231,7 +1352,7 @@
   border-top-color: var(--line);
 }
 :root[data-theme="dark"] .feedback-reply-view {
-  background: #131217;
+  background: var(--surface-input);
 }
 :root[data-theme="dark"] .feedback-reply-text,
 :root[data-theme="dark"] .feedback-user-reply-text {
@@ -1246,7 +1367,7 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .feedback-reply-textarea {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1263,12 +1384,12 @@
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .feedback-upload-btn {
-  background: #131217;
-  border-color: #3c3a4c;
+  background: var(--surface-input);
+  border-color: var(--line-strong);
   color: #b4a8fa;
 }
 :root[data-theme="dark"] .feedback-upload-btn:hover {
-  background: #232230;
+  background: var(--surface-hover);
   border-color: var(--accent);
 }
 
@@ -1276,7 +1397,7 @@
 
 :root[data-theme="dark"] .notification-admin-card {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-card);
   color: var(--text-main);
 }
@@ -1291,7 +1412,7 @@
 :root[data-theme="dark"] .notification-admin-form input,
 :root[data-theme="dark"] .notification-admin-form select,
 :root[data-theme="dark"] .notification-admin-form textarea {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1302,7 +1423,7 @@
   box-shadow: 0 0 0 3px rgba(164, 139, 255, 0.18);
 }
 :root[data-theme="dark"] .notification-user-item {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border: 1px solid var(--line);
 }
 
@@ -1351,7 +1472,7 @@
    .secondary-btn, so they're covered above. The day-view-toggle wrapper
    plus pinpoint overrides on its inner buttons: */
 :root[data-theme="dark"] .day-view-toggle {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   box-shadow: none;
 }
@@ -1372,7 +1493,8 @@
 
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .task-modal {
-  background: #1d1c24;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
   color: var(--text-main);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
 }
@@ -1394,13 +1516,13 @@
 :root[data-theme="dark"] .modal input[type="number"],
 :root[data-theme="dark"] .modal input[type="color"],
 :root[data-theme="dark"] .modal select {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .template-name-input {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1417,7 +1539,7 @@
 /* ---------- Category select trigger + dropdown (used inside modals) ---------- */
 
 :root[data-theme="dark"] .category-select-trigger {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1432,7 +1554,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .category-select-dropdown {
-  background: #1d1c24;
+  background: var(--card-bg);
   border-color: var(--line);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
 }
@@ -1458,7 +1580,7 @@
 /* ---------- Category Manager modal ---------- */
 
 :root[data-theme="dark"] .category-manager-item {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
   color: var(--text-main);
 }
@@ -1473,17 +1595,17 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-manager-modal input[type="text"] {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .category-color-palette,
 :root[data-theme="dark"] .category-icon-grid {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .category-icon-picker-trigger {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
@@ -1495,7 +1617,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .category-icon-option {
-  background: #1d1c24;
+  background: var(--card-bg);
   color: #c8beff;
 }
 :root[data-theme="dark"] .category-icon-option:hover {
@@ -1520,12 +1642,12 @@
 
 /* Filter pills (Активные / Завершённые / Все) */
 :root[data-theme="dark"] .goal-filter-btn {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .goal-filter-btn:hover {
-  background: #232230;
+  background: var(--surface-hover);
   border-color: var(--accent);
   color: #c8beff;
 }
@@ -1537,23 +1659,23 @@
 
 /* Goal type chips inside the create modal */
 :root[data-theme="dark"] .goal-type-chip {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .goal-type-chip:hover {
-  background: #232230;
+  background: var(--surface-hover);
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .goal-type-chip--active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #eae8f4;
+  color: var(--text-on-accent);
 }
 
 /* Goal cards on the goals list */
 :root[data-theme="dark"] .goal-card--soft {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
   box-shadow: none;
 }
@@ -1596,7 +1718,7 @@
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .subtasks-form-block--soft {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 
@@ -1618,13 +1740,13 @@
 
 :root[data-theme="dark"] .priority-select-trigger,
 :root[data-theme="dark"] [class*="priority-select"][class*="trigger"] {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .priority-select-dropdown,
 :root[data-theme="dark"] [class*="priority-select"][class*="dropdown"] {
-  background: #1d1c24;
+  background: var(--card-bg);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .priority-select-option,
@@ -1644,7 +1766,7 @@
   background: rgba(255, 255, 255, 0.16);
 }
 :root[data-theme="dark"] .notifications-dropdown {
-  background: #1d1c24;
+  background: var(--card-bg);
   border-color: var(--line);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.6);
 }
@@ -1656,15 +1778,15 @@
   color: #c8beff;
 }
 :root[data-theme="dark"] .notifications-empty {
-  background: #131217;
+  background: var(--surface-input);
   color: var(--text-muted);
 }
 :root[data-theme="dark"] .notification-item {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .notification-item:hover {
-  background: #232230;
+  background: var(--surface-hover);
 }
 :root[data-theme="dark"] .notification-item-title {
   color: var(--text-main);
@@ -1685,7 +1807,7 @@
   border-color: #55482a;
 }
 :root[data-theme="dark"] .notification-item--info {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line);
 }
 
@@ -1710,6 +1832,86 @@
   color: #ff9d9d;
 }
 
+/* ---------- Reminder form and scheduled reminders ---------- */
+
+:root[data-theme="dark"] .notifications-view-btn--active {
+  background: var(--accent-soft);
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .reminder-form,
+:root[data-theme="dark"] .reminder-item {
+  background: var(--surface-secondary);
+}
+
+:root[data-theme="dark"] .reminder-form-text,
+:root[data-theme="dark"] .reminder-form-row input,
+:root[data-theme="dark"] .reminder-form-recur select {
+  background: var(--surface-input);
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .reminder-form input:focus,
+:root[data-theme="dark"] .reminder-form select:focus {
+  border-color: var(--accent);
+}
+
+:root[data-theme="dark"] .reminder-form-recur option {
+  background: var(--surface-input);
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .reminder-form-add {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+:root[data-theme="dark"] .reminder-form-add:hover:not(:disabled) {
+  background: #b7a3ff;
+}
+
+:root[data-theme="dark"] .reminder-form-add:disabled {
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .reminder-form-error {
+  color: var(--danger);
+}
+
+:root[data-theme="dark"] .reminder-item-when {
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .reminder-item-recur {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .reminder-item-text {
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .reminder-snooze-btn {
+  background: var(--surface-input);
+  border-color: var(--line-strong);
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .reminder-snooze-btn:hover {
+  background: var(--surface-hover);
+}
+
+:root[data-theme="dark"] .reminder-item .notification-delete-btn {
+  color: var(--text-muted);
+}
+
+:root[data-theme="dark"] .reminder-item .notification-delete-btn:hover {
+  background: rgba(239, 133, 133, 0.1);
+  color: var(--danger);
+}
+
 /* ---------- Week planner table ---------- */
 
 :root[data-theme="dark"] .week-period-label {
@@ -1724,7 +1926,7 @@
 }
 
 :root[data-theme="dark"] .week-grid-excel {
-  background: #1a1920;
+  background: var(--surface-secondary);
   border-color: var(--line);
 }
 :root[data-theme="dark"] .week-grid-cell--corner,
@@ -1736,42 +1938,57 @@
 }
 :root[data-theme="dark"] .week-grid-cell--corner,
 :root[data-theme="dark"] .week-grid-cell--day {
-  background: #232230;
+  background: var(--surface-hover);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-grid-cell--task-name {
-  background: #1a1920;
+  background: var(--surface-secondary);
   color: var(--text-main);
 }
 :root[data-theme="dark"] .week-grid-cell--task-name-important {
   background: rgba(154, 134, 255, 0.25);
   color: #eae8f4;
+  font-weight: 600;
 }
 :root[data-theme="dark"] .week-grid-cell--task-name-done {
   color: var(--text-muted);
+  opacity: 1;
+  font-weight: 500;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
 }
 :root[data-theme="dark"] .week-grid-days-track {
-  background: #1a1920;
+  background: var(--surface-secondary);
 }
 :root[data-theme="dark"] .week-grid-row--done .week-grid-days-track {
-  background: #141319;
+  background: var(--surface-input);
+}
+:root[data-theme="dark"] .week-grid-task-bar,
+:root[data-theme="dark"] .week-grid-task-progress-fill {
+  filter: brightness(0.8) saturate(0.75);
+}
+:root[data-theme="dark"] .week-grid-task-bar--done {
+  filter: brightness(0.8) saturate(0.75) grayscale(0.15);
+}
+:root[data-theme="dark"] .week-grid-task-bar::after {
+  opacity: 0.45;
 }
 :root[data-theme="dark"] .week-grid-cell--goals-sep-label {
-  background: #232230;
+  background: var(--surface-hover);
   border-bottom-color: var(--line);
   color: #b6a6f0;
 }
 :root[data-theme="dark"] .week-goal-marker {
-  background: #1a1920;
+  background: var(--surface-secondary);
 }
 @media (hover: hover) {
   :root[data-theme="dark"] .week-goal-marker:hover {
-    background: color-mix(in srgb, var(--goal-accent, #7ecf8a) 26%, #1a1920);
+    background: color-mix(in srgb, var(--goal-accent, #7ecf8a) 26%, var(--surface-secondary));
   }
 }
 :root[data-theme="dark"] .week-goal-marker--done {
   background: var(--goal-accent, #7ecf8a);
-  color: #16151c;
+  color: var(--text-on-accent);
 }
 :root[data-theme="dark"] .week-goal-marker-label {
   color: var(--text-muted);
@@ -1790,7 +2007,7 @@
   color: #ff9d9d;
 }
 :root[data-theme="dark"] .tag-light {
-  background: #232230;
+  background: var(--surface-hover);
   color: #c8beff;
 }
 
@@ -1818,7 +2035,8 @@
 
 :root[data-theme="dark"] .modal,
 :root[data-theme="dark"] .task-modal {
-  background: #1d1c24 !important;
+  background: var(--surface-raised) !important;
+  border: 1px solid var(--line-strong) !important;
   color: var(--text-main) !important;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55) !important;
 }
@@ -1839,7 +2057,7 @@
 :root[data-theme="dark"] .task-modal-form input,
 :root[data-theme="dark"] .task-modal-form select,
 :root[data-theme="dark"] .task-modal-form textarea {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1864,7 +2082,7 @@
 /* Priority select inside modals (modal-polish.css uses !important) */
 :root[data-theme="dark"] .priority-select-trigger,
 :root[data-theme="dark"] .category-select-trigger {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1890,7 +2108,7 @@
 }
 :root[data-theme="dark"] .priority-select-dropdown,
 :root[data-theme="dark"] .category-select-dropdown {
-  background: #1d1c24 !important;
+  background: var(--card-bg) !important;
   border-color: var(--line) !important;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55) !important;
 }
@@ -1916,12 +2134,12 @@
 
 /* Time-mode toggle inside the day-task modal */
 :root[data-theme="dark"] .time-mode-btn {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .time-mode-btn:hover {
-  background: #232230;
+  background: var(--surface-hover);
   border-color: var(--accent);
 }
 :root[data-theme="dark"] .time-mode-btn--active {
@@ -1938,7 +2156,7 @@
 
 /* Week task type chips (Обычная / Повторяющаяся / Объёмная) */
 :root[data-theme="dark"] .week-task-type-option {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -1947,8 +2165,8 @@
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .week-task-type-option input {
-  background: #131217 !important;
-  border-color: #4b4860 !important;
+  background: var(--surface-input) !important;
+  border-color: var(--line-strong) !important;
 }
 :root[data-theme="dark"] .week-task-type-option input:checked {
   background: var(--accent) !important;
@@ -1957,49 +2175,49 @@
 
 /* Week range block (volumetric task) */
 :root[data-theme="dark"] .week-range-block {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line) !important;
 }
 
 /* Day-of-week pills (Пн / Вт / ...) */
 :root[data-theme="dark"] .week-repeat-day {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .week-repeat-day:hover {
-  background: #232230 !important;
+  background: var(--surface-hover) !important;
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .week-repeat-day.is-selected,
 :root[data-theme="dark"] .week-repeat-day:has(input:checked) {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #eae8f4 !important;
+  color: var(--text-on-accent) !important;
 }
 :root[data-theme="dark"] .week-range-day.is-selected:not(.is-edge) {
-  background: #232230 !important;
-  border-color: #3c3a4c !important;
+  background: var(--surface-hover) !important;
+  border-color: var(--line-strong) !important;
   color: #c8beff !important;
 }
 
 /* Goal create modal type chips already styled without !important;
    keeping the same accent treatment with !important to be safe. */
 :root[data-theme="dark"] .goal-type-chip {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
 @media (hover: hover) {
   :root[data-theme="dark"] .goal-type-chip:hover:not(.goal-type-chip--active) {
-    background: #232230 !important;
+    background: var(--surface-hover) !important;
     border-color: var(--accent) !important;
   }
 }
 :root[data-theme="dark"] .goal-type-chip--active {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #eae8f4 !important;
+  color: var(--text-on-accent) !important;
 }
 
 /* Cancel / secondary buttons — week-modal.css forces them light with !important. */
@@ -2013,13 +2231,155 @@
   background: rgba(154, 134, 255, 0.36) !important;
 }
 
+/* Task insertion controls. */
+:root[data-theme="dark"] .day-hover-insert {
+  background: var(--surface-raised);
+  border-color: var(--line-strong);
+  color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .day-hover-insert:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+/* Shared checklist styling for timeline modals and expanded day tasks. */
+:root[data-theme="dark"] .task-modal--subtasks .subtasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:root[data-theme="dark"] .task-modal--subtasks .subtasks-list {
+  max-height: min(360px, 50vh);
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) .subtask-item {
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .task-modal--subtasks .subtask-item {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+:root[data-theme="dark"] .task-modal--subtasks .subtask-item label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 3px 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) .subtask-item label span {
+  color: var(--text-soft) !important;
+  overflow-wrap: anywhere;
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) input[type="checkbox"] {
+  appearance: none;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-secondary);
+  cursor: pointer;
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) input[type="checkbox"]:checked {
+  background: rgba(154, 134, 255, 0.2);
+  border-color: #8170bd;
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--text-soft);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+:root[data-theme="dark"] :is(.task-modal--subtasks, .subtasks-inline-block) input[type="checkbox"]:checked + span {
+  color: var(--text-muted) !important;
+  text-decoration-line: line-through;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+}
+
+:root[data-theme="dark"] .subtasks-inline-block {
+  background: var(--surface-input);
+  border-color: var(--line);
+}
+
+:root[data-theme="dark"] .subtasks-inline-block input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  margin: 3px 3px 3px 4px;
+  border-radius: 3px;
+}
+
+:root[data-theme="dark"] .subtasks-inline-block input[type="checkbox"]:checked::after {
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 7px;
+}
+
+:root[data-theme="dark"] .subtasks-inline-block .subtask-remove-btn {
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+:root[data-theme="dark"] .subtasks-inline-block .subtask-remove-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 133, 133, 0.1);
+}
+
+:root[data-theme="dark"] .subtask-inline-add-row input {
+  min-width: 0;
+  background: var(--surface-secondary);
+  border-color: var(--line);
+  color: var(--text-soft);
+}
+
+:root[data-theme="dark"] .subtask-inline-add-row input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+:root[data-theme="dark"] .subtask-inline-add-row button {
+  background: var(--accent-soft);
+  color: #c8beff;
+}
+
+:root[data-theme="dark"] .subtask-inline-add-row button:hover {
+  background: rgba(154, 134, 255, 0.36);
+}
+
 /* Subtasks form inside modals */
 :root[data-theme="dark"] .subtasks-form-title,
 :root[data-theme="dark"] .goal-timeline-heading {
   color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .subtasks-form-input-row input {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -2045,13 +2405,13 @@
 /* --- Goals page --- */
 
 :root[data-theme="dark"] .goal-filter-btn {
-  background: #1a1920 !important;
+  background: var(--surface-secondary) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
 @media (hover: hover) {
   :root[data-theme="dark"] .goal-filter-btn:hover:not(.goal-filter-btn--active) {
-    background: #232230 !important;
+    background: var(--surface-hover) !important;
     border-color: var(--accent) !important;
     color: #c8beff !important;
   }
@@ -2064,7 +2424,7 @@
 }
 
 :root[data-theme="dark"] .goal-progress-track {
-  background: #2a2833 !important;
+  background: var(--surface-input) !important;
 }
 :root[data-theme="dark"] .goal-progress-percent {
   color: var(--text-soft) !important;
@@ -2080,7 +2440,7 @@
 }
 :root[data-theme="dark"] .goal-action-btn--focus {
   background: rgba(154, 134, 255, 0.1) !important;
-  color: #8b86a0 !important;
+  color: var(--text-soft) !important;
 }
 :root[data-theme="dark"] .goal-action-btn--focus.is-active {
   background: rgba(154, 134, 255, 0.24) !important;
@@ -2091,14 +2451,14 @@
   background: var(--line-strong) !important;
 }
 :root[data-theme="dark"] .goal-timeline-dot {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: #c8beff !important;
 }
 :root[data-theme="dark"] .goal-timeline-item.is-done .goal-timeline-dot {
   background: var(--accent) !important;
   border-color: var(--accent) !important;
-  color: #eae8f4 !important;
+  color: var(--text-on-accent) !important;
 }
 :root[data-theme="dark"] .goal-timeline-handle:hover {
   background: rgba(154, 134, 255, 0.14) !important;
@@ -2115,22 +2475,22 @@
   color: var(--text-muted) !important;
 }
 :root[data-theme="dark"] .goal-timeline-editor input {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
 :root[data-theme="dark"] .goal-timeline-distribute {
-  background: #1a1920 !important;
+  background: var(--surface-secondary) !important;
   border-color: var(--line-strong) !important;
   color: #c8beff !important;
 }
 :root[data-theme="dark"] .goal-timeline-distribute:hover,
 :root[data-theme="dark"] .goal-timeline-distribute.is-open {
-  background: #232230 !important;
+  background: var(--surface-hover) !important;
   border-color: var(--accent) !important;
 }
 :root[data-theme="dark"] .goal-timeline-menu {
-  background: #17161d !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45) !important;
 }
@@ -2167,7 +2527,7 @@
 :root[data-theme="dark"] .goal-timeline-item--read.is-done .goal-timeline-dot--check {
   background: var(--goal-accent, #9a86ff) !important;
   border-color: var(--goal-accent, #9a86ff) !important;
-  color: #17161d !important;
+  color: var(--text-on-accent) !important;
 }
 :root[data-theme="dark"] .goal-read-title {
   color: var(--text-main) !important;
@@ -2204,7 +2564,7 @@
   background: var(--goal-accent, #9a86ff) !important;
 }
 :root[data-theme="dark"] .ghs-dot {
-  background: #17161d !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-muted) !important;
 }
@@ -2212,7 +2572,7 @@
 :root[data-theme="dark"] .ghs-item.is-current .ghs-dot {
   background: var(--goal-accent, #9a86ff) !important;
   border-color: var(--goal-accent, #9a86ff) !important;
-  color: #17161d !important;
+  color: var(--text-on-accent) !important;
 }
 :root[data-theme="dark"] .ghs-name {
   color: var(--text-soft) !important;
@@ -2267,7 +2627,7 @@
   color: #c8beff;
 }
 :root[data-theme="dark"] .inbox-task-desc {
-  background: #131217;
+  background: var(--surface-input);
   border-color: var(--line-strong);
   color: var(--text-soft);
 }
@@ -2282,7 +2642,7 @@
   color: var(--text-main);
 }
 :root[data-theme="dark"] .inbox-textarea {
-  background: #131217 !important;
+  background: var(--surface-input) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-main) !important;
 }
@@ -2304,7 +2664,7 @@
 /* --- Statistics page --- */
 
 :root[data-theme="dark"] .stats-period-pill {
-  background: #1a1920 !important;
+  background: var(--surface-secondary) !important;
   border-color: var(--line-strong) !important;
   color: var(--text-soft) !important;
 }
@@ -2319,7 +2679,7 @@
 }
 
 :root[data-theme="dark"] .stats-view-toggle {
-  background: #1a1920 !important;
+  background: var(--surface-secondary) !important;
   border: 1px solid var(--line);
 }
 :root[data-theme="dark"] .stats-view-btn {
@@ -2338,7 +2698,7 @@
 
 :root[data-theme="dark"] .day-timeline-small-check input {
   background: rgba(255, 255, 255, 0.05);
-  border-color: #4b4860;
+  border-color: var(--line-strong);
 }
 :root[data-theme="dark"] .day-timeline-small-check input:checked {
   background: var(--accent-2);
@@ -2362,7 +2722,7 @@
 :root[data-theme="dark"] .schedule-note,
 :root[data-theme="dark"] .schedule-connection-card {
   border-color: var(--line-strong);
-  background: #1a1821;
+  background: var(--surface-secondary);
   color: var(--text-soft);
 }
 
@@ -2373,7 +2733,7 @@
 }
 
 :root[data-theme="dark"] .schedule-segmented {
-  background: #131217;
+  background: var(--surface-input);
 }
 
 :root[data-theme="dark"] .schedule-segmented label {
@@ -2381,7 +2741,7 @@
 }
 
 :root[data-theme="dark"] .schedule-segmented label.is-active {
-  background: #282430;
+  background: var(--surface-hover);
   color: #c8beff;
   box-shadow: none;
 }
@@ -2392,7 +2752,7 @@
 
 :root[data-theme="dark"] .schedule-disconnect-modal {
   border-color: var(--line-strong);
-  background: #1a1920;
+  background: var(--surface-secondary);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
 }
 
@@ -2408,13 +2768,13 @@
 
 :root[data-theme="dark"] .schedule-disconnect-choices button {
   border-color: var(--line-strong);
-  background: #222028;
+  background: var(--surface-secondary);
   color: var(--text-main);
 }
 
 :root[data-theme="dark"] .schedule-disconnect-choices button:hover {
   border-color: var(--accent);
-  background: #282430;
+  background: var(--surface-hover);
 }
 
 :root[data-theme="dark"] .schedule-disconnect-choices .schedule-disconnect-choice--remove {
@@ -2430,7 +2790,7 @@
 
 :root[data-theme="dark"] .schedule-modal {
   border-color: var(--line-strong);
-  background: #121116;
+  background: var(--surface-input);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.5);
 }
 
@@ -2446,7 +2806,7 @@
 }
 
 :root[data-theme="dark"] .schedule-modal-close {
-  background: #282430;
+  background: var(--surface-hover);
   color: #c8beff;
 }
 
@@ -2456,13 +2816,13 @@
 
 :root[data-theme="dark"] .schedule-week-navigation button {
   border-color: var(--line-strong);
-  background: #1a1920;
+  background: var(--surface-secondary);
   color: #c8beff;
 }
 
 :root[data-theme="dark"] .schedule-week-navigation button:hover {
   border-color: var(--accent);
-  background: #282430;
+  background: var(--surface-hover);
 }
 
 :root[data-theme="dark"] .schedule-timetable {
@@ -2477,7 +2837,7 @@
 
 :root[data-theme="dark"] .schedule-timetable-head,
 :root[data-theme="dark"] .schedule-timetable-slot {
-  background: #1a1920;
+  background: var(--surface-secondary);
   color: var(--text-muted);
 }
 
@@ -2487,11 +2847,11 @@
 }
 
 :root[data-theme="dark"] .schedule-timetable-cell {
-  background: #131217;
+  background: var(--surface-input);
 }
 
 :root[data-theme="dark"] .schedule-event {
-  background: #1e1c24;
+  background: var(--surface-secondary);
   color: var(--text-main);
 }
 

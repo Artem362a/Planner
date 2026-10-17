@@ -19,6 +19,7 @@ import {
 } from "../../api/auth";
 import { fetchCategories } from "../../api/tasks";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
+import { formatUtcDateTime } from "../../utils/dates";
 import ScheduleSettings from "../../components/schedule/ScheduleSettings";
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
@@ -67,21 +68,7 @@ function AvatarPreview({ avatar, username, size = "large" }) {
   );
 }
 
-function formatSessionDate(iso) {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
+const formatSessionDate = formatUtcDateTime;
 
 function shortenUserAgent(ua) {
   if (!ua) return "Неизвестное устройство";
@@ -115,6 +102,7 @@ function shortenUserAgent(ua) {
 function CollapsibleSection({
   title,
   description,
+  summary,
   danger = false,
   as = "div",
   onSubmit,
@@ -139,6 +127,7 @@ function CollapsibleSection({
       >
         <div className="account-section-info">
           <h2>{title}</h2>
+          {!open && summary && <span className="account-section-summary">{summary}</span>}
           {open && description && <p>{description}</p>}
         </div>
         <span
@@ -198,12 +187,14 @@ function AccountPage({ user, onUserUpdate }) {
   const [remSettingsStatus, setRemSettingsStatus] = useState("");
 
   const [categoriesMap, setCategoriesMap] = useState({});
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesLoadError, setCategoriesLoadError] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   const [exportStatus, setExportStatus] = useState("");
 
   const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsStatus, setSessionsStatus] = useState("");
 
   const [tgLinked, setTgLinked] = useState(false);
@@ -211,7 +202,7 @@ function AccountPage({ user, onUserUpdate }) {
   const [tgCode, setTgCode] = useState("");
   const [tgDeepLink, setTgDeepLink] = useState("");
   const [tgStatus, setTgStatus] = useState("");
-  const [tgLoading, setTgLoading] = useState(false);
+  const [tgLoading, setTgLoading] = useState(true);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -245,7 +236,8 @@ function AccountPage({ user, onUserUpdate }) {
         }
         setCategoriesMap(map);
       })
-      .catch(() => {});
+      .catch(() => setCategoriesLoadError(true))
+      .finally(() => setCategoriesLoading(false));
   }, []);
 
   useEffect(() => {
@@ -257,12 +249,15 @@ function AccountPage({ user, onUserUpdate }) {
   }, []);
 
   function loadTelegramStatus() {
+    setTgLoading(true);
+    setTgStatus("");
     fetchTelegramStatus()
       .then((data) => {
         setTgLinked(!!data?.linked);
         setTgBotUsername(data?.bot_username || "");
       })
-      .catch(() => {});
+      .catch(() => setTgStatus("Не удалось проверить подключение"))
+      .finally(() => setTgLoading(false));
   }
 
   async function handleTelegramConnect() {
@@ -533,6 +528,7 @@ function AccountPage({ user, onUserUpdate }) {
                 as="form"
                 onSubmit={handleProfileSubmit}
                 title="Ник и аватарка"
+                summary={user?.username}
                 description={selectedPreset?.label || "Своё изображение"}
               >
                   <label className="account-field">
@@ -576,6 +572,7 @@ function AccountPage({ user, onUserUpdate }) {
 
               <CollapsibleSection
                 title="Тема оформления"
+                summary={user?.theme === "dark" ? "Тёмная" : "Светлая"}
                 description="Применяется ко всему интерфейсу и синхронизируется между устройствами"
               >
                   <div className="account-theme-row">
@@ -600,6 +597,7 @@ function AccountPage({ user, onUserUpdate }) {
                 as="form"
                 onSubmit={handleDayStartSubmit}
                 title="Время начала дня"
+                summary={(user?.default_day_start_time || "06:00").slice(0, 5)}
                 description="Используется по умолчанию для новых дней в плане. Каждый день можно править отдельно."
               >
                   <label className="account-field">
@@ -623,17 +621,11 @@ function AccountPage({ user, onUserUpdate }) {
                 as="form"
                 onSubmit={handleReminderSettingsSubmit}
                 title="Напоминания"
-                description={
-                  <>
-                    Дефолт «напомнить за N минут» для задач дня; повторная
-                    отправка в Telegram, если не ответить на напоминание
-                    (0 — выключить); предупреждение о дедлайне цели за N дней
-                    (0 — выключить).
-                  </>
-                }
+                description="Настройки напоминаний для новых задач и целей. Повторы отправляются в Telegram, если не ответить."
+                summary={`Задачи: за ${user?.task_reminder_lead_min ?? 10} мин · Цели: за ${user?.goal_deadline_days ?? 3} дн`}
               >
                   <label className="account-field">
-                    <span>Задача дня: за N минут</span>
+                    <span>Напоминать до начала задачи, минут (0 — в начале)</span>
                     <input
                       type="number"
                       min={0}
@@ -647,7 +639,7 @@ function AccountPage({ user, onUserUpdate }) {
                   </label>
 
                   <label className="account-field">
-                    <span>Повтор без ответа: через N минут</span>
+                    <span>Повторять без ответа каждые, минут (0 — выключить)</span>
                     <input
                       type="number"
                       min={0}
@@ -675,7 +667,7 @@ function AccountPage({ user, onUserUpdate }) {
                   </label>
 
                   <label className="account-field">
-                    <span>Дедлайн цели: за N дней</span>
+                    <span>Предупреждать о дедлайне за, дней (0 — выключить)</span>
                     <input
                       type="number"
                       min={0}
@@ -703,6 +695,7 @@ function AccountPage({ user, onUserUpdate }) {
 
               <CollapsibleSection
                 title="Категории задач"
+                summary={categoriesLoading ? "Загружаем…" : categoriesLoadError ? "Не удалось загрузить категории" : `Категорий: ${Object.keys(categoriesMap).length}`}
                 description={`${Object.keys(categoriesMap).length} категорий. Управляй цветом, иконкой и названием.`}
               >
                   <button
@@ -716,6 +709,7 @@ function AccountPage({ user, onUserUpdate }) {
 
               <CollapsibleSection
                 title="Telegram-бот"
+                summary={tgLoading ? "Проверяем подключение…" : tgStatus === "Не удалось проверить подключение" ? tgStatus : tgLinked ? "Подключён" : "Не подключён"}
                 description="Быстрый захват во «Входящие», план на день и уведомления прямо в Telegram."
               >
                   {tgLinked ? (
@@ -793,7 +787,8 @@ function AccountPage({ user, onUserUpdate }) {
                       type="password"
                       value={newPassword}
                       onChange={(event) => setNewPassword(event.target.value)}
-                      minLength={6}
+                      minLength={8}
+                      maxLength={128}
                       required
                     />
                   </label>
@@ -804,7 +799,8 @@ function AccountPage({ user, onUserUpdate }) {
                       type="password"
                       value={repeatPassword}
                       onChange={(event) => setRepeatPassword(event.target.value)}
-                      minLength={6}
+                      minLength={8}
+                      maxLength={128}
                       required
                     />
                   </label>
@@ -835,6 +831,7 @@ function AccountPage({ user, onUserUpdate }) {
 
               <CollapsibleSection
                 title="Активные сессии"
+                summary={sessionsLoading ? "Загружаем…" : `Устройств: ${sessions.length}`}
                 description="Устройства и браузеры, в которых ты сейчас залогинен. Можно завершить любую сессию."
               >
                   {sessionsLoading && <div className="account-status">Загрузка...</div>}

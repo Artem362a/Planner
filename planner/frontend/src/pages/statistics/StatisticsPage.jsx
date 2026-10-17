@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { fetchStatistics } from "../../api/statistics";
 import "../../styles/pages/statistics.css";
+import SuccessesHistory from "./SuccessesHistory";
 
 const PERIOD_OPTIONS = [
   { label: "7 дней", value: 7 },
@@ -97,7 +98,9 @@ function loadHiddenCats() {
   }
 }
 
-export default function StatisticsPage() {
+export default function StatisticsPage({ user }) {
+  const [activeView, setActiveView] = useState("overview");
+  const showSuccesses = Boolean(user?.daily_successes_enabled && activeView === "successes");
   const [period, setPeriod] = useState(30);
   const [windowEnd, setWindowEnd] = useState(todayIso);
   const [customDraft, setCustomDraft] = useState(defaultCustomRange);
@@ -189,6 +192,7 @@ export default function StatisticsPage() {
   }
 
   useEffect(() => {
+    if (showSuccesses) return;
     let active = true;
     fetchStatistics(typeof period === "number" ? period : 30, {
       startDate: period === "custom" ? customRange.start : null,
@@ -199,7 +203,13 @@ export default function StatisticsPage() {
       .catch((e) => { if (active) setError(e.message || "Ошибка"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [period, windowEnd, customRange]);
+  }, [period, windowEnd, customRange, showSuccesses]);
+
+  function changeView(view) {
+    if (view === activeView) return;
+    if (view === "overview") { setLoading(true); setError(null); }
+    setActiveView(view);
+  }
 
   const completed = data?.tasks?.completed ?? "—";
   const rate =
@@ -208,13 +218,13 @@ export default function StatisticsPage() {
       : "—";
   const streak = data?.streak?.current ?? "—";
   const bestDay = data?.best_day
-    ? `${fmtDate(data.best_day.date)} (${data.best_day.completed})`
+    ? `${fmtDate(data.best_day.date)} · ${data.best_day.completed} задач`
     : "—";
+  const selectedStart = period === "all" ? undefined : period === "custom" ? customRange.start : shiftIsoDate(windowEnd, -(period - 1));
+  const selectedEnd = period === "custom" ? customRange.end : windowEnd;
   const periodCaption = period === "all"
     ? "За всё время"
-    : data?.period
-      ? `${fmtPeriodDate(data.period.start)} — ${fmtPeriodDate(data.period.end)}`
-      : "";
+    : `${fmtPeriodDate(selectedStart)} — ${fmtPeriodDate(selectedEnd)}`;
   const isCurrentPeriod = period === "custom"
     ? customRange.end >= todayIso()
     : windowEnd >= todayIso();
@@ -293,6 +303,11 @@ export default function StatisticsPage() {
 
         <main className="day-page-main">
           <div className="day-big-card stats-shell-card">
+
+            {user?.daily_successes_enabled && <div className="stats-content-switch" role="group" aria-label="Раздел статистики">
+              <button type="button" aria-pressed={!showSuccesses} onClick={() => changeView("overview")}>Задачи и цели</button>
+              <button type="button" aria-pressed={showSuccesses} onClick={() => changeView("successes")}>Успехи</button>
+            </div>}
 
             {/* Period selector */}
             <div className="stats-period-toolbar">
@@ -381,17 +396,17 @@ export default function StatisticsPage() {
               </form>
             )}
 
-            {loading && (
+            {!showSuccesses && loading && (
               <div className="day-task-empty">Загрузка статистики...</div>
             )}
 
-            {error && (
+            {!showSuccesses && error && (
               <div className="day-task-empty" style={{ color: "#d36b6b" }}>
                 {error}
               </div>
             )}
 
-            {!loading && !error && data && (
+            {!showSuccesses && !loading && !error && data && (
               <>
                 {/* KPI cards */}
                 <div className="stats-cards-row">
@@ -399,12 +414,12 @@ export default function StatisticsPage() {
                     { value: completed, label: "Задач выполнено", mod: "" },
                     {
                       value: rate,
-                      label: "% выполнения",
+                      label: "Выполнено из запланированного",
                       mod: " stats-card-value--green",
                     },
                     {
                       value: streak,
-                      label: "Текущий стрик",
+                      label: "Дней подряд с выполненными задачами",
                       mod: " stats-card-value--purple",
                     },
                     { value: bestDay, label: "Лучший день", mod: "" },
@@ -422,6 +437,10 @@ export default function StatisticsPage() {
                     <h3 className="stats-section-title">
                       Активность по {activityByMonth ? "месяцам" : "дням"}
                     </h3>
+                    <div className="ui-chart-legend">
+                      <span><i style={{background: chartDone}} />Выполнено</span>
+                      <span><i style={{background: chartRemaining}} />Не выполнено</span>
+                    </div>
                     <div className="stats-chart-wrap">
                       <ResponsiveContainer width="100%" height={180}>
                         <BarChart
@@ -787,6 +806,7 @@ export default function StatisticsPage() {
                 </div>
               </>
             )}
+            {showSuccesses && <SuccessesHistory startDate={selectedStart} endDate={selectedEnd} />}
           </div>
         </main>
       </div>

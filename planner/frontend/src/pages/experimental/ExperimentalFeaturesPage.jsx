@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   fetchMcpAllowlist,
@@ -9,12 +9,9 @@ import {
   setMcpAllowlistAccess,
 } from "../../api/experimental";
 
-function formatDate(value) {
-  if (!value) return "—";
-  const normalized = value.endsWith("Z") || value.includes("+") ? value : `${value}Z`;
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("ru-RU");
-}
+import { formatUtcDateTime as formatDate } from "../../utils/dates";
+import { MCP_TOOL_LABELS, groupAuditEntries } from "../../utils/mcpAudit";
+import { setDailySuccessesEnabled } from "../../api/dailySuccesses";
 
 const SCOPE_NAMES = {
   "planner:read": "Чтение планировщика и статистики",
@@ -24,16 +21,33 @@ const SCOPE_NAMES = {
   "goals:create": "Создание целей",
   "goals:edit": "Редактирование целей",
   "goals:delete": "Удаление целей",
-  "organizer:edit": "Заметки, категории, шаблоны и напоминания",
+  "organizer:edit": "Заметки, успехи, категории, шаблоны и напоминания",
   "organizer:delete": "Удаление элементов органайзера",
   "schedule:read": "Чтение расписания занятий",
   "feedback:read_all": "Чтение отзывов пользователей",
 };
 
-export default function ExperimentalFeaturesPage({ user }) {
+export default function ExperimentalFeaturesPage({ user, onUserUpdate }) {
+  const [successesSaving, setSuccessesSaving] = useState(false);
+  const [successesError, setSuccessesError] = useState("");
+  async function toggleDailySuccesses(event) {
+    setSuccessesSaving(true); setSuccessesError("");
+    try { onUserUpdate(await setDailySuccessesEnabled(event.target.checked)); }
+    catch (err) { setSuccessesError(err.message); }
+    finally { setSuccessesSaving(false); }
+  }
   const [status, setStatus] = useState(null);
   const [connections, setConnections] = useState([]);
   const [audit, setAudit] = useState([]);
+  const [auditFilter, setAuditFilter] = useState("all");
+  const [refreshingAudit, setRefreshingAudit] = useState(false);
+  const auditGroups = useMemo(() => groupAuditEntries(audit).filter(group => auditFilter === "all" || (auditFilter === "success" ? group.success : !group.success)), [audit, auditFilter]);
+  async function refreshAudit() {
+    setRefreshingAudit(true); setError("");
+    try { const data = await fetchMcpAudit(50); setAudit(Array.isArray(data) ? data : []); }
+    catch (err) { setError(err.message || "Не удалось загрузить действия ИИ"); }
+    finally { setRefreshingAudit(false); }
+  }
   const [allowlist, setAllowlist] = useState([]);
   const [query, setQuery] = useState("");
   const [allowlistOpen, setAllowlistOpen] = useState(false);
@@ -49,7 +63,7 @@ export default function ExperimentalFeaturesPage({ user }) {
     const [statusData, connectionData, auditData] = await Promise.all([
       fetchMcpStatus(),
       fetchMcpConnections(),
-      fetchMcpAudit(10),
+      fetchMcpAudit(50),
     ]);
     setStatus(statusData);
     setConnections(Array.isArray(connectionData) ? connectionData : []);
@@ -128,7 +142,7 @@ export default function ExperimentalFeaturesPage({ user }) {
       await setMcpAllowlistAccess(item.id, !item.mcp_enabled);
       await Promise.all([loadAllowlist(query), loadPersonalData()]);
     } catch (err) {
-      setError(err.message || "Не удалось изменить allowlist");
+      setError(err.message || "Не удалось изменить доступ пользователя");
     } finally {
       setUpdatingId(null);
     }
@@ -175,9 +189,18 @@ export default function ExperimentalFeaturesPage({ user }) {
         <main className="day-page-main experimental-main">
           <div className="experimental-shell">
             <header className="experimental-hero">
-              <h1>Управление MCP</h1>
-              <p>Безопасное подключение AI-клиентов к планировщику через OAuth 2.1.</p>
+              <h1>Экспериментальные функции</h1>
+              <p>Попробуй новые возможности планировщика.</p>
             </header>
+
+            <section className="experimental-card daily-successes-setting">
+              <div className="experimental-card-title-row">
+                <div><h2>Успехи за день</h2><p>Записывай, что получилось, в плане дня и возвращайся к результатам по категориям в статистике.</p></div>
+                <label className="successes-toggle"><input type="checkbox" aria-label="Успехи за день" checked={Boolean(user?.daily_successes_enabled)} disabled={successesSaving} onChange={toggleDailySuccesses} /><span>{user?.daily_successes_enabled ? "Включено" : "Выключено"}</span></label>
+              </div>
+              <p className="successes-setting-hint">При отключении записи сохраняются.</p>
+              {successesError && <p role="alert" className="successes-error">{successesError}</p>}
+            </section>
 
             {loading && <div className="experimental-card">Загрузка…</div>}
             {error && <div className="auth-error experimental-error">{error}</div>}
@@ -187,10 +210,10 @@ export default function ExperimentalFeaturesPage({ user }) {
                 <div className="experimental-card-title-row">
                   <div>
                     <h2>MCP для вашего аккаунта</h2>
-                    <p>Access-токен действует {status.access_token_minutes} минут.</p>
+                    <p>Авторизация подключения обновляется автоматически. Срок одного токена — {status.access_token_minutes} минут.</p>
                   </div>
                   <span className={`experimental-status ${status.enabled ? "is-on" : "is-off"}`}>
-                    {status.enabled ? "Доступ разрешён" : "Нет в allowlist"}
+                    {status.enabled ? "Доступ разрешён" : "Доступ не разрешён"}
                   </span>
                 </div>
 
@@ -200,9 +223,11 @@ export default function ExperimentalFeaturesPage({ user }) {
                     {copied ? "Скопировано" : "Копировать"}
                   </button>
                 </div>
-                <p className="experimental-hint">
-                  Добавьте этот URL в MCP-клиент. В браузере откроется вход в Day Plan и выбор прав.
-                </p>
+                <details className="experimental-setup"><summary>Как подключить</summary><ol>
+                  <li>Скопируй адрес выше и добавь его как MCP-сервер в клиенте, поддерживающем OAuth.</li>
+                  <li>В открывшемся окне войди в Day Plan и выбери разрешения для этого подключения.</li>
+                  <li>Подтверди подключение. Оно появится ниже; здесь можно посмотреть действия ИИ или отозвать доступ.</li>
+                </ol></details>
               </section>
             )}
 
@@ -249,7 +274,7 @@ export default function ExperimentalFeaturesPage({ user }) {
               <section className="experimental-card">
                 <div className="experimental-card-title-row">
                   <div>
-                    <h2>Allowlist пользователей</h2>
+                    <h2>Доступ пользователей к ИИ</h2>
                     <p>Отключение пользователя немедленно отзывает все его MCP-токены.</p>
                   </div>
                 </div>
@@ -318,20 +343,18 @@ export default function ExperimentalFeaturesPage({ user }) {
 
             {!loading && (
               <section className="experimental-card">
-                <h2>Последние действия ИИ</h2>
-                {audit.length === 0 ? (
-                  <p className="experimental-empty">ИИ ещё не вызывала инструменты планировщика.</p>
+                <div className="ui-modal-heading"><h2>Последние действия ИИ</h2><button type="button" className="secondary-btn" disabled={refreshingAudit} onClick={refreshAudit}>{refreshingAudit ? "Загружаем…" : "Обновить"}</button></div>
+                <div className="ui-toolbar"><label>Результат<select value={auditFilter} onChange={event => setAuditFilter(event.target.value)}><option value="all">Все действия</option><option value="success">Выполненные</option><option value="error">С ошибкой</option></select></label><small className="ui-field-hint">Последние 50 вызовов. Повторы в течение двух минут объединены.</small></div>
+                {auditGroups.length === 0 ? (
+                  <p className="experimental-empty">Действий с таким результатом пока нет.</p>
                 ) : (
                   <div className="experimental-audit-list">
-                    {audit.map((entry) => (
-                      <div key={entry.id} className="experimental-audit-row">
-                        <span className={`experimental-audit-dot ${entry.success ? "is-ok" : "is-error"}`} />
-                        <div>
-                          <strong>{entry.tool_name}</strong>
-                          <div className="experimental-meta">{formatDate(entry.created_at)}</div>
-                        </div>
-                        <span>{entry.success ? "Выполнено" : "Ошибка"}</span>
-                      </div>
+                    {auditGroups.map(group => (
+                      <details key={group.id} className="experimental-audit-group"><summary className="experimental-audit-row">
+                        <span className={`experimental-audit-dot ${group.success ? "is-ok" : "is-error"}`} />
+                        <div><strong>{MCP_TOOL_LABELS[group.tool_name] || group.tool_name}{group.entries.length > 1 ? ` ×${group.entries.length}` : ""}</strong><div className="experimental-meta">{formatDate(group.entries[0].created_at)}</div></div>
+                        <span>{group.success ? "Выполнено" : "Ошибка"}</span>
+                      </summary><ul>{group.entries.map(entry => <li key={entry.id}><code>{entry.tool_name}</code> · {formatDate(entry.created_at)}</li>)}</ul></details>
                     ))}
                   </div>
                 )}

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import TemplatePreview from "../../components/planning/TemplatePreview";
+import TemplateColorPicker from "../../components/planning/TemplateColorPicker";
+import { formatPlanDate } from "../../utils/dates";
 import CategorySelect from "../../components/forms/CategorySelect";
 import CategoryManagerModal from "../../components/categories/CategoryManagerModal";
-import { CategoryIcon } from "../../components/icons";
+import { CategoryIcon, PlusIcon } from "../../components/icons";
 import WeekScheduleModal from "../../components/schedule/WeekScheduleModal";
 import { fetchScheduleSubscription } from "../../api/schedule";
 import {
@@ -134,6 +137,7 @@ function WeekPlannerPage() {
   const [dragTaskId, setDragTaskId] = useState(null);
   const [weekStart, setWeekStart] = useState(() => getMonday(initialDate));
   const [tasks, setTasks] = useState([]);
+  const todayString = formatLocalDate(new Date());
   const [loading, setLoading] = useState(false);
 
   const [categories, setCategories] = useState({});
@@ -1124,7 +1128,7 @@ async function handleDragEnd() {
 }
 
   return (
-    <div className="app-wrapper">
+    <div className="app-wrapper week-planner-page">
       <div className="app">
         <header className="app-header">
           <div className="app-header-left">
@@ -1136,7 +1140,7 @@ async function handleDragEnd() {
           <div className="app-header-center">
             {isTemplateMode
               ? `РЕДАКТИРОВАНИЕ ШАБЛОНА: ${editingTpl.name}`
-              : `ПЛАН НА НЕДЕЛЮ ${formatLocalDate(weekStart)}`}
+              : `ПЛАН НА НЕДЕЛЮ ${formatPlanDate(formatLocalDate(weekStart), { year: "numeric" })}`}
           </div>
 
           <div className="app-header-right" />
@@ -1148,29 +1152,17 @@ async function handleDragEnd() {
               <div className="page-tasks-wrapper">
                 {isTemplateMode && (
                   <div className="template-edit-banner">
-                    <input
-                      type="text"
-                      className="template-edit-banner-name"
-                      value={editTplName}
-                      onChange={(e) => setEditTplName(e.target.value)}
-                      placeholder="Название шаблона"
-                    />
-                    <div className="template-edit-banner-palette">
-                      {TEMPLATE_COLORS.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className={
-                            "category-color-swatch" +
-                            (editTplColor === color
-                              ? " category-color-swatch--active"
-                              : "")
-                          }
-                          style={{ "--swatch-color": color }}
-                          onClick={() => setEditTplColor(color)}
-                          title={color}
-                        />
-                      ))}
+                    <div className="template-edit-banner-main">
+                      <span className="template-edit-banner-label">✎ Шаблон:</span>
+                      <input
+                        type="text"
+                        className="template-edit-banner-name"
+                        aria-label="Название шаблона"
+                        value={editTplName}
+                        onChange={(e) => setEditTplName(e.target.value)}
+                        placeholder="Название шаблона"
+                      />
+                      <TemplateColorPicker colors={TEMPLATE_COLORS} value={editTplColor} onChange={setEditTplColor} />
                     </div>
                     <div className="template-edit-banner-actions">
                       <button
@@ -1265,10 +1257,10 @@ async function handleDragEnd() {
                       Задача
                     </div>
 
-                    {weekDays.map(({ date, key }) => (
+                    {weekDays.map(({ date, key, str }) => (
                       <div
                         key={key}
-                        className="week-grid-cell week-grid-cell--day"
+                        className={"week-grid-cell week-grid-cell--day" + (str === todayString ? " is-today" : "")}
                       >
                         {date.toLocaleDateString("ru-RU", {
                           weekday: "short",
@@ -1331,7 +1323,7 @@ async function handleDragEnd() {
                             {weekDays.map(({ str }) => (
                               <div
                                 key={str}
-                                className="week-grid-cell week-grid-cell--day-box"
+                                className={"week-grid-cell week-grid-cell--day-box" + (str === todayString ? " is-today" : "")}
                               />
                             ))}
 
@@ -1406,7 +1398,7 @@ async function handleDragEnd() {
                                 return (
                                   <div
                                     key={str}
-                                    className="week-grid-cell week-grid-cell--day-box"
+                                    className={"week-grid-cell week-grid-cell--day-box" + (str === todayString ? " is-today" : "")}
                                   >
                                     {dayMarkers.length > 0 && (
                                       <div className="week-goal-cell-stack">
@@ -1511,7 +1503,7 @@ async function handleDragEnd() {
                           )}
 
                           <span>
-                            {t.start_date} – {t.end_date}
+                            {formatPlanDate(t.start_date)}{t.start_date !== t.end_date ? ` – ${formatPlanDate(t.end_date)}` : ""}
                           </span>
 
                           {t.task_type === "recurring" && (
@@ -1679,8 +1671,10 @@ async function handleDragEnd() {
                 type="button"
                 className="fab-button"
                 onClick={openCreateModal}
+                title="Добавить задачу"
+                aria-label="Добавить задачу"
               >
-                +
+                <PlusIcon />
               </button>
             </section>
 
@@ -1781,6 +1775,7 @@ async function handleDragEnd() {
                     </div>
 
                     <div className="week-important-row">
+                      <p className="ui-field-hint">{form.taskType === "recurring" ? "Повтор по выбранным дням недели. Для каждого дня — своё выполнение." : form.taskType === "volume" ? "Задача с общим объёмом на выбранный период." : "Одна задача с периодом выполнения."}</p>
                       <label className="week-checkbox-pretty">
                         <input
                           type="checkbox"
@@ -2016,17 +2011,19 @@ async function handleDragEnd() {
                   setIsApplyTemplateOpen(false);
                 }}
               >
-                <div className="modal" onClick={(e) => e.stopPropagation()}>
-                  <h3>Выбери шаблон недели</h3>
+                <div className="modal apply-template-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="ui-modal-heading"><h3>Шаблоны недели</h3><button type="button" className="secondary-btn" onClick={() => setIsApplyTemplateOpen(false)}>Закрыть</button></div>
 
                   <ul className="templates-list">
                     {templates.map((tpl) => (
                       <li key={tpl.id} className="template-item">
-                        <span
-                          className="template-color-dot"
-                          style={{ backgroundColor: tpl.color }}
-                        />
-                        <span className="template-name">{tpl.name}</span>
+                        <div className="template-info">
+                          <div className="template-title-row">
+                            <span className="template-color-dot" style={{ backgroundColor: tpl.color }} />
+                            <span className="template-name">{tpl.name}</span>
+                          </div>
+                          <TemplatePreview template={tpl} />
+                        </div>
 
                         <div className="template-actions">
                           <button
@@ -2035,7 +2032,7 @@ async function handleDragEnd() {
                             disabled={isSaving}
                             onClick={() => applyWeekTemplateHandler(tpl.id)}
                           >
-                            Импорт
+                            Применить
                           </button>
 
                           <button
