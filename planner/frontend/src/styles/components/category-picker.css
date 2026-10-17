@@ -1,0 +1,42 @@
+/* Shared category selection: tasks, goals, successes and filters. */
+.category-picker { --category-picker-bg: #f8f6fd; width: 100%; min-width: 0; }
+[data-theme="dark"] .category-picker { --category-picker-bg: #111218; }
+.category-picker-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; min-height: 40px;
+  border: 1px solid var(--line-strong); border-radius: 10px; background: var(--category-picker-bg);
+  color: var(--text-main); font: inherit; font-size: .88rem; text-align: left; cursor: pointer;
+}
+.category-picker-trigger:hover, .category-picker-trigger[aria-expanded="true"] { border-color: var(--accent); }
+.category-picker-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.category-picker-trigger:disabled { opacity: .5; cursor: default; }
+.category-picker-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.category-picker-icon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; color: var(--category-color); background: color-mix(in srgb, var(--category-color) 10%, transparent); }
+.category-picker-icon svg { width: 16px; height: 16px; }
+.category-picker-chevron { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-soft); transition: transform .15s; }
+.category-picker-trigger[aria-expanded="true"] .category-picker-chevron { transform: rotate(180deg); }
+.category-picker-popup {
+  position: fixed; z-index: 100000; display: flex; flex-direction: column; padding: 5px;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--card-bg); color: var(--text-main);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%); overflow: hidden; font-size: .88rem;
+}
+.category-picker-search { display: flex; align-items: center; gap: 7px; padding: 7px 8px 9px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.category-picker-search > svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-soft); }
+.category-picker-search input { min-width: 0; width: 100%; padding: 3px 0; border: 0; border-radius: 0; background: transparent; color: var(--text-main); font: inherit; outline: none; box-shadow: none; }
+.category-picker-search input::placeholder { color: var(--text-muted); }
+.category-picker-options { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding-top: 4px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.category-picker-option { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 5px 8px; border: 0; border-radius: 7px; color: var(--text-main); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.category-picker-option:hover, .category-picker-option[data-active="true"] { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.category-picker-option[aria-selected="true"] { color: var(--accent); }
+.category-picker-check { width: 15px; height: 15px; flex-shrink: 0; }
+.category-picker-empty { margin: 0; padding: 14px 8px; color: var(--text-soft); font-size: .85rem; }
+[data-theme="dark"] .category-picker-popup { background: #20222c; box-shadow: 0 8px 28px rgb(0 0 0 / 40%); }
+
+/* Keep labels inside goal forms from overriding the selected category. */
+.category-picker .category-picker-trigger span.category-picker-title { font-size: inherit; font-weight: inherit; color: inherit; }
+.category-picker .category-picker-trigger span.category-picker-icon { color: var(--category-color); }
+.category-picker-popup { box-sizing: border-box; }
+.category-picker-manage { display: flex; align-items: center; gap: 8px; flex-shrink: 0; width: 100%; margin-top: 4px; padding: 10px 8px 6px; border: 0; border-top: 1px solid var(--line); border-radius: 0 0 7px 7px; color: var(--text-soft); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.category-picker-manage svg { width: 16px; height: 16px; flex-shrink: 0; }
+.category-picker-manage:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.category-picker-manage:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ui-toolbar > label:has(> .category-picker) { flex: 0 1 220px; min-width: min(100%, 180px); }

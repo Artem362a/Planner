@@ -3,7 +3,7 @@ import { CategoryIcon } from "../../icons";
 import { formatPlanDate } from "../../../utils/dates";
 import DailySuccessesPanel from "./DailySuccessesPanel";
 
-function SuccessesDialog({ open, onClose, triggerRef, day, categories }) {
+function SuccessesDialog({ open, onClose, triggerRef, day, categories, onCategoriesChanged }) {
   const dialogRef = useRef(null);
   const headingRef = useRef(null);
   const titleId = useId();
@@ -39,11 +39,11 @@ function SuccessesDialog({ open, onClose, triggerRef, day, categories }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
       </button>
     </header>
-    <div className="successes-dialog-body"><DailySuccessesPanel day={day} categories={categories} showTitle={false} /></div>
+    <div className="successes-dialog-body"><DailySuccessesPanel day={day} categories={categories} onCategoriesChanged={onCategoriesChanged} showTitle={false} /></div>
   </dialog>;
 }
 
-export default function DailySuccessesButton({ day, categories }) {
+export default function DailySuccessesButton({ day, categories, onCategoriesChanged }) {
   const [open, setOpen] = useState(false);
   const [hasOpened, setHasOpened] = useState(false);
   const triggerRef = useRef(null);
@@ -53,6 +53,6 @@ export default function DailySuccessesButton({ day, categories }) {
       aria-expanded={open} onClick={() => { setHasOpened(true); setOpen(true); }}>
       <CategoryIcon name="sparkle" /><span>Успехи</span>
     </button>
-    {hasOpened && <SuccessesDialog open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} day={day} categories={categories} />}
+    {hasOpened && <SuccessesDialog open={open} onClose={() => setOpen(false)} triggerRef={triggerRef} day={day} categories={categories} onCategoriesChanged={onCategoriesChanged} />}
   </>;
 }

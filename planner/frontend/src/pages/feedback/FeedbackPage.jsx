@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { submitFeedback, fetchMyFeedbackList } from "../../api/feedback";
+import CategoryPicker from "../../components/forms/CategoryPicker";
 
 import { FEEDBACK_CATEGORIES, FEEDBACK_TYPES, FEEDBACK_STATUSES, filterFeedback } from "../../utils/feedback";
 import { formatUtcDateTime } from "../../utils/dates";
@@ -191,11 +192,9 @@ export default function FeedbackPage({ user }) {
                 <div className="feedback-grid">
                   <label>
                     Категория
-                    <select name="category" value={form.category} onChange={handleChange}>
-                      {FEEDBACK_CATEGORIES.map((item) => (
-                        <option key={item} value={item}>{item}</option>
-                      ))}
-                    </select>
+                    <CategoryPicker label="Категория обращения" value={form.category}
+                      options={FEEDBACK_CATEGORIES.map(title => ({ value: title, title }))}
+                      onChange={category => setForm(prev => ({ ...prev, category }))} />
                   </label>
 
                   <label>

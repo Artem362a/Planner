@@ -227,7 +227,7 @@ export default function InboxPage() {
               {deleteError && <p role="alert">{deleteError}</p>}
               <div className="ui-toolbar">
                 <label className="ui-search">Поиск задач<input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Название или описание" /></label>
-                <label>Категория<select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}><option value="">Все категории</option>{Object.values(categories).map((category) => <option key={category.key} value={category.key}>{category.title}</option>)}</select></label>
+                <label>Категория<CategorySelect label="Фильтр по категории" value={categoryFilter} categories={categories} includeAll onChange={setCategoryFilter} /></label>
               </div>
               <div className="page-tasks-wrapper">
                 {loading ? (

@@ -1775,7 +1775,6 @@ async function handleDragEnd() {
                     </div>
 
                     <div className="week-important-row">
-                      <p className="ui-field-hint">{form.taskType === "recurring" ? "Повтор по выбранным дням недели. Для каждого дня — своё выполнение." : form.taskType === "volume" ? "Задача с общим объёмом на выбранный период." : "Одна задача с периодом выполнения."}</p>
                       <label className="week-checkbox-pretty">
                         <input
                           type="checkbox"

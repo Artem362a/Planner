@@ -2241,7 +2241,7 @@ const overdueImportCandidates = useMemo(
 
           <div className="day-toolbar-right">
             {!isTemplateMode && user?.daily_successes_enabled && (
-              <DailySuccessesButton key={dayString} day={dayString} categories={categories} />
+              <DailySuccessesButton key={dayString} day={dayString} categories={categories} onCategoriesChanged={reloadCategories} />
             )}
             {!isTemplateMode && (
               <button

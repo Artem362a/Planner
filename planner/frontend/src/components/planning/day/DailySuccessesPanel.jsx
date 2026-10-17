@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { deleteDailySuccess, fetchDailySuccesses, saveDailySuccess } from "../../../api/dailySuccesses";
 import { CategoryIcon } from "../../icons";
 import SuccessCategoryPicker from "../../forms/SuccessCategoryPicker";
+import CategoryManagerModal from "../../categories/CategoryManagerModal";
 
-export default function DailySuccessesPanel({ day, categories, showTitle = true }) {
+export default function DailySuccessesPanel({ day, categories, showTitle = true, onCategoriesChanged }) {
   const [items, setItems] = useState([]);
   const [text, setText] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -13,6 +14,10 @@ export default function DailySuccessesPanel({ day, categories, showTitle = true 
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const textRef = useRef(null);
+  const panelRef = useRef(null);
+  const [managingCategories, setManagingCategories] = useState(false);
+  const categoryOptions = Object.values(categories);
+  const selectedCategoryId = categoryOptions.some(category => String(category.id) === categoryId) ? categoryId : "";
 
   useEffect(() => {
     let active = true;
@@ -32,7 +37,7 @@ export default function DailySuccessesPanel({ day, categories, showTitle = true 
     if (!text.trim() || busy) return;
     setBusy(true); setError("");
     try {
-      const saved = await saveDailySuccess({ day, text: text.trim(), category_id: categoryId ? Number(categoryId) : null }, editingId);
+      const saved = await saveDailySuccess({ day, text: text.trim(), category_id: selectedCategoryId ? Number(selectedCategoryId) : null }, editingId);
       setItems(previous => editingId ? previous.map(item => item.id === editingId ? saved : item) : [saved, ...previous]);
       resetForm();
     } catch (err) { setError(err.message); }
@@ -59,11 +64,12 @@ export default function DailySuccessesPanel({ day, categories, showTitle = true 
     finally { setBusy(false); }
   }
 
-  return <section className="day-side-section daily-successes-panel">
+  return <section ref={panelRef} className="day-side-section daily-successes-panel">
     {showTitle && <div className="day-side-title-row"><h3>Успехи за день</h3></div>}
     <form className="success-form" onSubmit={submit}>
       <textarea ref={textRef} aria-label="Успех за день" placeholder="Что сегодня получилось?" value={text} maxLength={1500} rows={3} disabled={busy || loading} onChange={event => setText(event.target.value)} />
-      <SuccessCategoryPicker label="Категория успеха" value={categoryId} categories={Object.values(categories)} disabled={busy || loading} onChange={setCategoryId} />
+      <SuccessCategoryPicker label="Категория успеха" value={selectedCategoryId} categories={categoryOptions} disabled={busy || loading} onChange={setCategoryId}
+        onManageClick={onCategoriesChanged ? () => setManagingCategories(true) : undefined} />
       <div className="success-form-actions">
         <button className="primary-btn" type="submit" disabled={busy || loading || !text.trim()}>{busy ? "Сохраняем…" : editingId ? "Сохранить" : "Записать успех"}</button>
         {editingId && <button className="secondary-btn" type="button" disabled={busy} onClick={resetForm}>Отмена</button>}
@@ -71,9 +77,11 @@ export default function DailySuccessesPanel({ day, categories, showTitle = true 
     </form>
     {error && <p className="successes-error" role="alert">{error}</p>}
     {loading ? <p className="successes-empty" role="status">Загружаем успехи…</p> : !items.length && !error ? <p className="successes-empty">Пока нет записей за этот день.</p> : null}
-    <ul className="successes-list">{items.map(item => <li key={item.id} className={`success-entry${editingId === item.id ? " success-entry--editing" : ""}`} style={{ "--success-color": item.category?.color || "var(--accent)" }}>
+    <ul className="successes-list">{items.map(item => {
+      const category = categoryOptions.find(category => category.id === item.category?.id);
+      return <li key={item.id} className={`success-entry${editingId === item.id ? " success-entry--editing" : ""}`} style={{ "--success-color": category?.color || "var(--accent)" }}>
       <div className="success-entry-heading">
-        <span className="success-category"><span className="success-category-icon"><CategoryIcon name={item.category?.icon || "tag"} /></span>{item.category?.title || "Без категории"}</span>
+        <span className="success-category"><span className="success-category-icon"><CategoryIcon name={category?.icon || "tag"} /></span>{category?.title || "Без категории"}</span>
         <div className="success-entry-actions">
           <button type="button" disabled={busy} title="Изменить" aria-label={`Изменить успех: ${item.text}`} onClick={() => { setEditingId(item.id); setText(item.text); setCategoryId(item.category?.id ? String(item.category.id) : ""); textRef.current?.focus(); }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z" /></svg>
@@ -84,7 +92,12 @@ export default function DailySuccessesPanel({ day, categories, showTitle = true 
         </div>
       </div>
       <p>{item.text}</p>
-    </li>)}</ul>
+    </li>; })}</ul>
     {hasMore && <button className="secondary-btn" type="button" disabled={busy} onClick={loadMore}>Показать ещё</button>}
+    {managingCategories && <CategoryManagerModal categories={categories} onClose={() => {
+      setManagingCategories(false);
+      panelRef.current?.querySelector('[aria-label="Категория успеха"]')?.focus();
+    }}
+      onCategoriesChanged={onCategoriesChanged} portalTarget={panelRef.current?.closest("dialog") || document.body} />}
   </section>;
 }

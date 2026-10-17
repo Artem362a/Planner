@@ -65,8 +65,8 @@ it("hides completed tasks until expanded and combines category and text filters"
   expect(container.textContent).not.toContain("Законченная книга");
   await act(async () => container.querySelector('.ui-disclosure').click());
   expect(container.textContent).toContain("Законченная книга");
-  const category = container.querySelector('.ui-toolbar select');
-  await act(async () => { category.value="study"; category.dispatchEvent(new Event("change",{bubbles:true})); });
+  await act(async () => container.querySelector('[aria-label="Фильтр по категории"]').click());
+  await act(async () => [...document.querySelectorAll('[role="option"]')].find(option => option.textContent === "Учёба").click());
   const search = container.querySelector('input[type="search"]');
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(search,"математике"); search.dispatchEvent(new Event("input",{bubbles:true})); });
   expect(container.textContent).toContain("Прочесть книгу");

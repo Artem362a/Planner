@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchFeedbackList, updateFeedbackStatus, replyToFeedback } from "../../api/feedback";
+import CategoryPicker from "../../components/forms/CategoryPicker";
 import { FEEDBACK_CATEGORIES, FEEDBACK_TYPES, FEEDBACK_STATUSES, filterFeedback } from "../../utils/feedback";
 import { formatUtcDateTime, parseUtcDate } from "../../utils/dates";
 
@@ -86,7 +87,9 @@ export default function FeedbackInboxPage() {
         <label className="ui-search">Поиск<input type="search" placeholder="Текст, имя, контакт или номер" value={filters.query} disabled={busy} onChange={e => changeFilters({ query: e.target.value })} /></label>
         <label className="admin-filter-status">Статус<select value={filters.status} disabled={busy} onChange={e => changeFilters({ status: e.target.value })}>
           <option value="all">Все статусы</option><option value="active">Новые и в работе</option>{Object.entries(FEEDBACK_STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label>Категория<select value={filters.category} disabled={busy} onChange={e => changeFilters({ category: e.target.value })}><option>Все</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label>
+        <label>Категория<CategoryPicker label="Категория обращения" value={filters.category} disabled={busy}
+          options={[{ value: "Все", title: "Все категории" }, ...categories.map(title => ({ value: title, title }))]}
+          onChange={category => changeFilters({ category })} /></label>
         <label>Тип<select value={filters.type} disabled={busy} onChange={e => changeFilters({ type: e.target.value })}><option>Все</option>{types.map(value => <option key={value}>{value}</option>)}</select></label>
         <label className="admin-filter-order">Порядок<select value={sort} disabled={busy} onChange={e => { setSort(e.target.value); setLimit(20); setSelected([]); }}><option value="newest">Сначала новые</option><option value="oldest">Сначала старые</option></select></label>
         <label className="ui-checkbox"><input type="checkbox" checked={filters.unanswered} disabled={busy} onChange={e => changeFilters({ unanswered: e.target.checked })} />Без ответа</label>

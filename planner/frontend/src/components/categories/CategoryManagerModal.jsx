@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   createCategory,
@@ -134,6 +134,7 @@ export default function CategoryManagerModal({
   categories,
   onClose,
   onCategoriesChanged,
+  portalTarget = document.body,
 }) {
   const items = useMemo(() => Object.entries(categories), [categories]);
   const usedColors = useMemo(
@@ -152,6 +153,10 @@ export default function CategoryManagerModal({
   const [newIcon, setNewIcon] = useState("tag");
 
   const isEditing = !!editingKey || creatingNew;
+  const closeRef = useRef(null);
+  useEffect(() => {
+    if (!isEditing) closeRef.current?.focus();
+  }, [isEditing]);
 
   const getUnavailableColorsForEdit = (key) => {
     const result = new Set();
@@ -239,7 +244,9 @@ export default function CategoryManagerModal({
   };
 
   return ReactDOM.createPortal(
-    <div className="task-modal-backdrop" onClick={onClose}>
+    <div className="task-modal-backdrop" onClick={onClose} onKeyDown={event => {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); }
+    }}>
       <div
         className={
           "task-modal category-manager-modal" +
@@ -372,12 +379,12 @@ export default function CategoryManagerModal({
               + Новая категория
             </button>
           )}
-          <button type="button" className="secondary-btn" onClick={onClose}>
+          <button ref={closeRef} type="button" className="secondary-btn" onClick={onClose}>
             Закрыть
           </button>
         </div>
       </div>
     </div>,
-    document.body
+    portalTarget
   );
 }
