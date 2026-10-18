@@ -324,6 +324,8 @@ export default function GoalStagesEditor({ stages, onChange, targetDate, title }
                   <span className="goal-timeline-date-label">Дедлайн</span>
                   <input
                     type="date"
+                    min="1900-01-01"
+                    max="9999-12-31"
                     className="goal-timeline-date"
                     value={stage.planned_date || ""}
                     onChange={(e) =>

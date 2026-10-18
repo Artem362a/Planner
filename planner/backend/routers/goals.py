@@ -19,6 +19,11 @@ from serializers import *
 
 router = APIRouter()
 
+
+def _validate_goal_date(value: date | None) -> None:
+    if value is not None and value.year < 1900:
+        raise HTTPException(400, "Укажите год от 1900 до 9999. Проверьте, что год введён полностью.")
+
 @router.get("/goals/week", response_model=list[GoalWeekItemOut])
 def list_goals_for_week(
     week_start: date,
@@ -444,6 +449,8 @@ def create_goal(
     if body.goal_type == "recurring" and body.target_date is None:
         raise HTTPException(status_code=400, detail="Target date is required for recurring goal")
 
+    _validate_goal_date(body.target_date)
+
     max_order = (
         db.query(func.max(Goal.order_index))
         .filter(Goal.user_id == current_user_row.id)
@@ -517,6 +524,9 @@ def update_goal(
     title = body.title.strip()
     if not title:
         raise HTTPException(status_code=400, detail="Goal title is required")
+
+    if body.target_date != row.target_date:
+        _validate_goal_date(body.target_date)
 
     row.title = title
     row.description = (body.description or "").strip() or None
@@ -679,6 +689,8 @@ def create_goal_stage(
     if goal is None:
         raise HTTPException(404, "Goal not found")
 
+    _validate_goal_date(body.planned_date)
+
     if body.order_index is not None:
         next_order = body.order_index
     else:
@@ -741,6 +753,9 @@ def update_goal_stage(
     )
     if stage is None:
         raise HTTPException(404, "Goal stage not found")
+
+    if body.planned_date != stage.planned_date:
+        _validate_goal_date(body.planned_date)
 
     stage.title = body.title.strip()
     stage.done = body.done

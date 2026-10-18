@@ -534,9 +534,9 @@ export default function GoalsPage() {
                                 </div>
                               </div>
 
-                              {goal.description && (
+                              {goal.description?.trim() && (
                                 <div className="goal-card-description">
-                                  {goal.description}
+                                  {goal.description.trim()}
                                 </div>
                               )}
 
@@ -759,6 +759,8 @@ export default function GoalsPage() {
                             </span>
                             <input
                               type="date"
+                              min="1900-01-01"
+                              max="9999-12-31"
                               name="target_date"
                               value={createForm.target_date}
                               onChange={handleCreateFormChange}

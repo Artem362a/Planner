@@ -182,62 +182,114 @@
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
 }
 
-/* Тумблер «🔔 Напомнить [за N мин]» в форме задачи */
-.task-remind-row {
+/* Reminder switch shares the task title row to keep the form compact. */
+.task-modal.task-editor-modal {
+  gap: 6px;
+}
+
+.task-editor-modal .task-modal-form {
+  gap: 6px !important;
+}
+
+.task-editor-modal .task-modal-form label {
+  margin-bottom: 3px;
+}
+
+.task-editor-modal .subtasks-form-block {
+  margin-top: 6px;
+  padding-top: 0;
+}
+
+.task-editor-modal .subtasks-form-title {
+  margin-bottom: 4px;
+}
+
+.task-editor-modal .subtasks-form-input-row {
+  margin-bottom: 2px;
+}
+
+.task-editor-modal .task-modal-buttons {
+  margin-top: 4px !important;
+}
+
+.task-modal-heading {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
-  min-height: 30px;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.task-modal .task-modal-heading h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0 !important;
+}
+
+.task-remind-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 132px;
+  flex-shrink: 0;
 }
 
 .task-remind-toggle {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
   cursor: pointer;
   user-select: none;
 }
 
-.task-remind-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .task-remind-slider {
-  width: 36px;
+  display: block;
+  width: 34px;
   height: 20px;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #ddd6f3;
   position: relative;
   flex-shrink: 0;
   transition: background 0.18s ease;
 }
 
-.task-remind-slider::after {
-  content: "";
+.task-remind-thumb {
+  display: grid;
+  place-items: center;
   position: absolute;
   top: 2px;
   left: 2px;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 4px;
   background: #ffffff;
+  color: var(--text-muted);
   box-shadow: 0 1px 3px rgba(63, 45, 117, 0.28);
   transition: transform 0.18s ease;
 }
 
-.task-remind-toggle input:checked + .task-remind-slider {
+.task-remind-toggle[aria-checked="true"] .task-remind-slider {
   background: #6f58e8;
 }
 
-.task-remind-toggle input:checked + .task-remind-slider::after {
-  transform: translateX(16px);
+.task-remind-toggle[aria-checked="true"] .task-remind-thumb {
+  transform: translateX(14px);
+  color: var(--accent);
 }
 
-.task-remind-toggle input:focus-visible + .task-remind-slider {
+.task-remind-toggle:focus-visible {
+  outline: none;
+}
+
+.task-remind-toggle:focus-visible .task-remind-slider {
   outline: 2px solid #6f58e8;
   outline-offset: 2px;
 }
@@ -246,38 +298,45 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   color: #312b55;
-}
-
-.task-remind-label svg {
-  color: #6f58e8;
-  flex-shrink: 0;
 }
 
 .task-remind-lead-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 12px;
   color: #62598e;
+  white-space: nowrap;
 }
 
-.task-remind-lead {
-  width: 56px;
-  padding: 4px 6px;
-  border: 1px solid #e2dbf5;
+.task-modal-heading .task-remind-lead {
+  width: 48px;
+  min-width: 0;
+  height: 28px;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
+  background: var(--surface-input, #ffffff);
   font: inherit;
   font-size: 13px;
-  color: #312b55;
+  color: var(--text-main);
   text-align: center;
+  appearance: textfield;
 }
 
-.task-remind-note {
-  font-size: 12px;
-  color: #9b93c4;
+.task-remind-lead::-webkit-inner-spin-button,
+.task-remind-lead::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.task-modal-heading .task-remind-lead:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* Галочка «фиксировать начало дня в шаблоне» (режим редактирования шаблона) */
@@ -1857,6 +1916,9 @@
 .day-task-meta span {
   font-size: 12px;
   color: #666;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .day-task-time {
@@ -1867,6 +1929,16 @@
   font-weight: 600;
   color: #555;
   margin-left: 12px;
+}
+
+.day-task-category {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .day-task-time--fixed {
@@ -2201,10 +2273,14 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  flex-shrink: 0;
+  min-width: 0;
+  max-width: 55%;
 }
 
 .od-card-cat {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 11px;
   color: #7b6aaa;
   background: #f0ebff;
@@ -2214,6 +2290,7 @@
 }
 
 .od-card-date {
+  flex-shrink: 0;
   font-size: 11px;
   color: #b0a7cc;
   white-space: nowrap;

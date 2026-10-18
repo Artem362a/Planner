@@ -3,6 +3,52 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+import pytest
+
+
+class TestGoalDateValidation:
+    @pytest.mark.parametrize("target, status", [("0005-08-07", 400), ("1899-12-31", 400), ("1900-01-01", 200)])
+    def test_goal_date_year(self, client, auth_headers, target, status):
+        r = client.post("/goals", headers=auth_headers,
+                        json={"title": "Дата цели", "target_date": target})
+        assert r.status_code == status
+
+    def test_rejects_invalid_dates_on_goal_and_stage_update(self, client, auth_headers):
+        goal = client.post("/goals", headers=auth_headers,
+                           json={"title": "Цель", "target_date": "2027-01-01", "has_stages": True}).json()
+        r = client.patch(f"/goals/{goal['id']}", headers=auth_headers,
+                         json={"title": "Цель", "target_date": "0005-08-07"})
+        assert r.status_code == 400
+        r = client.post(f"/goals/{goal['id']}/stages", headers=auth_headers,
+                        json={"title": "Этап", "planned_date": "0005-08-07"})
+        assert r.status_code == 400
+        created = client.post(f"/goals/{goal['id']}/stages", headers=auth_headers,
+                              json={"title": "Этап", "planned_date": "2027-01-01"}).json()
+        stage = created["stages"][0]
+        r = client.patch(f"/goals/{goal['id']}/stages/{stage['id']}", headers=auth_headers,
+                         json={"title": "Этап", "planned_date": "0005-08-07"})
+        assert r.status_code == 400
+
+    def test_legacy_dates_still_allow_completion_and_correction(self, client, db, user, auth_headers):
+        from db import Goal, GoalStage
+
+        goal = Goal(user_id=user.id, title="Старая цель", color="#fff", target_date=date(5, 8, 7))
+        db.add(goal)
+        db.flush()
+        stage = GoalStage(goal_id=goal.id, title="Старый этап", planned_date=date(5, 8, 7), order_index=0)
+        db.add(stage)
+        db.commit()
+        assert client.get("/goals", headers=auth_headers).status_code == 200
+        r = client.patch(f"/goals/{goal.id}", headers=auth_headers,
+                         json={"title": goal.title, "target_date": "0005-08-07", "status": "done"})
+        assert r.status_code == 200
+        r = client.patch(f"/goals/{goal.id}/stages/{stage.id}", headers=auth_headers,
+                         json={"title": stage.title, "planned_date": "0005-08-07", "done": True})
+        assert r.status_code == 200
+        r = client.patch(f"/goals/{goal.id}", headers=auth_headers,
+                         json={"title": goal.title, "target_date": "2027-01-01"})
+        assert r.status_code == 200
+
 
 class TestCreateGoal:
     def test_create_one_time_goal(self, client, auth_headers):

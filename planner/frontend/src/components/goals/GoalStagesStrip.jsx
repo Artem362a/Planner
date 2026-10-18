@@ -1,12 +1,12 @@
-// Горизонтальная лента этапов цели: кружок с номером, под ним короткое
-// название и дата. Клик по кружку отмечает этап выполненным. Единственное
+// Горизонтальная лента этапов: название над линией, дата под ней.
+// Клик по точке отмечает этап выполненным. Единственное
 // представление этапов в карточке — без дублирующего вертикального списка.
 
 import { formatStageDate, stageDateStatus } from "../../utils/goalStages";
 
 function CheckIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M5 13l4 4L19 7" />
     </svg>
@@ -18,7 +18,7 @@ export default function GoalStagesStrip({ stages, color, onToggle }) {
   const currentIndex = stages.findIndex((s) => !s.done);
 
   return (
-    <div className="ghs" style={{ "--goal-accent": accent }}>
+    <div className="ghs" style={{ "--goal-accent": accent, "--goal-stage-count": stages.length }}>
       {stages.map((stage, i) => {
         const status = stageDateStatus(stage);
         return (
@@ -30,6 +30,9 @@ export default function GoalStagesStrip({ stages, color, onToggle }) {
               (i === currentIndex ? " is-current" : "")
             }
           >
+            <div className="ghs-name" title={stage.title}>
+              {stage.title}
+            </div>
             <div className="ghs-rail">
               <span
                 className={
@@ -41,19 +44,17 @@ export default function GoalStagesStrip({ stages, color, onToggle }) {
                 type="button"
                 className="ghs-dot"
                 onClick={() => onToggle(stage)}
+                aria-label={`Этап «${stage.title}»`}
+                aria-pressed={!!stage.done}
                 title={stage.done ? "Снять отметку" : "Отметить выполненным"}
               >
-                {stage.done ? <CheckIcon /> : i + 1}
+                {stage.done && <CheckIcon />}
               </button>
               <span
                 className={
                   "ghs-line ghs-line--right" + (stage.done ? " is-filled" : "")
                 }
               />
-            </div>
-
-            <div className="ghs-name" title={stage.title}>
-              {stage.title}
             </div>
 
             {stage.planned_date && (

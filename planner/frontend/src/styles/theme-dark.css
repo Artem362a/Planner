@@ -90,8 +90,8 @@
 
 :root[data-theme="dark"] .day-open-link,
 :root[data-theme="dark"] .week-open-link {
-  background: var(--accent-soft);
-  color: #c8beff;
+  background: rgba(154, 134, 255, 0.25);
+  color: #eae8f4;
 }
 
 :root[data-theme="dark"] .day-open-link:hover,
@@ -337,7 +337,8 @@
 
 /* ---------- Account page ---------- */
 
-:root[data-theme="dark"] .account-shell {
+:root[data-theme="dark"] .account-profile-panel,
+:root[data-theme="dark"] .account-settings {
   background: var(--card-bg);
   border-color: var(--line);
   box-shadow: var(--shadow-card);
@@ -543,22 +544,16 @@
 :root[data-theme="dark"] .task-remind-label {
   color: var(--text-main);
 }
-:root[data-theme="dark"] .task-remind-label svg {
-  color: #c8beff;
-}
-:root[data-theme="dark"] .task-remind-note {
-  color: var(--text-muted);
-}
 :root[data-theme="dark"] .task-remind-lead-wrap {
   color: var(--text-soft);
 }
 :root[data-theme="dark"] .task-remind-slider {
   background: #3a3847;
 }
-:root[data-theme="dark"] .task-remind-toggle input:checked + .task-remind-slider {
+:root[data-theme="dark"] .task-remind-toggle[aria-checked="true"] .task-remind-slider {
   background: var(--accent);
 }
-:root[data-theme="dark"] .task-remind-toggle input:focus-visible + .task-remind-slider {
+:root[data-theme="dark"] .task-remind-toggle:focus-visible .task-remind-slider {
   outline-color: var(--accent);
 }
 
@@ -1443,17 +1438,6 @@
 :root[data-theme="dark"] .icon-circle svg rect,
 :root[data-theme="dark"] .icon-circle svg path {
   fill: #c8beff;
-}
-
-/* "Открыть" link on cards — boost contrast */
-:root[data-theme="dark"] .day-open-link,
-:root[data-theme="dark"] .week-open-link {
-  background: rgba(154, 134, 255, 0.25);
-  color: #eae8f4;
-}
-:root[data-theme="dark"] .day-open-link:hover,
-:root[data-theme="dark"] .week-open-link:hover {
-  background: rgba(154, 134, 255, 0.36);
 }
 
 /* ---------- Shared buttons (secondary / modal-cancel) ---------- */

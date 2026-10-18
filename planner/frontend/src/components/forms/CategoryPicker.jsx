@@ -109,7 +109,7 @@ export default function CategoryPicker({ options, value, onChange, label = "Ка
         if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); reveal(); }
         if (event.key === "Escape") close();
       }}>
-      {icon(selected)}<span className="category-picker-title">{selected.title}</span>
+      {icon(selected)}<span className="category-picker-title" title={selected.title}>{selected.title}</span>
       <svg className="category-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
     </button>
     {open && !disabled && createPortal(<div className="category-picker-popup" ref={popupRef} style={{ visibility: "hidden" }}>
@@ -123,7 +123,7 @@ export default function CategoryPicker({ options, value, onChange, label = "Ка
         {filtered.map((option, index) => <button key={option.value} type="button" role="option" tabIndex={-1}
           id={`${id}-option-${index}`} aria-selected={option.value === selectedValue} data-active={index === active}
           className="category-picker-option" onMouseDown={event => event.preventDefault()} onClick={() => choose(option)}>
-          {icon(option)}<span className="category-picker-title">{option.title}</span>
+          {icon(option)}<span className="category-picker-title" title={option.title}>{option.title}</span>
           {option.value === selectedValue && <svg className="category-picker-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>}
         </button>)}
       </div>

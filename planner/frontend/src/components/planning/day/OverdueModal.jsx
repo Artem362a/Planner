@@ -79,7 +79,7 @@ function OverdueCard({ task, onDismiss, onReschedule, hideDate = false, recurrin
         <span className="od-card-title">{task.title}</span>
         <div className="od-card-chips">
           {task.category && (
-            <span className="od-card-cat">{task.category}</span>
+            <span className="od-card-cat" title={task.category}>{task.category}</span>
           )}
           {!hideDate && dateLabel && (
             <span className="od-card-date">{dateLabel}</span>

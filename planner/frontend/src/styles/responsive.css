@@ -27,6 +27,7 @@
    ========================= */
 @media (min-width: 1025px) and (max-height: 820px) {
   .app-wrapper--home {
+    --home-card-gap: 12px;
     padding: 10px;
   }
 
@@ -45,15 +46,10 @@
 
   .app-wrapper--home .app-main {
     padding: 12px;
-    gap: 12px;
   }
 
   .app-wrapper--home .card {
     padding: 12px 14px;
-  }
-
-  .app-wrapper--home .card-header-row {
-    margin-bottom: 10px;
   }
 
   .app-wrapper--home .card h2 {
@@ -178,6 +174,7 @@
   .icon-circle {
     width: 42px;
     height: 42px;
+    border-radius: 12px;
   }
 
   .icon-calendar-bars {

@@ -128,6 +128,7 @@
 }
 
 .goal-form-col-main {
+  min-width: 0;
   flex: none;
   width: 380px;
   display: flex;
@@ -577,8 +578,8 @@
 
 /* Stages sit directly in the card — no box, just a hairline separator */
 .goal-stages-plain {
-  margin-top: 6px;
-  padding-top: 8px;
+  margin-top: 8px;
+  padding-top: 4px;
   border-top: 1px solid #efeaf8;
 }
 
@@ -586,19 +587,20 @@
    Один акцентный цвет (цель) для пройденного пути + нейтральные серые для
    остального; единственный тревожный цвет — красный для просрочки. */
 .ghs {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(var(--goal-stage-count), minmax(100px, 1fr));
+  grid-template-rows: auto auto auto;
+  align-items: start;
   overflow-x: auto;
-  padding: 10px 4px 6px;
-  scrollbar-gutter: stable;
+  padding: 6px 4px 2px;
 }
 
 .ghs-item {
-  flex: 1 0 100px;
+  grid-row: 1 / span 3;
   min-width: 100px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-rows: subgrid;
+  justify-items: center;
   text-align: center;
 }
 
@@ -606,11 +608,12 @@
   display: flex;
   align-items: center;
   width: 100%;
+  min-height: 24px;
 }
 
 .ghs-line {
   flex: 1;
-  height: 3px;
+  height: 2px;
   border-radius: 3px;
   background: #e8e3f2;
 }
@@ -625,9 +628,10 @@
 }
 
 .ghs-dot {
+  position: relative;
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px solid #dcd5ee;
   background: #fff;
@@ -642,8 +646,20 @@
   transition: background 0.16s, border-color 0.16s, color 0.16s, box-shadow 0.16s;
 }
 
+.ghs-dot::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
 .ghs-dot:hover {
   border-color: var(--goal-accent, #7c62e6);
+}
+
+.ghs-dot:focus-visible {
+  outline: 2px solid var(--goal-accent, #7c62e6);
+  outline-offset: 3px;
 }
 
 /* Completed: filled accent + check */
@@ -653,7 +669,7 @@
   color: #fff;
 }
 
-/* Current: filled accent + number + soft halo ring */
+/* Current: filled accent + soft halo ring */
 .ghs-item.is-current .ghs-dot {
   background: var(--goal-accent, #7c62e6);
   border-color: var(--goal-accent, #7c62e6);
@@ -662,16 +678,15 @@
 }
 
 .ghs-name {
-  margin-top: 9px;
-  max-width: 96px;
-  /* фиксируем высоту под 3 строки, чтобы даты под названиями были в ряд */
-  min-height: 3.9em;
+  margin-bottom: 2px;
+  max-width: min(160px, 100%);
   font-size: 12px;
   line-height: 1.3;
   font-weight: 500;
   color: #6c6690;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
@@ -687,7 +702,7 @@
 }
 
 .ghs-date {
-  margin-top: 4px;
+  margin-top: 0;
   font-size: 11px;
   font-weight: 500;
   color: #a7a0bd;
@@ -820,11 +835,12 @@
 
 .goal-form-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
 .goal-form-field {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -947,7 +963,16 @@
   border-radius: 16px;
 }
 
-.goal-card-content { padding: 10px 14px; }
+.goal-card-content { padding: 0 14px; min-width: 0; }
+
+.goals-list--clean .goal-card-title-row { margin-bottom: 0; }
+.goals-list--clean .goal-card-description {
+  margin: 6px 0 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
 
 .goal-card-main {
   cursor: pointer;
@@ -1010,7 +1035,7 @@
   .goals-shell-card { padding: 12px; }
   .goals-list--clean { gap: 8px; }
 
-  .goal-card-content { padding: 8px 10px; }
+  .goal-card-content { padding: 0 10px; }
   .goal-card--soft { border-radius: 12px; }
   .goal-card-title { font-size: 14px; }
   .goal-card-meta-inline { margin-left: 14px; gap: 4px; flex-wrap: wrap; }

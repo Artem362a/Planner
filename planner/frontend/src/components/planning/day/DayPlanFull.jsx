@@ -22,6 +22,7 @@ import TemplatePreview from "../TemplatePreview";
 import TemplateColorPicker from "../TemplateColorPicker";
 import PrioritySelect from "../../forms/PrioritySelect";
 import CategorySelect from "../../forms/CategorySelect";
+import DurationInput from "../../forms/DurationInput";
 import CategoryManagerModal from "../../categories/CategoryManagerModal";
 import { CategoryIcon, PlusIcon } from "../../icons";
 import {
@@ -2458,7 +2459,7 @@ const overdueImportCandidates = useMemo(
                       {t.priority && <span>{t.priority === "high" ? "Важная" : "Обычная"}</span>}
 
                       {t.category && (
-                        <span>
+                        <span className="day-task-category" title={categories[t.category]?.title || t.category}>
                           #{categories[t.category]?.title || t.category}
                         </span>
                       )}
@@ -2920,12 +2921,48 @@ const overdueImportCandidates = useMemo(
 
       {isModalOpen && (
         <div className="task-modal-backdrop">
-          <div className="task-modal">
-            <h3>
-              {editingTaskId === null
-                ? "Новая задача"
-                : "Редактировать задачу"}
-            </h3>
+          <div className="task-modal task-editor-modal">
+            <div className="task-modal-heading">
+              <h3>
+                {editingTaskId === null
+                  ? "Новая задача"
+                  : "Редактировать задачу"}
+              </h3>
+              {!isTemplateMode && (
+                <div className="task-remind-header">
+                  <button
+                    type="button"
+                    role="switch"
+                    className="task-remind-toggle"
+                    aria-checked={form.remind}
+                    aria-label="Напомнить"
+                    title="Бот и колокольчик на сайте пришлют напоминание"
+                    onClick={() => setForm((prev) => ({ ...prev, remind: !prev.remind }))}
+                  >
+                    <span className="task-remind-slider" aria-hidden="true">
+                      <span className="task-remind-thumb" />
+                    </span>
+                    {!form.remind && <span className="task-remind-label">Напомнить</span>}
+                  </button>
+                  {form.remind && (
+                    <span className="task-remind-lead-wrap">
+                      за
+                      <input
+                        type="number"
+                        aria-label="За сколько минут напомнить"
+                        className="task-remind-lead"
+                        min={0}
+                        max={1440}
+                        autoFocus
+                        value={form.remind_lead}
+                        onChange={(e) => setForm((prev) => ({ ...prev, remind_lead: e.target.value }))}
+                      />
+                      мин
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
             <form onSubmit={handleSubmit} className="task-modal-form">
               <label>
@@ -2957,17 +2994,18 @@ const overdueImportCandidates = useMemo(
               </div>
 
               {timeMode === "duration" ? (
-                <label>
-                  Длительность (ЧЧ:ММ)
-                  <input
+                <div className="task-duration-field">
+                  <label htmlFor="task-duration-hours">Длительность (ЧЧ:ММ)</label>
+                  <DurationInput
+                    id="task-duration-hours"
                     name="duration"
-                    type="text"
                     value={form.duration}
-                    onChange={handleFormChange}
-                    placeholder="01:30"
-                    maxLength={5}
+                    onValueChange={(duration) => {
+                      setForm((prev) => ({ ...prev, duration }));
+                      setFormError(null);
+                    }}
                   />
-                </label>
+                </div>
               ) : (
                 <div className="time-range-row">
                   <label>
@@ -3005,54 +3043,6 @@ const overdueImportCandidates = useMemo(
                   На это время в плане на {formatFollowingDayLabel(selectedDate)} уже есть:{" "}
                   {formTimePreview.nextDayConflicts.map((task) => `«${task.title}»`).join(", ")}.
                   Сохранение разрешено — задачи не будут изменены.
-                </div>
-              )}
-
-              {!isTemplateMode && (
-                <div
-                  className="task-remind-row"
-                  title="Бот и колокольчик на сайте пришлют напоминание"
-                >
-                  <label className="task-remind-toggle">
-                    <input
-                      type="checkbox"
-                      checked={form.remind}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, remind: e.target.checked }))
-                      }
-                    />
-                    <span className="task-remind-slider" aria-hidden="true" />
-                    <span className="task-remind-label">
-                      <BellIcon size={14} strokeWidth={2} />
-                      Напомнить
-                    </span>
-                  </label>
-
-                  {form.remind && (
-                    <span className="task-remind-lead-wrap">
-                      за
-                      <input
-                        type="number"
-                        className="task-remind-lead"
-                        min={0}
-                        max={1440}
-                        value={form.remind_lead}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            remind_lead: e.target.value,
-                          }))
-                        }
-                      />
-                      мин
-                    </span>
-                  )}
-
-                  {form.remind && timeMode === "duration" && (
-                    <span className="task-remind-note">
-                      без фикс. времени — по текущему месту в плане
-                    </span>
-                  )}
                 </div>
               )}
 
@@ -3417,7 +3407,7 @@ const overdueImportCandidates = useMemo(
 
                             <div className="week-import-item-meta">
                               {item.category && (
-                                <span>
+                                <span className="day-task-category" title={categories[item.category]?.title || item.category}>
                                   #{categories[item.category]?.title || item.category}
                                 </span>
                               )}
@@ -3469,7 +3459,7 @@ const overdueImportCandidates = useMemo(
 
                             <div className="week-import-item-meta">
                               {item.category && (
-                                <span>
+                                <span className="day-task-category" title={categories[item.category]?.title || item.category}>
                                   #{categories[item.category]?.title || item.category}
                                 </span>
                               )}

@@ -15,6 +15,8 @@
 
 /* Только главная страница — фиксирована в экран без скролла */
 .app-wrapper--home {
+  --home-card-gap: 20px;
+  --home-header-gap: 12px;
   height: 100vh;
   overflow: hidden;
 }
@@ -77,7 +79,7 @@
   grid-template-areas:
     "day month targets"
     "day week  week";
-  gap: 20px;
+  gap: var(--home-card-gap, 20px);
   overflow: hidden;
 }
 
@@ -122,8 +124,10 @@
   margin-bottom: 18px;
 }
 
-.app-wrapper--home .week-card .card-header-row {
-  margin-bottom: 8px;
+.app-wrapper--home .card-header-row {
+  flex-shrink: 0;
+  min-height: 34px;
+  margin-bottom: var(--home-header-gap);
 }
 
 

@@ -4,7 +4,7 @@ from datetime import date
 from datetime import time as _time
 from typing import Any, List, Literal, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class NotificationCreateIn(BaseModel):
     title: str
@@ -100,13 +100,13 @@ class UserShortOut(BaseModel):
     role: str
 
 class CategoryIn(BaseModel):
-    title: str
+    title: str = Field(max_length=50)
     color: str
     icon: str = "tag"
 
 
 class CategoryUpdateIn(BaseModel):
-    title: str
+    title: str = Field(max_length=50)
     color: str
     icon: str = "tag"
 

@@ -25,7 +25,14 @@ export default function Targets() {
       {visibleGoals.map((goal) => (
         <div key={goal.id} className="target-widget-item">
           <div className="target-widget-top">
-            <span className="target-widget-title">{goal.title}</span>
+            <div className="target-widget-heading">
+              <span className="target-widget-title" title={goal.title}>{goal.title}</span>
+              {(goal.stages || []).length > 0 && (
+                <span className="target-widget-meta">
+                  {goal.stages.filter((s) => s.done).length}/{goal.stages.length}
+                </span>
+              )}
+            </div>
             <span className="target-widget-percent">
               {Math.round((goal.progress || 0) * 100)}%
             </span>
@@ -39,11 +46,6 @@ export default function Targets() {
                 backgroundColor: goal.color || "#7ECF8A",
               }}
             />
-          </div>
-
-          <div className="target-widget-meta">
-            {(goal.stages || []).filter((s) => s.done).length}/
-            {(goal.stages || []).length}
           </div>
         </div>
       ))}

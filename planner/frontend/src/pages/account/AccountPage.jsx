@@ -106,9 +106,21 @@ function CollapsibleSection({
   danger = false,
   as = "div",
   onSubmit,
+  expandOnDesktop = false,
   children,
 }) {
   const [open, setOpen] = useState(false);
+  const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 1001px)").matches);
+  useEffect(() => {
+    if (!expandOnDesktop) return;
+    const media = window.matchMedia("(min-width: 1001px)");
+    const onChange = () => setDesktop(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [expandOnDesktop]);
+  const desktopExpanded = expandOnDesktop && desktop;
+  const expanded = open || desktopExpanded;
+  const Toggle = desktopExpanded ? "div" : "button";
   const Tag = as;
 
   return (
@@ -119,18 +131,18 @@ function CollapsibleSection({
       }
       onSubmit={onSubmit}
     >
-      <button
-        type="button"
+      <Toggle
+        type={desktopExpanded ? undefined : "button"}
         className="account-section-toggle"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
+        onClick={desktopExpanded ? undefined : () => setOpen((prev) => !prev)}
+        aria-expanded={desktopExpanded ? undefined : expanded}
       >
         <div className="account-section-info">
           <h2>{title}</h2>
-          {!open && summary && <span className="account-section-summary">{summary}</span>}
-          {open && description && <p>{description}</p>}
+          {!expanded && summary && <span className="account-section-summary">{summary}</span>}
+          {expanded && description && <p>{description}</p>}
         </div>
-        <span
+        {!desktopExpanded && <span
           className={
             "account-section-chevron" +
             (open ? " account-section-chevron--open" : "")
@@ -149,10 +161,10 @@ function CollapsibleSection({
           >
             <path d="M9 6l6 6-6 6" />
           </svg>
-        </span>
-      </button>
+        </span>}
+      </Toggle>
 
-      {open && <div className="account-section-controls">{children}</div>}
+      {expanded && <div className="account-section-controls">{children}</div>}
     </Tag>
   );
 }
@@ -513,6 +525,7 @@ function AccountPage({ user, onUserUpdate }) {
 
         <main className="account-page-main">
           <section className="account-shell">
+            <div className="account-profile-panel">
             <div className="account-profile-band">
               <AvatarPreview avatar={avatar} username={username} />
 
@@ -523,9 +536,10 @@ function AccountPage({ user, onUserUpdate }) {
               </div>
             </div>
 
-            <div className="account-settings">
+            <div className="account-profile-editor">
               <CollapsibleSection
                 as="form"
+                expandOnDesktop
                 onSubmit={handleProfileSubmit}
                 title="Ник и аватарка"
                 summary={user?.username}
@@ -569,7 +583,10 @@ function AccountPage({ user, onUserUpdate }) {
 
                   {profileStatus && <div className="account-status">{profileStatus}</div>}
               </CollapsibleSection>
+            </div>
+            </div>
 
+            <div className="account-settings">
               <CollapsibleSection
                 title="Тема оформления"
                 summary={user?.theme === "dark" ? "Тёмная" : "Светлая"}
@@ -710,7 +727,7 @@ function AccountPage({ user, onUserUpdate }) {
               <CollapsibleSection
                 title="Telegram-бот"
                 summary={tgLoading ? "Проверяем подключение…" : tgStatus === "Не удалось проверить подключение" ? tgStatus : tgLinked ? "Подключён" : "Не подключён"}
-                description="Быстрый захват во «Входящие», план на день и уведомления прямо в Telegram."
+                description="Подключи бота к аккаунту: отправляй ему задачи во «Входящие», получай план на день и напоминания из этого планировщика прямо в Telegram."
               >
                   {tgLinked ? (
                     <>

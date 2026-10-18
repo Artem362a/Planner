@@ -230,7 +230,9 @@ const Home = ({ user, onLogout }) => {
           </section>
 
           <section className="card month-card">
-            <h2>Расписание на месяц</h2>
+            <div className="card-header-row">
+              <h2>Расписание на месяц</h2>
+            </div>
             <MonthCalendar
               selectedDate={selectedDate}
               onDateChange={(date) => setSelectedDay(formatLocalDate(date))}

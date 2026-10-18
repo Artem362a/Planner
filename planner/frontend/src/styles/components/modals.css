@@ -561,6 +561,8 @@
 
 .category-manager-item {
   display: flex;
+  flex-shrink: 0;
+  min-width: 0;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -597,7 +599,30 @@
   font-size: 16px;
   color: #2d2545;
   min-width: 0;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.4;
+}
+
+.category-manager-title-field {
+  display: flex;
+  flex: 1 1 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-manager-title-field small {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.category-manager-title-field input[type="text"] {
+  flex: none;
 }
 
 .category-manager-icon {
@@ -618,6 +643,7 @@
 }
 
 .category-manager-icon-button {
+  flex-shrink: 0;
   border: none;
   background: transparent;
   padding: 0;
@@ -629,6 +655,7 @@
 
 .category-manager-edit-btn,
 .category-manager-delete-btn {
+  flex-shrink: 0;
   border: none;
   background: transparent;
   cursor: pointer;

@@ -10,6 +10,8 @@
 .category-picker-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .category-picker-trigger:disabled { opacity: .5; cursor: default; }
 .category-picker-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.category-picker-trigger .category-picker-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-picker-option .category-picker-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .category-picker-icon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; color: var(--category-color); background: color-mix(in srgb, var(--category-color) 10%, transparent); }
 .category-picker-icon svg { width: 16px; height: 16px; }
 .category-picker-chevron { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-soft); transition: transform .15s; }

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 
 def _make_category(db, user_id, *, key, title="Cat", color="#123456", icon="tag"):
     from db import TaskCategory
@@ -15,6 +17,15 @@ def _make_category(db, user_id, *, key, title="Cat", color="#123456", icon="tag"
 
 
 class TestCreateAndList:
+    @pytest.mark.parametrize("length, status", [(50, 200), (51, 422)])
+    def test_category_title_length_limit(self, client, auth_headers, length, status):
+        title = "Я" * length
+        r = client.post("/categories", headers=auth_headers,
+                        json={"title": title, "color": "#FF0000"})
+        assert r.status_code == status
+        titles = [c["title"] for c in client.get("/categories", headers=auth_headers).json()]
+        assert (title in titles) == (status == 200)
+
     def test_create(self, client, auth_headers):
         r = client.post(
             "/categories",
@@ -49,6 +60,23 @@ class TestCreateAndList:
 
 
 class TestUpdate:
+    def test_legacy_long_title_can_be_read_and_shortened(self, client, db, user, auth_headers):
+        row = _make_category(db, user.id, key="legacy", title="Я" * 1000)
+        listed = client.get("/categories", headers=auth_headers).json()
+        assert listed[0]["title"] == "Я" * 1000
+        r = client.patch(f"/categories/{row.id}", headers=auth_headers,
+                         json={"title": "Я" * 50, "color": "#123456"})
+        assert r.status_code == 200
+        assert r.json()["title"] == "Я" * 50
+
+    def test_overlong_rename_leaves_category_unchanged(self, client, db, user, auth_headers):
+        row = _make_category(db, user.id, key="original", title="Исходная")
+        r = client.patch(f"/categories/{row.id}", headers=auth_headers,
+                         json={"title": "Я" * 51, "color": "#123456"})
+        assert r.status_code == 422
+        db.refresh(row)
+        assert row.title == "Исходная"
+
     def test_update_own(self, client, db, user, auth_headers):
         row = _make_category(db, user.id, key="c1", title="Old", color="#000000")
         r = client.patch(

@@ -1,0 +1,18 @@
+.task-duration-field { display: flex; flex-direction: column; gap: 4px; }
+.task-editor-modal .task-duration-field > label { margin: 0; }
+.duration-input {
+  display: flex; align-items: center; width: 100%; min-height: 36px; padding: 6px 10px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  color: var(--text-main); background: var(--surface-input, #fff); cursor: text;
+}
+.duration-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent); }
+.task-editor-modal .duration-input .duration-input-part {
+  flex: 0 0 2.4ch; width: 2.4ch; min-width: 0; min-height: 20px !important;
+  padding: 0 !important; margin: 0; border: 0 !important; border-radius: 3px !important;
+  background: transparent !important; color: var(--text-main) !important;
+  font-variant-numeric: tabular-nums; font-size: 12px !important;
+  text-align: center; outline: none; box-shadow: none !important;
+}
+.duration-input .duration-input-part::placeholder { color: var(--text-soft) !important; opacity: 1; }
+.duration-input-part::selection { background: var(--accent); color: #fff; }
+.duration-input-separator { padding: 0 1px; font-size: 12px; }

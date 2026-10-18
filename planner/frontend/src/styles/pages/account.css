@@ -1,13 +1,22 @@
 .account-page-main {
   flex: 1;
   min-height: 0;
-  padding: 30px;
+  padding: 24px;
   overflow-y: auto;
 }
 
 .account-shell {
-  width: min(1160px, 100%);
+  width: 100%;
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.account-profile-panel,
+.account-settings {
+  min-width: 0;
   border: 1px solid rgba(229, 223, 244, 0.82);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.72);
@@ -20,7 +29,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 18px;
-  padding: 26px 30px;
+  padding: 24px;
   background: linear-gradient(135deg, rgba(250, 247, 255, 0.7), rgba(255, 255, 255, 0.86));
   border-bottom: 1px solid rgba(236, 230, 246, 0.72);
 }
@@ -40,7 +49,7 @@
 .account-profile-copy h1 {
   margin: 0;
   color: #241d44;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 500;
   line-height: 1.16;
   overflow-wrap: anywhere;
@@ -50,6 +59,7 @@
   margin: 7px 0 0;
   color: #746d91;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .account-avatar-preview {
@@ -85,14 +95,22 @@
 }
 
 .account-settings {
-  padding: 0 30px 28px;
+  padding: 0 24px;
+}
+
+.account-profile-editor {
+  padding: 0 24px;
+}
+
+.account-profile-editor .account-section-toggle:not(button) {
+  cursor: default;
 }
 
 .account-section {
   display: grid;
   grid-template-columns: minmax(210px, 0.45fr) minmax(0, 1fr);
   gap: 32px;
-  padding: 25px 0;
+  padding: 20px 0;
   border-bottom: 1px solid rgba(238, 233, 246, 0.72);
 }
 
@@ -103,7 +121,7 @@
 .account-section-info h2 {
   margin: 0;
   color: #2d2651;
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 500;
   line-height: 1.2;
 }
@@ -115,8 +133,17 @@
   line-height: 1.35;
 }
 
+.account-page-main .account-section-summary {
+  font-size: 13px;
+}
+
 .account-section-controls {
   min-width: 0;
+}
+
+.account-section-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .account-field {
@@ -422,7 +449,13 @@
 
 .account-section--collapsible .account-section-controls {
   margin-top: 16px;
-  max-width: 520px;
+}
+
+@media (max-width: 1000px) {
+  .account-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
 }
 
 @media (max-width: 820px) {
@@ -435,8 +468,9 @@
     padding: 20px;
   }
 
-  .account-settings {
-    padding: 0 18px 18px;
+  .account-settings,
+  .account-profile-editor {
+    padding: 0 18px;
   }
 
   .account-section {
